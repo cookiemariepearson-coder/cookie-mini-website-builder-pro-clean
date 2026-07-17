@@ -51,16 +51,21 @@ const card = {
 
 export default function Admin() {
   const [pin, setPin] = useState('');
+  const [unlocked, setUnlocked] = useState(false);
   const [sites, setSites] = useState([]);
-  const [msg, setMsg] = useState('');
+  const [msg, setMsg] = useState('Enter your private admin PIN to open the admin dashboard.');
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('websites');
   const [loading, setLoading] = useState(false);
   const [savingSlug, setSavingSlug] = useState('');
 
   async function load() {
+    if (!pin.trim()) {
+      setMsg('Enter your ADMIN_PIN first.');
+      return;
+    }
     setLoading(true);
-    setMsg('Loading admin dashboard...');
+    setMsg('Checking PIN...');
     try {
       const r = await fetch('/api/admin/list', {
         method: 'POST',
@@ -70,18 +75,36 @@ export default function Admin() {
       const d = await r.json();
       if (d.ok) {
         setSites(d.sites || []);
+        setUnlocked(true);
         setMsg('Admin Plan Management v2 loaded. Use the tabs below to manage websites, plans, and notes.');
       } else {
-        setMsg(d.error || 'Unable to load admin dashboard.');
+        setUnlocked(false);
+        setSites([]);
+        setMsg(d.error || 'Invalid PIN. Please try again.');
       }
     } catch (e) {
+      setUnlocked(false);
+      setSites([]);
       setMsg(e.message || 'Unable to load admin dashboard.');
     } finally {
       setLoading(false);
     }
   }
 
+  function lockAdmin() {
+    setUnlocked(false);
+    setPin('');
+    setSites([]);
+    setSearch('');
+    setTab('websites');
+    setMsg('Admin dashboard locked. Enter your private admin PIN to open it again.');
+  }
+
   async function update(slug, updates, quiet = false) {
+    if (!unlocked) {
+      setMsg('Admin is locked. Enter your PIN first.');
+      return;
+    }
     setSavingSlug(slug);
     try {
       const r = await fetch('/api/admin/update', {
@@ -137,148 +160,173 @@ export default function Admin() {
       <main className="wrap dashboard">
         <span className="kicker">Owner dashboard</span>
         <h1>Admin Plan Management v2</h1>
-        <p>Use the tabs to manage customer websites, plans, extra pages, notes, and pause/reactivate status.</p>
+        <p>This page is private. Enter your admin PIN before customer websites, plans, notes, and management tools are shown.</p>
 
         <section style={card}>
           <div className="row">
             <div className="field">
               <label>Admin PIN</label>
-              <input type="password" value={pin} onChange={(e) => setPin(e.target.value)} placeholder="Enter your ADMIN_PIN" />
+              <input
+                type="password"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') load(); }}
+                placeholder="Enter your ADMIN_PIN"
+                autoComplete="off"
+              />
             </div>
             <div className="field">
               <label>&nbsp;</label>
-              <button className="btn" onClick={load}>{loading ? 'Loading...' : 'Open Admin'}</button>
+              <button className="btn" onClick={load}>{loading ? 'Checking...' : unlocked ? 'Refresh Admin' : 'Open Admin'}</button>
             </div>
+            {unlocked && (
+              <div className="field">
+                <label>&nbsp;</label>
+                <button className="btn danger" onClick={lockAdmin}>Lock Admin</button>
+              </div>
+            )}
           </div>
           {msg && <div className="notice">{msg}</div>}
         </section>
 
-        <section style={{ ...card, background: '#f7f1ff' }}>
-          <h2 style={{ marginTop: 0 }}>Admin Sections</h2>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <button style={tabBtn(tab === 'websites')} onClick={() => setTab('websites')}>1. Websites</button>
-            <button style={tabBtn(tab === 'plans')} onClick={() => setTab('plans')}>2. Plans & Status</button>
-            <button style={tabBtn(tab === 'notes')} onClick={() => setTab('notes')}>3. Admin Notes</button>
-            <button style={tabBtn(tab === 'help')} onClick={() => setTab('help')}>4. How to Use</button>
-          </div>
-        </section>
-
-        <div className="cardGrid">
-          <div className="card"><strong>Total Sites</strong><div className="price">{stats.total}</div></div>
-          <div className="card"><strong>Published</strong><div className="price">{stats.published}</div></div>
-          <div className="card"><strong>Paused</strong><div className="price">{stats.paused}</div></div>
-          <div className="card"><strong>Free Sites</strong><div className="price">{stats.free}</div></div>
-          <div className="card"><strong>Estimated Active MRR</strong><div className="price">${stats.mrr}/mo</div></div>
-        </div>
-
-        <section style={card}>
-          <div className="row">
-            <h2 style={{ margin: 0 }}>
-              {tab === 'websites' && 'Websites'}
-              {tab === 'plans' && 'Plans & Status'}
-              {tab === 'notes' && 'Admin Notes'}
-              {tab === 'help' && 'How to Use'}
-            </h2>
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, slug, email, plan, status, or note" />
-          </div>
-        </section>
-
-        {tab === 'websites' && (
-          <section style={card}>
-            <h2>Customer Websites</h2>
-            <p>Open, edit, pause, or reactivate published customer websites. The backup link is admin-only for troubleshooting.</p>
-            <div className="tableWrap">
-              <table className="table">
-                <thead><tr><th>Website</th><th>Email</th><th>Plan</th><th>Status</th><th>Actions</th></tr></thead>
-                <tbody>{filtered.map((s) => (
-                  <tr key={s.slug}>
-                    <td><strong>{s.business_name || s.slug}</strong><br /><small>{s.slug}.cookiesdigitalcreations.com</small><br /><small>Updated: {fmtDate(s.updated_at)}</small></td>
-                    <td>{s.customer_email || '—'}</td>
-                    <td>{planNames[s.plan] || s.plan || 'Free Launch Page'}</td>
-                    <td>{s.status || 'published'}</td>
-                    <td>
-                      <a className="btn dark" target="_blank" rel="noreferrer" href={siteUrl(s.slug)}>Open Site</a>{' '}
-                      <a className="btn dark" target="_blank" rel="noreferrer" href={directUrl(s.slug)}>Backup Link</a>{' '}
-                      <a className="btn" target="_blank" rel="noreferrer" href={`/customer/edit/${s.slug}`}>Edit</a>{' '}
-                      {s.status === 'paused' ? (
-                        <button className="btn" onClick={() => update(s.slug, { status: 'published' })}>Reactivate</button>
-                      ) : (
-                        <button className="btn danger" onClick={() => update(s.slug, { status: 'paused' })}>Pause</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}</tbody>
-              </table>
-            </div>
+        {!unlocked && (
+          <section style={{ ...card, background: '#fff8ef' }}>
+            <h2 style={{ marginTop: 0 }}>Admin dashboard is locked</h2>
+            <p>Customer website records, revenue totals, plan controls, and private notes will stay hidden until the correct PIN is entered.</p>
+            <p><strong>Reminder:</strong> the PIN comes from the Vercel environment variable named <code>ADMIN_PIN</code>.</p>
           </section>
         )}
 
-        {tab === 'plans' && (
-          <section style={card}>
-            <h2>Plans & Status Controls</h2>
-            <p>Use this when someone upgrades, cancels, buys an extra page, or needs their site paused/reactivated.</p>
-            <div className="tableWrap">
-              <table className="table">
-                <thead><tr><th>Website</th><th>Plan</th><th>Status</th><th>Extra Pages</th><th>Monthly Price</th><th>Save</th></tr></thead>
-                <tbody>{filtered.map((s) => (
-                  <tr key={s.slug}>
-                    <td><strong>{s.business_name || s.slug}</strong><br /><small>{s.slug}</small></td>
-                    <td>
-                      <select value={s.plan || 'free'} onChange={(e) => {
-                        const plan = e.target.value;
-                        patchLocal(s.slug, { plan, monthly_price: planPrices[plan] || 0 });
-                      }}>
-                        {Object.keys(planNames).map((p) => <option key={p} value={p}>{planNames[p]}</option>)}
-                      </select>
-                    </td>
-                    <td>
-                      <select value={s.status || 'published'} onChange={(e) => patchLocal(s.slug, { status: e.target.value })}>
-                        {statuses.map((p) => <option key={p} value={p}>{p}</option>)}
-                      </select>
-                    </td>
-                    <td><input style={{ width: 90 }} type="number" min="0" value={s.extra_pages || 0} onChange={(e) => patchLocal(s.slug, { extra_pages: Number(e.target.value) })} /></td>
-                    <td><input style={{ width: 110 }} type="number" min="0" value={s.monthly_price ?? planPrices[s.plan || 'free'] ?? 0} onChange={(e) => patchLocal(s.slug, { monthly_price: Number(e.target.value) })} /></td>
-                    <td>
-                      <button className="btn" onClick={() => update(s.slug, {
-                        plan: s.plan || 'free',
-                        status: s.status || 'published',
-                        extra_pages: Number(s.extra_pages || 0),
-                        monthly_price: Number(s.monthly_price ?? planPrices[s.plan || 'free'] ?? 0)
-                      })}>{savingSlug === s.slug ? 'Saving...' : 'Save'}</button>
-                    </td>
-                  </tr>
-                ))}</tbody>
-              </table>
-            </div>
-          </section>
-        )}
+        {unlocked && (
+          <>
+            <section style={{ ...card, background: '#f7f1ff' }}>
+              <h2 style={{ marginTop: 0 }}>Admin Sections</h2>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button style={tabBtn(tab === 'websites')} onClick={() => setTab('websites')}>1. Websites</button>
+                <button style={tabBtn(tab === 'plans')} onClick={() => setTab('plans')}>2. Plans & Status</button>
+                <button style={tabBtn(tab === 'notes')} onClick={() => setTab('notes')}>3. Admin Notes</button>
+                <button style={tabBtn(tab === 'help')} onClick={() => setTab('help')}>4. How to Use</button>
+              </div>
+            </section>
 
-        {tab === 'notes' && (
-          <section style={card}>
-            <h2>Admin Notes</h2>
-            <p>Private notes only you see. Use this for payment issues, support notes, cancellation dates, or extra-page tracking.</p>
-            <div className="cardGrid oneCol">
-              {filtered.map((s) => (
-                <div className="card" key={s.slug}>
-                  <h3>{s.business_name || s.slug}</h3>
-                  <small>{s.customer_email || 'No email saved'} • {planNames[s.plan] || s.plan || 'Free'} • {s.status || 'published'}</small>
-                  <textarea value={s.admin_notes || ''} onChange={(e) => patchLocal(s.slug, { admin_notes: e.target.value })} placeholder="Private admin note..." />
-                  <button className="btn" onClick={() => update(s.slug, { admin_notes: s.admin_notes || '' })}>{savingSlug === s.slug ? 'Saving...' : 'Save Note'}</button>
+            <div className="cardGrid">
+              <div className="card"><strong>Total Sites</strong><div className="price">{stats.total}</div></div>
+              <div className="card"><strong>Published</strong><div className="price">{stats.published}</div></div>
+              <div className="card"><strong>Paused</strong><div className="price">{stats.paused}</div></div>
+              <div className="card"><strong>Free Sites</strong><div className="price">{stats.free}</div></div>
+              <div className="card"><strong>Estimated Active MRR</strong><div className="price">${stats.mrr}/mo</div></div>
+            </div>
+
+            <section style={card}>
+              <div className="row">
+                <h2 style={{ margin: 0 }}>
+                  {tab === 'websites' && 'Websites'}
+                  {tab === 'plans' && 'Plans & Status'}
+                  {tab === 'notes' && 'Admin Notes'}
+                  {tab === 'help' && 'How to Use'}
+                </h2>
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, slug, email, plan, status, or note" />
+              </div>
+            </section>
+
+            {tab === 'websites' && (
+              <section style={card}>
+                <h2>Customer Websites</h2>
+                <p>Open, edit, pause, or reactivate published customer websites. The backup link is admin-only for troubleshooting.</p>
+                <div className="tableWrap">
+                  <table className="table">
+                    <thead><tr><th>Website</th><th>Email</th><th>Plan</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody>{filtered.map((s) => (
+                      <tr key={s.slug}>
+                        <td><strong>{s.business_name || s.slug}</strong><br /><small>{s.slug}.cookiesdigitalcreations.com</small><br /><small>Updated: {fmtDate(s.updated_at)}</small></td>
+                        <td>{s.customer_email || '—'}</td>
+                        <td>{planNames[s.plan] || s.plan || 'Free Launch Page'}</td>
+                        <td>{s.status || 'published'}</td>
+                        <td>
+                          <a className="btn dark" target="_blank" rel="noreferrer" href={siteUrl(s.slug)}>Open Site</a>{' '}
+                          <a className="btn dark" target="_blank" rel="noreferrer" href={directUrl(s.slug)}>Backup Link</a>{' '}
+                          <a className="btn" target="_blank" rel="noreferrer" href={`/customer/edit/${s.slug}`}>Edit</a>{' '}
+                          {s.status === 'paused' ? (
+                            <button className="btn" onClick={() => update(s.slug, { status: 'published' })}>Reactivate</button>
+                          ) : (
+                            <button className="btn danger" onClick={() => update(s.slug, { status: 'paused' })}>Pause</button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
+              </section>
+            )}
 
-        {tab === 'help' && (
-          <section style={card}>
-            <h2>How to use this admin dashboard</h2>
-            <p><strong>Published</strong> websites open publicly. <strong>Paused</strong> websites should not open publicly. Use Pause if someone cancels or payment fails.</p>
-            <p><strong>Plan</strong> controls what the customer should have: Free, Starter Pro, Business, or Premium.</p>
-            <p><strong>Extra Pages</strong> should match how many $10/month extra page add-ons they purchased.</p>
-            <p><strong>Admin Notes</strong> are private notes for you only.</p>
-            <p>Until Gumroad webhooks are connected, plan changes and cancellations are handled manually here.</p>
-          </section>
+            {tab === 'plans' && (
+              <section style={card}>
+                <h2>Plans & Status Controls</h2>
+                <p>Use this when someone upgrades, cancels, buys an extra page, or needs their site paused/reactivated.</p>
+                <div className="tableWrap">
+                  <table className="table">
+                    <thead><tr><th>Website</th><th>Plan</th><th>Status</th><th>Extra Pages</th><th>Monthly Price</th><th>Save</th></tr></thead>
+                    <tbody>{filtered.map((s) => (
+                      <tr key={s.slug}>
+                        <td><strong>{s.business_name || s.slug}</strong><br /><small>{s.slug}</small></td>
+                        <td>
+                          <select value={s.plan || 'free'} onChange={(e) => {
+                            const plan = e.target.value;
+                            patchLocal(s.slug, { plan, monthly_price: planPrices[plan] || 0 });
+                          }}>
+                            {Object.keys(planNames).map((p) => <option key={p} value={p}>{planNames[p]}</option>)}
+                          </select>
+                        </td>
+                        <td>
+                          <select value={s.status || 'published'} onChange={(e) => patchLocal(s.slug, { status: e.target.value })}>
+                            {statuses.map((p) => <option key={p} value={p}>{p}</option>)}
+                          </select>
+                        </td>
+                        <td><input style={{ width: 90 }} type="number" min="0" value={s.extra_pages || 0} onChange={(e) => patchLocal(s.slug, { extra_pages: Number(e.target.value) })} /></td>
+                        <td><input style={{ width: 110 }} type="number" min="0" value={s.monthly_price ?? planPrices[s.plan || 'free'] ?? 0} onChange={(e) => patchLocal(s.slug, { monthly_price: Number(e.target.value) })} /></td>
+                        <td>
+                          <button className="btn" onClick={() => update(s.slug, {
+                            plan: s.plan || 'free',
+                            status: s.status || 'published',
+                            extra_pages: Number(s.extra_pages || 0),
+                            monthly_price: Number(s.monthly_price ?? planPrices[s.plan || 'free'] ?? 0)
+                          })}>{savingSlug === s.slug ? 'Saving...' : 'Save'}</button>
+                        </td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            {tab === 'notes' && (
+              <section style={card}>
+                <h2>Admin Notes</h2>
+                <p>Private notes only you see. Use this for payment issues, support notes, cancellation dates, or extra-page tracking.</p>
+                <div className="cardGrid oneCol">
+                  {filtered.map((s) => (
+                    <div className="card" key={s.slug}>
+                      <h3>{s.business_name || s.slug}</h3>
+                      <small>{s.customer_email || 'No email saved'} • {planNames[s.plan] || s.plan || 'Free'} • {s.status || 'published'}</small>
+                      <textarea value={s.admin_notes || ''} onChange={(e) => patchLocal(s.slug, { admin_notes: e.target.value })} placeholder="Private admin note..." />
+                      <button className="btn" onClick={() => update(s.slug, { admin_notes: s.admin_notes || '' })}>{savingSlug === s.slug ? 'Saving...' : 'Save Note'}</button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {tab === 'help' && (
+              <section style={card}>
+                <h2>How to use this admin dashboard</h2>
+                <p><strong>Published</strong> websites open publicly. <strong>Paused</strong> websites should not open publicly. Use Pause if someone cancels or payment fails.</p>
+                <p><strong>Plan</strong> controls what the customer should have: Free, Starter Pro, Business, or Premium.</p>
+                <p><strong>Extra Pages</strong> should match how many $10/month extra page add-ons they purchased.</p>
+                <p><strong>Admin Notes</strong> are private notes for you only.</p>
+                <p>Until Gumroad webhooks are connected, plan changes and cancellations are handled manually here.</p>
+              </section>
+            )}
+          </>
         )}
       </main>
     </>

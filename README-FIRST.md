@@ -1,19 +1,14 @@
-Cookie Mini Website Builder Pro - Admin Tabs Force Fix
+Cookie Mini Website Builder Pro — Admin PIN Gate Force Fix
 
-This is a focused fix for the admin page still showing everything in one long page.
+What this fixes:
+- The /admin page now stays locked until the correct ADMIN_PIN is entered.
+- Customer website records, stats, plan controls, notes, and tabs are hidden before PIN entry.
+- Adds a Lock Admin button after the admin dashboard is opened.
+- Keeps the server API PIN checks in place.
 
-What it changes:
-- Replaces /admin with Admin Plan Management v2.
-- Shows visible tabs immediately after the PIN card.
-- Separates Websites, Plans & Status, Admin Notes, and How to Use.
-- Adds support for saving admin_notes through /api/admin/update.
+Upload these inside files/folders to the CLEAN GitHub repo:
+cookie-mini-website-builder-pro-clean
 
-Steps:
-1. Run supabase/admin_plan_management_migration.sql in Supabase SQL Editor.
-2. Upload the inside files/folders to GitHub.
-3. Commit changes.
-4. Wait for Vercel to say Ready.
-5. Open https://www.cookiesdigitalcreations.com/admin
-6. You should see the title: Admin Plan Management v2.
-
-If you do not see "Admin Plan Management v2", you are still viewing an old deployment or old cached page.
+Then commit changes and wait for the clean Vercel project to show Ready.
+Test:
+https://www.cookiesdigitalcreations.com/admin
