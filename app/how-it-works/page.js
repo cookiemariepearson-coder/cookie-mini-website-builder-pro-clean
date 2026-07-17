@@ -1,0 +1,2 @@
+import Link from 'next/link';import Nav from '../../lib/Nav';
+export default function Page(){return <><Nav/><main className="wrap dashboard"><h1>How It Works</h1><ol><li>Choose the type of website you need.</li><li>Choose the design look.</li><li>Enter your business details and section wording.</li><li>Preview changes while you build.</li><li>Publish free or checkout for a subscription.</li><li>Return later through the customer dashboard to edit.</li></ol><Link className="btn" href="/builder">Start Building</Link></main></>}

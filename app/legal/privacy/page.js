@@ -1,0 +1,2 @@
+import Nav from '../../../lib/Nav';
+export default function Page(){return <><Nav/><main className="wrap dashboard"><h1>Privacy Policy</h1><p>This page provides general customer-facing policy wording for Cookie Mini Website Builder Pro. Review with a qualified professional before public launch.</p><p>Subscriptions keep customer websites hosted and editable. If a subscription is canceled, refunded, or payment fails, the website may be paused or unpublished.</p><p>Contact support for questions or issues.</p></main></>}

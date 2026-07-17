@@ -1,0 +1,3 @@
+import { NextResponse } from 'next/server';
+export function middleware(req){const host=req.headers.get('host')||'';const root=process.env.NEXT_PUBLIC_ROOT_DOMAIN||'cookiesdigitalcreations.com';const url=req.nextUrl.clone();const path=url.pathname;if(path.startsWith('/_next')||path.startsWith('/api')||path.includes('.')) return NextResponse.next();if(host.endsWith(`.${root}`)&&host!==`www.${root}`){const sub=host.replace(`.${root}`,'');url.pathname=`/site/${sub}`;return NextResponse.rewrite(url);}return NextResponse.next();}
+export const config={matcher:['/((?!_next/static|_next/image|favicon.ico).*)']};

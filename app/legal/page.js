@@ -1,0 +1,2 @@
+import Link from 'next/link';import Nav from '../../lib/Nav';
+export default function Page(){return <><Nav/><main className="wrap dashboard"><h1>Legal & Policies</h1><p><Link href="/legal/terms">Terms of Service</Link></p><p><Link href="/legal/privacy">Privacy Policy</Link></p><p><Link href="/legal/refund">Refund Policy</Link></p><p><Link href="/legal/subscription">Subscription & Cancellation Policy</Link></p></main></>}
