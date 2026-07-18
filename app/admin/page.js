@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Nav from '../../lib/Nav';
 
 const planPrices = { free: 0, starter: 19, business: 30, premium: 50 };
@@ -10,7 +10,7 @@ const planNames = {
   business: 'Business',
   premium: 'Premium'
 };
-const statuses = ['published', 'paused', 'draft'];
+const statuses = ['published', 'paused', 'draft', 'archived'];
 
 function siteUrl(slug) {
   return `https://${slug}.cookiesdigitalcreations.com`;
@@ -49,8 +49,13 @@ const card = {
   marginBottom: 18
 };
 
+function pinMessage(text) {
+  return <div className="notice">{text}</div>;
+}
+
 export default function Admin() {
   const [pin, setPin] = useState('');
+  const [sessionPin, setSessionPin] = useState('');
   const [unlocked, setUnlocked] = useState(false);
   const [sites, setSites] = useState([]);
   const [msg, setMsg] = useState('Enter your private admin PIN to open the admin dashboard.');
@@ -59,8 +64,14 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [savingSlug, setSavingSlug] = useState('');
 
-  async function load() {
-    if (!pin.trim()) {
+  useEffect(() => {
+    const clearTimer = setTimeout(() => setPin(''), 250);
+    return () => clearTimeout(clearTimer);
+  }, []);
+
+  async function loadAdmin(candidatePin = sessionPin || pin) {
+    const checkPin = String(candidatePin || '').trim();
+    if (!checkPin) {
       setMsg('Enter your ADMIN_PIN first.');
       return;
     }
@@ -70,20 +81,24 @@ export default function Admin() {
       const r = await fetch('/api/admin/list', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin })
+        body: JSON.stringify({ pin: checkPin })
       });
       const d = await r.json();
       if (d.ok) {
         setSites(d.sites || []);
+        setSessionPin(checkPin);
+        setPin('');
         setUnlocked(true);
-        setMsg('Admin Plan Management v2 loaded. Use the tabs below to manage websites, plans, and notes.');
+        setMsg('Admin Plan Management v2 loaded. Use the tabs below to manage websites, plans, notes, and archived sites.');
       } else {
         setUnlocked(false);
+        setSessionPin('');
         setSites([]);
         setMsg(d.error || 'Invalid PIN. Please try again.');
       }
     } catch (e) {
       setUnlocked(false);
+      setSessionPin('');
       setSites([]);
       setMsg(e.message || 'Unable to load admin dashboard.');
     } finally {
@@ -94,6 +109,7 @@ export default function Admin() {
   function lockAdmin() {
     setUnlocked(false);
     setPin('');
+    setSessionPin('');
     setSites([]);
     setSearch('');
     setTab('websites');
@@ -101,7 +117,7 @@ export default function Admin() {
   }
 
   async function update(slug, updates, quiet = false) {
-    if (!unlocked) {
+    if (!unlocked || !sessionPin) {
       setMsg('Admin is locked. Enter your PIN first.');
       return;
     }
@@ -110,12 +126,12 @@ export default function Admin() {
       const r = await fetch('/api/admin/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin, slug, updates })
+        body: JSON.stringify({ pin: sessionPin, slug, updates })
       });
       const d = await r.json();
       if (d.ok) {
         if (!quiet) setMsg('Saved admin change.');
-        await load();
+        await loadAdmin(sessionPin);
       } else {
         setMsg(d.error || 'Unable to update website.');
       }
@@ -130,28 +146,37 @@ export default function Admin() {
     setSites((items) => items.map((site) => (site.slug === slug ? { ...site, ...updates } : site)));
   }
 
+  function confirmArchive(site) {
+    const name = site.business_name || site.slug;
+    const ok = window.confirm(`Archive ${name}? This hides it from the public website but keeps the record for your notes and history.`);
+    if (ok) update(site.slug, { status: 'archived' });
+  }
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    if (!q) return sites;
-    return sites.filter((s) =>
+    const base = tab === 'archived' ? sites.filter((s) => s.status === 'archived') : sites.filter((s) => s.status !== 'archived');
+    if (!q) return base;
+    return base.filter((s) =>
       [s.slug, s.business_name, s.customer_email, s.plan, s.status, s.admin_notes]
         .join(' ')
         .toLowerCase()
         .includes(q)
     );
-  }, [sites, search]);
+  }, [sites, search, tab]);
 
   const stats = useMemo(() => {
-    const published = sites.filter((s) => (s.status || 'published') === 'published');
-    const paused = sites.filter((s) => s.status === 'paused');
-    const free = sites.filter((s) => (s.plan || 'free') === 'free');
+    const activeSites = sites.filter((s) => s.status !== 'archived');
+    const published = activeSites.filter((s) => (s.status || 'published') === 'published');
+    const paused = activeSites.filter((s) => s.status === 'paused');
+    const free = activeSites.filter((s) => (s.plan || 'free') === 'free');
+    const archived = sites.filter((s) => s.status === 'archived');
     const mrr = published.reduce((sum, s) => {
       const plan = s.plan || 'free';
       const base = Number(s.monthly_price ?? planPrices[plan] ?? 0);
       const extra = Number(s.extra_pages || 0) * 10;
       return sum + base + extra;
     }, 0);
-    return { total: sites.length, published: published.length, paused: paused.length, free: free.length, mrr };
+    return { total: activeSites.length, published: published.length, paused: paused.length, free: free.length, archived: archived.length, mrr };
   }, [sites]);
 
   return (
@@ -162,58 +187,74 @@ export default function Admin() {
         <h1>Admin Plan Management v2</h1>
         <p>This page is private. Enter your admin PIN before customer websites, plans, notes, and management tools are shown.</p>
 
-        <section style={card}>
-          <div className="row">
-            <div className="field">
-              <label>Admin PIN</label>
-              <input
-                type="password"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') load(); }}
-                placeholder="Enter your ADMIN_PIN"
-                autoComplete="off"
-              />
-            </div>
-            <div className="field">
-              <label>&nbsp;</label>
-              <button className="btn" onClick={load}>{loading ? 'Checking...' : unlocked ? 'Refresh Admin' : 'Open Admin'}</button>
-            </div>
-            {unlocked && (
-              <div className="field">
-                <label>&nbsp;</label>
-                <button className="btn danger" onClick={lockAdmin}>Lock Admin</button>
-              </div>
-            )}
-          </div>
-          {msg && <div className="notice">{msg}</div>}
-        </section>
-
         {!unlocked && (
-          <section style={{ ...card, background: '#fff8ef' }}>
-            <h2 style={{ marginTop: 0 }}>Admin dashboard is locked</h2>
-            <p>Customer website records, revenue totals, plan controls, and private notes will stay hidden until the correct PIN is entered.</p>
-            <p><strong>Reminder:</strong> the PIN comes from the Vercel environment variable named <code>ADMIN_PIN</code>.</p>
-          </section>
+          <>
+            <section style={card}>
+              <form onSubmit={(e) => { e.preventDefault(); loadAdmin(pin); }}>
+                <input type="text" name="fake-user-field" autoComplete="username" style={{ display: 'none' }} tabIndex="-1" />
+                <input type="password" name="fake-password-field" autoComplete="current-password" style={{ display: 'none' }} tabIndex="-1" />
+                <div className="row">
+                  <div className="field">
+                    <label>Admin PIN</label>
+                    <input
+                      type="password"
+                      value={pin}
+                      onChange={(e) => setPin(e.target.value)}
+                      placeholder="Type your admin PIN"
+                      autoComplete="new-password"
+                      name="cookie-admin-pin-manual-entry"
+                      data-lpignore="true"
+                      data-1p-ignore="true"
+                      inputMode="numeric"
+                    />
+                  </div>
+                  <div className="field">
+                    <label>&nbsp;</label>
+                    <button className="btn" type="submit">{loading ? 'Checking...' : 'Open Admin'}</button>
+                  </div>
+                </div>
+              </form>
+              {msg && pinMessage(msg)}
+            </section>
+            <section style={{ ...card, background: '#fff8ef' }}>
+              <h2 style={{ marginTop: 0 }}>Admin dashboard is locked</h2>
+              <p>Customer website records, revenue totals, plan controls, private notes, and archived sites stay hidden until the correct PIN is entered.</p>
+              <p><strong>Reminder:</strong> the PIN comes from your Vercel environment variable named <code>ADMIN_PIN</code>.</p>
+            </section>
+          </>
         )}
 
         {unlocked && (
           <>
+            <section style={card}>
+              <div className="row" style={{ alignItems: 'center' }}>
+                <div>
+                  <h2 style={{ marginTop: 0 }}>Admin dashboard unlocked</h2>
+                  <p style={{ marginBottom: 0 }}>Your PIN is hidden. Use the tabs below to manage customer websites.</p>
+                </div>
+                <button className="btn dark" onClick={() => loadAdmin(sessionPin)}>{loading ? 'Refreshing...' : 'Refresh Admin'}</button>
+                <button className="btn danger" onClick={lockAdmin}>Lock Admin</button>
+              </div>
+              {msg && pinMessage(msg)}
+            </section>
+
             <section style={{ ...card, background: '#f7f1ff' }}>
               <h2 style={{ marginTop: 0 }}>Admin Sections</h2>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <button style={tabBtn(tab === 'websites')} onClick={() => setTab('websites')}>1. Websites</button>
                 <button style={tabBtn(tab === 'plans')} onClick={() => setTab('plans')}>2. Plans & Status</button>
                 <button style={tabBtn(tab === 'notes')} onClick={() => setTab('notes')}>3. Admin Notes</button>
-                <button style={tabBtn(tab === 'help')} onClick={() => setTab('help')}>4. How to Use</button>
+                <button style={tabBtn(tab === 'archived')} onClick={() => setTab('archived')}>4. Archived</button>
+                <button style={tabBtn(tab === 'help')} onClick={() => setTab('help')}>5. How to Use</button>
               </div>
             </section>
 
             <div className="cardGrid">
-              <div className="card"><strong>Total Sites</strong><div className="price">{stats.total}</div></div>
+              <div className="card"><strong>Active Sites</strong><div className="price">{stats.total}</div></div>
               <div className="card"><strong>Published</strong><div className="price">{stats.published}</div></div>
               <div className="card"><strong>Paused</strong><div className="price">{stats.paused}</div></div>
               <div className="card"><strong>Free Sites</strong><div className="price">{stats.free}</div></div>
+              <div className="card"><strong>Archived</strong><div className="price">{stats.archived}</div></div>
               <div className="card"><strong>Estimated Active MRR</strong><div className="price">${stats.mrr}/mo</div></div>
             </div>
 
@@ -223,6 +264,7 @@ export default function Admin() {
                   {tab === 'websites' && 'Websites'}
                   {tab === 'plans' && 'Plans & Status'}
                   {tab === 'notes' && 'Admin Notes'}
+                  {tab === 'archived' && 'Archived Websites'}
                   {tab === 'help' && 'How to Use'}
                 </h2>
                 <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, slug, email, plan, status, or note" />
@@ -232,7 +274,7 @@ export default function Admin() {
             {tab === 'websites' && (
               <section style={card}>
                 <h2>Customer Websites</h2>
-                <p>Open, edit, pause, or reactivate published customer websites. The backup link is admin-only for troubleshooting.</p>
+                <p>Open, edit, pause, or reactivate customer websites. The backup link is admin-only for troubleshooting.</p>
                 <div className="tableWrap">
                   <table className="table">
                     <thead><tr><th>Website</th><th>Email</th><th>Plan</th><th>Status</th><th>Actions</th></tr></thead>
@@ -250,7 +292,8 @@ export default function Admin() {
                             <button className="btn" onClick={() => update(s.slug, { status: 'published' })}>Reactivate</button>
                           ) : (
                             <button className="btn danger" onClick={() => update(s.slug, { status: 'paused' })}>Pause</button>
-                          )}
+                          )}{' '}
+                          <button className="btn danger" onClick={() => confirmArchive(s)}>Archive</button>
                         </td>
                       </tr>
                     ))}</tbody>
@@ -316,10 +359,34 @@ export default function Admin() {
               </section>
             )}
 
+            {tab === 'archived' && (
+              <section style={card}>
+                <h2>Archived Websites</h2>
+                <p>Archived sites are hidden from public use but kept in your records. Reactivate only when you are ready for the site to go live again.</p>
+                <div className="tableWrap">
+                  <table className="table">
+                    <thead><tr><th>Website</th><th>Email</th><th>Plan</th><th>Actions</th></tr></thead>
+                    <tbody>{filtered.map((s) => (
+                      <tr key={s.slug}>
+                        <td><strong>{s.business_name || s.slug}</strong><br /><small>{s.slug}</small></td>
+                        <td>{s.customer_email || '—'}</td>
+                        <td>{planNames[s.plan] || s.plan || 'Free Launch Page'}</td>
+                        <td>
+                          <button className="btn" onClick={() => update(s.slug, { status: 'published' })}>Reactivate</button>{' '}
+                          <a className="btn dark" target="_blank" rel="noreferrer" href={directUrl(s.slug)}>Admin Backup Link</a>
+                        </td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
             {tab === 'help' && (
               <section style={card}>
                 <h2>How to use this admin dashboard</h2>
-                <p><strong>Published</strong> websites open publicly. <strong>Paused</strong> websites should not open publicly. Use Pause if someone cancels or payment fails.</p>
+                <p><strong>Published</strong> websites open publicly. <strong>Paused</strong> websites stay in your active records but should not open publicly. Use Pause if someone cancels, payment fails, or support is needed.</p>
+                <p><strong>Archived</strong> hides a site from your active dashboard while keeping the record. This is safer than permanent deletion.</p>
                 <p><strong>Plan</strong> controls what the customer should have: Free, Starter Pro, Business, or Premium.</p>
                 <p><strong>Extra Pages</strong> should match how many $10/month extra page add-ons they purchased.</p>
                 <p><strong>Admin Notes</strong> are private notes for you only.</p>
