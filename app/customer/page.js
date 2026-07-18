@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Nav from '../../lib/Nav';
 
 const ROOT = 'cookiesdigitalcreations.com';
+const DRAFT_KEY = 'cookieDraftSite';
+const DRAFTS_INDEX_KEY = 'cookieDraftSitesIndex';
 
 function normalizeSubdomain(input = '') {
   let value = String(input || '').trim().toLowerCase();
@@ -29,11 +31,15 @@ export default function Customer() {
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(false);
   const [browserDraft, setBrowserDraft] = useState(null);
+  const [browserDrafts, setBrowserDrafts] = useState([]);
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem('cookieDraftSite');
+      const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) setBrowserDraft(JSON.parse(raw));
+      const index = JSON.parse(localStorage.getItem(DRAFTS_INDEX_KEY) || '{}');
+      const list = Object.entries(index).map(([slug, draft]) => ({ slug, draft })).sort((a, b) => String(b.draft?.updatedAt || '').localeCompare(String(a.draft?.updatedAt || '')));
+      setBrowserDrafts(list);
     } catch {}
   }, []);
 
@@ -72,9 +78,16 @@ export default function Customer() {
     }
   }
 
-  function continueBrowserDraft() {
+  function continueBrowserDraft(draft) {
+    try {
+      if (draft) {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      }
+    } catch {}
     window.location.href = '/builder?restore=1';
   }
+
+  const shownBrowserDrafts = browserDrafts.filter(item => !sites.some(site => site.slug === item.slug));
 
   return (
     <>
@@ -99,7 +112,7 @@ export default function Customer() {
           <div className="navRow">
             <button className="btn" onClick={findSites} disabled={loading}>{loading ? 'Searching...' : 'Find My Websites / Drafts'}</button>
             <a className="btn dark" href="/builder">Start New Website</a>
-            {browserDraft && <button className="btn dark" onClick={continueBrowserDraft}>Continue Last Browser Draft</button>}
+            {browserDraft && <button className="btn dark" onClick={() => continueBrowserDraft(browserDraft)}>Continue Last Browser Draft</button>}
           </div>
         </section>
 
@@ -132,6 +145,28 @@ export default function Customer() {
                   </article>
                 );
               })}
+            </div>
+          )}
+          {shownBrowserDrafts.length > 0 && (
+            <div className="browserDraftBox">
+              <h3>Browser Draft Backups</h3>
+              <p className="mutedText">These are drafts saved in this browser. Use them if an online draft has not appeared yet.</p>
+              <div className="savedSiteList">
+                {shownBrowserDrafts.map(({ slug, draft }) => (
+                  <article className="savedSiteCard" key={`browser-${slug}`}>
+                    <div>
+                      <span className="statusPill draft">Browser Draft</span>
+                      <h3>{draft.businessName || draft.draftName || slug}</h3>
+                      <p><strong>Draft address:</strong> {slug}.{ROOT}</p>
+                      <p><strong>Email:</strong> {draft.customerEmail || 'Not saved'}</p>
+                      {draft.updatedAt && <p className="mutedText">Saved in this browser: {new Date(draft.updatedAt).toLocaleString()}</p>}
+                    </div>
+                    <div className="savedActions">
+                      <button className="btn dark" onClick={() => continueBrowserDraft(draft)}>Continue Browser Draft</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
             </div>
           )}
         </section>

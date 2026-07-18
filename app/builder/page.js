@@ -14,6 +14,7 @@ const checkout = {
 const DRAFT_KEY = 'cookieDraftSite';
 const LAST_STEP_KEY = 'cookieBuilderStep';
 const CURRENT_DRAFT_SLUG_KEY = 'cookieBuilderCurrentSlug';
+const DRAFTS_INDEX_KEY = 'cookieDraftSitesIndex';
 
 function safeParse(raw) {
   try { return raw ? JSON.parse(raw) : null; } catch { return null; }
@@ -35,6 +36,17 @@ function nowStamp() {
 
 function draftSlugFor(draft = {}) {
   return slugify(draft.slug || draft.draftName || draft.businessName || 'my-website');
+}
+
+
+function saveLocalDraftIndex(draft) {
+  try {
+    const slug = draftSlugFor(draft);
+    const raw = safeParse(localStorage.getItem(DRAFTS_INDEX_KEY)) || {};
+    const lightDraft = stripHeavyLocalData({ ...draft, slug, updatedAt: new Date().toISOString() });
+    raw[slug] = lightDraft;
+    localStorage.setItem(DRAFTS_INDEX_KEY, JSON.stringify(raw));
+  } catch {}
 }
 
 function stripHeavyLocalData(draft) {
@@ -146,6 +158,17 @@ export default function Builder() {
     // Slower, lightweight autosave keeps the builder from freezing while typing or uploading images.
     const handle = setTimeout(() => persistLocal('Draft auto-saved.', true), 13000);
     return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [site, step]);
+
+  useEffect(() => {
+    const warn = (event) => {
+      persistLocal('Draft saved before leaving.', true);
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site, step]);
 
@@ -264,6 +287,7 @@ export default function Builder() {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft));
       localStorage.setItem(LAST_STEP_KEY, String(step));
       localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftSlugFor(lightDraft));
+      saveLocalDraftIndex(lightDraft);
       if (!silent) setSaveMessage(`${note} ${nowStamp()}`);
     } catch (e) {
       if (!silent) setSaveMessage('Draft text saved best with smaller images. Click Save Draft to save online, or use media links for large visuals.');
@@ -287,7 +311,10 @@ export default function Builder() {
     setIsSaving(true);
     setSaveMessage('Saving draft...');
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(stripHeavyLocalData(draft)));
+      const lightDraft = stripHeavyLocalData(draft);
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft));
+      localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draft.slug);
+      saveLocalDraftIndex(lightDraft);
       await saveDraftOnline(draft);
     } catch (e) {
       setSaveMessage(`Draft saved lightly in this browser. Online draft could not save: ${e.message}`);
@@ -299,6 +326,7 @@ export default function Builder() {
   async function goVideo() {
     const draft = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     persistLocal('Draft saved before opening AI Video Studio.');
+    saveLocalDraftIndex(draft);
     setSaveMessage('Saving your draft before opening AI Video Studio...');
     try { await saveDraftOnline(draft, true); } catch {}
     window.location.href = `/video-studio?return=builder&draft=${encodeURIComponent(draft.slug)}`;
@@ -306,7 +334,7 @@ export default function Builder() {
 
   async function publishFree() {
     const published = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, pages: ['Home'], plan: 'free', status: 'published' };
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(stripHeavyLocalData(published))); } catch {}
+    try { const lightPublished = stripHeavyLocalData(published); localStorage.setItem(DRAFT_KEY, JSON.stringify(lightPublished)); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, published.slug); saveLocalDraftIndex(lightPublished); } catch {}
     setMessage('Publishing free launch page...');
     try {
       const res = await fetch('/api/site/publish', {
@@ -324,7 +352,7 @@ export default function Builder() {
 
   async function checkoutPlan() {
     const draft = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(stripHeavyLocalData(draft))); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draft.slug); } catch {}
+    try { const lightDraft = stripHeavyLocalData(draft); localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft)); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draft.slug); saveLocalDraftIndex(lightDraft); } catch {}
     setMessage('Saving your draft before checkout...');
     try { await saveDraftOnline(draft, true); } catch {}
     const url = checkout[site.plan];
@@ -360,6 +388,7 @@ export default function Builder() {
         <button className="btn light" onClick={goVideo}>AI Video Studio</button>
         <a className="btn light" href="/customer">Open My Drafts</a>
         <button className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
+        <div className="notice smallNotice"><strong>Current draft:</strong><br />{draftSlugFor(site)}.cookiesdigitalcreations.com</div>
         {saveMessage && <div className="notice smallNotice">{saveMessage}</div>}
       </aside>
 
