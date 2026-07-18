@@ -13,6 +13,7 @@ const checkout = {
 
 const DRAFT_KEY = 'cookieDraftSite';
 const LAST_STEP_KEY = 'cookieBuilderStep';
+const CURRENT_DRAFT_SLUG_KEY = 'cookieBuilderCurrentSlug';
 
 function safeParse(raw) {
   try { return raw ? JSON.parse(raw) : null; } catch { return null; }
@@ -30,6 +31,30 @@ function normalizeSlug(input = '') {
 
 function nowStamp() {
   return new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function draftSlugFor(draft = {}) {
+  return slugify(draft.slug || draft.draftName || draft.businessName || 'my-website');
+}
+
+function stripHeavyLocalData(draft) {
+  // Keep local autosave light so big uploaded images do not freeze the builder.
+  // Online Save Draft/Publish still sends the full site data.
+  return {
+    ...draft,
+    heroImage: draft?.heroImage?.startsWith?.('data:image') ? '' : draft.heroImage,
+    media: Array.isArray(draft?.media)
+      ? draft.media.map(item => item?.kind === 'image' && String(item.url || '').startsWith('data:image') ? { ...item, url: '', localImageRemoved: true } : item)
+      : []
+  };
+}
+
+function stylePreset(styleKey = '') {
+  if (styleKey.includes('cartoon') || styleKey.includes('color-pop')) return { layoutStyle: 'centered', fontStyle: 'playful', backgroundStyle: 'pattern', sectionShape: 'floating' };
+  if (styleKey.includes('luxury') || styleKey.includes('glam') || styleKey.includes('advisor') || styleKey.includes('product')) return { layoutStyle: 'split', fontStyle: 'elegant', backgroundStyle: 'dark', sectionShape: 'floating' };
+  if (styleKey.includes('clean') || styleKey.includes('minimal') || styleKey.includes('expert')) return { layoutStyle: 'centered', fontStyle: 'clean', backgroundStyle: 'soft', sectionShape: 'cards' };
+  if (styleKey.includes('realistic') || styleKey.includes('building') || styleKey.includes('storefront')) return { layoutStyle: 'visual-first', fontStyle: 'clean', backgroundStyle: 'gradient', sectionShape: 'boxed' };
+  return { layoutStyle: 'split', fontStyle: 'bold', backgroundStyle: 'gradient', sectionShape: 'cards' };
 }
 
 function mergeDefaults(saved) {
@@ -95,6 +120,7 @@ export default function Builder() {
             const merged = mergeDefaults(data.site);
             setSite(merged);
             localStorage.setItem(DRAFT_KEY, JSON.stringify(merged));
+            localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftSlugFor(merged));
             setStep(1);
             setSaveMessage('Saved website/draft opened. Continue editing, then save or publish.');
             return;
@@ -108,6 +134,7 @@ export default function Builder() {
       const savedStep = Number(localStorage.getItem(LAST_STEP_KEY || 0));
       if (saved) {
         setSite(mergeDefaults(saved));
+        localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftSlugFor(saved));
         if (!Number.isNaN(savedStep)) setStep(Math.min(4, Math.max(0, savedStep)));
         setSaveMessage('Draft restored from this browser.');
       }
@@ -116,8 +143,8 @@ export default function Builder() {
   }, []);
 
   useEffect(() => {
-    // Slow autosave keeps the builder from freezing while typing or uploading images.
-    const handle = setTimeout(() => persistLocal('Draft auto-saved.'), 4200);
+    // Slower, lightweight autosave keeps the builder from freezing while typing or uploading images.
+    const handle = setTimeout(() => persistLocal('Draft auto-saved.', true), 13000);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site, step]);
@@ -142,43 +169,46 @@ export default function Builder() {
   function chooseType(key) {
     const type = templateLibrary.find(t => t.key === key) || templateLibrary[0];
     const ns = createDefaultSite({ typeKey: key, styleKey: type.styles[0].key });
-    const palette = type.styles[0].palette || {};
+    const style = type.styles[0];
+    const palette = style.palette || {};
+    const preset = stylePreset(style.key);
     setSite(current => mergeDefaults({
       ...ns,
       businessName: current.businessName,
       customerEmail: current.customerEmail,
       phone: current.phone,
       plan: current.plan,
-      headline: current.headline,
-      description: current.description,
+      headline: current.headline && current.headline !== 'A beautiful website created in minutes.' ? current.headline : ns.headline,
+      description: current.description && current.description !== 'Add your business details, services, products, and contact information so customers know what you offer.' ? current.description : ns.description,
       heroImage: current.heroImage,
       heroMediaLink: current.heroMediaLink,
       media: current.media || [],
-      fontStyle: current.fontStyle || ns.fontStyle,
-      layoutStyle: current.layoutStyle || ns.layoutStyle,
-      backgroundStyle: current.backgroundStyle || ns.backgroundStyle,
-      sectionShape: current.sectionShape || ns.sectionShape,
-      sections: { ...ns.sections, ...(current.sections || {}) },
+      ...preset,
       primaryColor: palette.primary || current.primaryColor,
       accentColor: palette.accent || current.accentColor,
-      pages: current.plan === 'free' ? ['Home'] : (current.pages?.length ? current.pages : ['Home']),
+      pages: current.plan === 'free' ? ['Home'] : ns.pages.slice(0, plans[current.plan]?.maxPages || 1),
       desiredPages: type.pages,
+      offerTitle: ns.offerTitle,
+      offers: ns.offers,
+      sections: ns.sections,
       designUpdatedAt: Date.now()
     }));
-    setMessage('Website type changed. Choose a visual look, then continue adding your wording.');
+    setMessage('Website type changed and starter wording/sections were refreshed for that type.');
   }
 
   function selectStyle(key) {
     const style = getStyle(site.typeKey, key);
+    const preset = stylePreset(key);
     setSite(current => ({
       ...current,
       styleKey: key,
+      ...preset,
       primaryColor: style.palette?.primary || current.primaryColor,
       accentColor: style.palette?.accent || current.accentColor,
       templateAppliedAt: Date.now(),
       designUpdatedAt: Date.now()
     }));
-    setMessage(`Template look changed to ${style.name}.`);
+    setMessage(`Template look changed to ${style.name}. Layout, background, font feel, and card style were updated too.`);
   }
 
   function planLimit() { return plans[site.plan]?.maxPages || 1; }
@@ -200,44 +230,83 @@ export default function Builder() {
     update({ pages: site.pages.filter(p => p !== page) });
   }
 
-  function persistLocal(note = 'Draft saved in this browser.') {
+  function startNewDraft() {
+    const ok = window.confirm('Start a fresh website draft? Your current draft is already saved in this browser if autosave ran, but click Cancel if you want to manually Save Draft first.');
+    if (!ok) return;
+    localStorage.removeItem(DRAFT_KEY);
+    localStorage.removeItem(LAST_STEP_KEY);
+    localStorage.removeItem(CURRENT_DRAFT_SLUG_KEY);
+    setSite(createDefaultSite());
+    setStep(0);
+    setMessage('Started a fresh website draft.');
+    setSaveMessage('Fresh draft opened.');
+  }
+
+  function ensureMediaSection(section) {
+    if (!section || site.pages.includes(section) || !pageOptions.includes(section)) return true;
+    if (site.plan === 'free') {
+      setMessage(`${section} media is saved in your draft. Free Launch Page publishes Home only. Upgrade to publish ${section}.`);
+      return false;
+    }
+    const limit = planLimit();
+    if (site.pages.length >= limit && site.plan !== 'premium') {
+      setMessage(`${plans[site.plan]?.label} includes ${limit} page(s). The media was saved, but publishing ${section} requires an extra page add-on.`);
+      return false;
+    }
+    setSite(current => current.pages.includes(section) ? current : { ...current, pages: [...current.pages, section] });
+    setSaveMessage(`${section} was added to your selected pages so the media can show in the preview.`);
+    return true;
+  }
+
+  function persistLocal(note = 'Draft saved in this browser.', silent = false) {
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(site));
+      const lightDraft = stripHeavyLocalData(site);
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft));
       localStorage.setItem(LAST_STEP_KEY, String(step));
-      setSaveMessage(`${note} ${nowStamp()}`);
+      localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftSlugFor(lightDraft));
+      if (!silent) setSaveMessage(`${note} ${nowStamp()}`);
     } catch (e) {
-      setSaveMessage('Draft is too large for browser storage. Use media links or smaller images, then click Save Draft.');
+      if (!silent) setSaveMessage('Draft text saved best with smaller images. Click Save Draft to save online, or use media links for large visuals.');
     }
   }
 
+  async function saveDraftOnline(draft, quiet = false) {
+    const res = await fetch('/api/site/draft', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ site: draft })
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Online draft save failed.');
+    if (!quiet) setSaveMessage(`Draft saved online. Find it later from My Website using your email or this name: ${data.slug}. ${nowStamp()}`);
+    return data;
+  }
+
   async function saveDraft() {
-    const draft = { ...site, slug: slugify(site.businessName), status: 'draft' };
+    const draft = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     setIsSaving(true);
     setSaveMessage('Saving draft...');
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-      const res = await fetch('/api/site/draft', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ site: draft })
-      });
-      const data = await res.json();
-      setSaveMessage(data.ok ? `Draft saved online. Find it later from My Website using your email or this name: ${data.slug}. ${nowStamp()}` : data.error || 'Draft saved in browser, but online save failed.');
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(stripHeavyLocalData(draft)));
+      await saveDraftOnline(draft);
     } catch (e) {
-      setSaveMessage(`Draft saved in this browser. Online draft could not save: ${e.message}`);
+      setSaveMessage(`Draft saved lightly in this browser. Online draft could not save: ${e.message}`);
     } finally {
       setIsSaving(false);
     }
   }
 
-  function goVideo() {
+  async function goVideo() {
+    const draft = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     persistLocal('Draft saved before opening AI Video Studio.');
-    window.location.href = '/video-studio?return=builder';
+    setSaveMessage('Saving your draft before opening AI Video Studio...');
+    try { await saveDraftOnline(draft, true); } catch {}
+    window.location.href = `/video-studio?return=builder&draft=${encodeURIComponent(draft.slug)}`;
   }
 
   async function publishFree() {
-    const published = { ...site, slug: slugify(site.businessName), pages: ['Home'], plan: 'free', status: 'published' };
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(published)); } catch {}
+    const published = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, pages: ['Home'], plan: 'free', status: 'published' };
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(stripHeavyLocalData(published))); } catch {}
     setMessage('Publishing free launch page...');
     try {
       const res = await fetch('/api/site/publish', {
@@ -253,9 +322,11 @@ export default function Builder() {
     }
   }
 
-  function checkoutPlan() {
-    const draft = { ...site, slug: slugify(site.businessName) };
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); } catch {}
+  async function checkoutPlan() {
+    const draft = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(stripHeavyLocalData(draft))); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draft.slug); } catch {}
+    setMessage('Saving your draft before checkout...');
+    try { await saveDraftOnline(draft, true); } catch {}
     const url = checkout[site.plan];
     if (!url) { setMessage('Checkout route missing.'); return; }
     window.location.href = url;
@@ -264,7 +335,7 @@ export default function Builder() {
   async function uploadHero(file) {
     setSaveMessage('Preparing hero image...');
     try {
-      const image = await compressImage(file, 900, 0.68);
+      const image = await compressImage(file, 760, 0.64);
       update({ heroImage: image });
       setSaveMessage('Hero image added. Click Save Draft to keep it online.');
     } catch (e) {
@@ -288,6 +359,7 @@ export default function Builder() {
         <button className="btn light" onClick={saveDraft} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Draft'}</button>
         <button className="btn light" onClick={goVideo}>AI Video Studio</button>
         <a className="btn light" href="/customer">Open My Drafts</a>
+        <button className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
         {saveMessage && <div className="notice smallNotice">{saveMessage}</div>}
       </aside>
 
@@ -317,6 +389,7 @@ export default function Builder() {
                 <h2>Website Info</h2>
                 <p className="mutedText">Enter the words that build the website. The preview updates on the right.</p>
                 <Field label="Business / website name"><input value={site.businessName || ''} onChange={e => update({ businessName: e.target.value })} /></Field>
+                <Field label="Draft name / website address"><input placeholder="Example: cookie-kitchen-menu" value={site.draftName || ''} onChange={e => update({ draftName: e.target.value })} /></Field>
                 <Field label="Customer email for Contact button and dashboard"><input type="email" value={site.customerEmail || ''} onChange={e => update({ customerEmail: e.target.value })} /></Field>
                 <Field label="Phone (optional; not shown in top header)"><input value={site.phone || ''} onChange={e => update({ phone: e.target.value })} /></Field>
                 <Field label="Homepage headline"><input value={site.headline || ''} onChange={e => update({ headline: e.target.value })} /></Field>
@@ -393,7 +466,7 @@ export default function Builder() {
                 ))}
                 <h3>Gallery / media items</h3>
                 <p className="mutedText">Use this for Gallery, Portfolio, Products, Menu, Projects, or Before & After pages. Large videos should be links for now.</p>
-                <MediaEditor site={site} update={update} setSaveMessage={setSaveMessage} />
+                <MediaEditor site={site} update={update} setSaveMessage={setSaveMessage} ensureMediaSection={ensureMediaSection} />
                 <NavRow back={back} next={next} />
               </>
             )}
@@ -403,7 +476,7 @@ export default function Builder() {
                 <h2>Preview & Publish</h2>
                 {message && <div className="notice error">{message}</div>}
                 <p>Your website name will be:</p>
-                <div className="notice"><strong>{slugify(site.businessName)}.cookiesdigitalcreations.com</strong></div>
+                <div className="notice"><strong>{draftSlugFor(site)}.cookiesdigitalcreations.com</strong></div>
                 <button className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}<a className="btn dark" href="/customer">Open My Drafts</a>{' '}
                 {site.plan === 'free' ? <button className="btn" onClick={publishFree}>Publish Free Page</button> : <button className="btn" onClick={checkoutPlan}>Go to {plans[site.plan]?.price} Checkout</button>}
                 <div className="navRow"><button className="btn dark" onClick={back}>Back</button></div>
@@ -442,21 +515,23 @@ function StylePicker({ typeKey, styleKey, selectStyle }) {
   ))}</div>;
 }
 
-function MediaEditor({ site, update, setSaveMessage }) {
+function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
   const media = site.media || [];
   const [quick, setQuick] = useState({ title: '', section: 'Gallery', url: '' });
 
   function setMedia(next) { update({ media: next }); }
-  function addImageSlot(section = 'Gallery') { setMedia([...media, { kind: 'image', url: '', title: '', section }]); }
-  function addLinkSlot(section = 'Gallery') { setMedia([...media, { kind: 'link', url: '', title: '', section }]); }
+  function addImageSlot(section = 'Gallery') { ensureMediaSection?.(section); setMedia([...media, { kind: 'image', url: '', title: '', section }]); }
+  function addLinkSlot(section = 'Gallery') { ensureMediaSection?.(section); setMedia([...media, { kind: 'link', url: '', title: '', section }]); }
   function addQuickLink() {
     if (!quick.url.trim()) { setSaveMessage('Paste a media/video link first.'); return; }
+    ensureMediaSection?.(quick.section);
     setMedia([...media, { kind: 'link', url: quick.url.trim(), title: quick.title || 'Media link', section: quick.section }]);
     setQuick({ ...quick, title: '', url: '' });
     setSaveMessage('Media link added.');
   }
   function updateItem(index, patch) {
     const next = [...media];
+    if (patch.section) ensureMediaSection?.(patch.section);
     next[index] = { ...next[index], ...patch };
     setMedia(next);
   }
@@ -464,7 +539,7 @@ function MediaEditor({ site, update, setSaveMessage }) {
   async function uploadMedia(index, file) {
     setSaveMessage('Preparing gallery image...');
     try {
-      const image = await compressImage(file, 700, 0.65);
+      const image = await compressImage(file, 560, 0.60);
       updateItem(index, { kind: 'image', url: image, title: media[index]?.title || file.name });
       setSaveMessage('Gallery image added. Click Save Draft to keep it online.');
     } catch (e) {
@@ -474,7 +549,8 @@ function MediaEditor({ site, update, setSaveMessage }) {
   async function uploadQuick(file) {
     setSaveMessage('Preparing uploaded image...');
     try {
-      const image = await compressImage(file, 700, 0.65);
+      const image = await compressImage(file, 560, 0.60);
+      ensureMediaSection?.(quick.section);
       setMedia([...media, { kind: 'image', url: image, title: quick.title || file.name, section: quick.section }]);
       setQuick({ ...quick, title: '' });
       setSaveMessage('Image added to media section.');
@@ -484,10 +560,13 @@ function MediaEditor({ site, update, setSaveMessage }) {
   }
 
   const sections = ['Gallery','Portfolio','Projects','Before & After','Products','Menu'];
+  const mediaSectionsSelected = sections.filter(sec => site.pages?.includes(sec));
 
   return <div className="mediaEditor">
+    {mediaSectionsSelected.length === 0 && <div className="notice"><strong>Tip:</strong> Add Gallery, Portfolio, Products, Menu, Projects, or Before & After as a page if you want media to show on the live site. Free Launch Page keeps media saved in draft, but publishes Home only.</div>}
     <div className="quickMediaBox">
       <h4>Quick add media</h4>
+      <p className="mutedText">Choose the section first. Paid plans will auto-select that page if your plan has room; Free keeps media in draft until upgrade.</p>
       <div className="row">
         <Field label="Title"><input placeholder="Example: Menu photo, portfolio video, product image" value={quick.title} onChange={e => setQuick({ ...quick, title: e.target.value })} /></Field>
         <Field label="Show in section"><select value={quick.section} onChange={e => setQuick({ ...quick, section: e.target.value })}>{sections.map(p => <option key={p}>{p}</option>)}</select></Field>

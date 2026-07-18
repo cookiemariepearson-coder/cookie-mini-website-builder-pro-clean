@@ -1,36 +1,31 @@
-# Cookie Mini Website Builder Pro - Builder Glitch Polish Fix
+# Cookie Mini Website Builder Pro — Builder Glitch Polish Fix 3
 
-Upload these inside files/folders to the CLEAN GitHub repo only:
+Upload this package to the CLEAN GitHub repo only:
 
 cookie-mini-website-builder-pro-clean
 
-This update continues the builder fixes and keeps the working checkout, customer dashboard, and AI Video Studio flow.
+What this update improves:
+- Keeps paid checkout routes active so checkout does not return to 404.
+- Adds a Draft name / website address field so customers can save more than one draft without guessing the full subdomain.
+- Adds Start Fresh Draft button so old draft data does not keep sticking to new builds.
+- Saves the current draft slug in browser storage so AI Video Studio and My Website can return to the right draft.
+- Saves the draft online before paid checkout.
+- Makes media uploads smaller to reduce freezing.
+- Gallery/Portfolio/Menu/Product media now tries to auto-select that page when the current plan allows it.
+- Free Launch Page keeps extra media saved in draft but reminds the customer that Free publishes Home only.
+- Template switching keeps updating layout, background feel, font feel, and card style.
+- Adds extra polish to the preview so template changes are more visible.
 
-## Fixes included
+No new Supabase SQL is required for this update if you already ran the draft/site migrations.
 
-- Slower autosave to reduce freezing while typing.
-- Smaller/compressed image saving for hero and gallery uploads.
-- Clearer media upload area for Gallery, Portfolio, Projects, Before & After, Products, and Menu.
-- Quick media uploader with section selector.
-- Template switching updates the preview immediately.
-- More design controls on the Design page:
-  - page layout
-  - font feel
-  - background feel
-  - section/card style
-  - colors
-  - hero image
-  - video/media link
-- All page wording boxes are visible in one place.
-- Drafts still save and can be opened from My Website.
-- AI Video Studio return flow is kept.
-- Paid checkout routes are kept.
-
-## Important
-
-No new Supabase SQL is required if you already ran the draft/dashboard migrations.
-
-If publish/draft saving complains about the `site` column, run this again in the Website Builder Supabase project:
-
-supabase/builder_draft_site_column_migration.sql
-
+Test after Vercel is Ready:
+1. Open /builder
+2. Start a Free Launch Page
+3. Enter Website Info, including Draft name / website address
+4. Change template on Design
+5. Upload hero image
+6. Add Gallery or Portfolio media
+7. Save Draft
+8. Open AI Video Studio and return
+9. Open My Drafts and search by email
+10. Test paid checkout route
