@@ -60,3 +60,98 @@
 .enhancedStylePicker{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}.enhancedStyleCard{position:relative;overflow:hidden;min-height:260px;text-align:left}.enhancedStyleCard.active{outline:4px solid var(--accent,#c46a2d);outline-offset:2px}.enhancedStyleCard .stylePalette{position:absolute;top:0;left:0;right:0;height:8px;border-radius:0;margin:0}.styleThumb{position:relative;display:grid;place-items:center;height:128px;border-radius:26px;margin:18px 0 14px;background:linear-gradient(135deg,#20172f,#c46a2d);box-shadow:inset 0 0 0 1px #fff6,0 24px 42px #0002;overflow:hidden}.styleThumb b{font-size:52px;z-index:2;filter:drop-shadow(0 14px 12px #0006)}.styleThumb i{position:absolute;display:block;border-radius:26px;background:#ffffff30;box-shadow:0 10px 20px #0002}.styleThumb i:nth-child(2){width:72px;height:46px;left:18px;bottom:18px}.styleThumb i:nth-child(3){width:92px;height:64px;right:14px;top:18px}.styleThumb i:nth-child(4){width:110px;height:10px;left:38px;top:72px;border-radius:999px;background:#fff8}.styleThumb-food,.styleThumb-kitchen-realistic{background:radial-gradient(circle at 28% 30%,#ffc27a,transparent 26%),linear-gradient(135deg,#3d150a,#d46a23)}.styleThumb-cartoon-food{background:radial-gradient(circle at 28% 30%,#ffe666,transparent 24%),linear-gradient(135deg,#3b1142,#ff7a24)}.styleThumb-beauty,.styleThumb-floral-glam{background:radial-gradient(circle at 24% 28%,#ffd5ed,transparent 26%),linear-gradient(135deg,#351832,#d86aa7)}.styleThumb-luxury-salon{background:radial-gradient(circle at 75% 25%,#ffe8ac,transparent 22%),linear-gradient(135deg,#211326,#c99544)}.styleThumb-realestate,.styleThumb-building-pro{background:linear-gradient(135deg,#14233a,#b17a2f)}.styleThumb-modern-property{background:radial-gradient(circle at 70% 20%,#8bc7ff,transparent 25%),linear-gradient(135deg,#16243d,#3f89c9)}.styleThumb-wellness,.styleThumb-flowers-herbs{background:radial-gradient(circle at 25% 25%,#d5ffc9,transparent 25%),linear-gradient(135deg,#173829,#6fa44f)}.styleThumb-clean-minimal{background:linear-gradient(135deg,#eafff9,#a9c95f);color:#1d3b35}.styleThumb-local,.styleThumb-service-3d{background:linear-gradient(135deg,#20172f,#c46a2d)}.styleThumb-service-realistic{background:linear-gradient(135deg,#1b2636,#2d90a6)}.styleThumb-digital,.styleThumb-bold-sales{background:linear-gradient(135deg,#15133b,#7b3ff2)}.styleThumb-creator-tool{background:radial-gradient(circle at 25% 25%,#ffd66b,transparent 24%),linear-gradient(135deg,#150e28,#f0a21f)}.styleThumb-nonprofit,.styleThumb-warm-mission{background:linear-gradient(135deg,#24315a,#c66b2d)}.styleThumb-bold-action{background:linear-gradient(135deg,#2b1540,#e14f3d)}.styleThumb-creator,.styleThumb-cinematic{background:radial-gradient(circle at 75% 25%,#bc94ff,transparent 24%),linear-gradient(135deg,#12081f,#7a36d6)}.styleThumb-cartoon-creative{background:linear-gradient(135deg,#39115b,#ff6bba)}.styleThumb-cleaning,.styleThumb-clean-realistic{background:linear-gradient(135deg,#16334a,#4aa5bd)}.styleThumb-cartoon-sparkle{background:radial-gradient(circle at 30% 25%,#e9fdff,transparent 26%),linear-gradient(135deg,#1d3750,#65d0e8)}.styleThumb-coaching,.styleThumb-expert-clean{background:linear-gradient(135deg,#1e2639,#6c8fc5)}.styleThumb-luxury-advisor{background:linear-gradient(135deg,#1e1230,#b98938)}.styleThumb-party,.styleThumb-cartoon-bright{background:linear-gradient(135deg,#5924a4,#f05688)}.styleThumb-color-pop{background:linear-gradient(135deg,#1b1c72,#ffb01f)}.styleThumb-shop,.styleThumb-luxury-product{background:linear-gradient(135deg,#20172f,#c77a6d)}.styleThumb-storefront-realistic{background:linear-gradient(135deg,#252238,#d28e2e)}
 .templateArtwork{position:relative;min-height:230px;border-radius:32px;overflow:hidden;padding:20px;background:linear-gradient(135deg,var(--primary),var(--accent));box-shadow:inset 0 0 0 1px #ffffff55,0 28px 56px #0000003b}.templateGlowOne,.templateGlowTwo{position:absolute;border-radius:50%;filter:blur(18px);opacity:.65}.templateGlowOne{width:150px;height:150px;background:#fff;right:-44px;top:-48px}.templateGlowTwo{width:120px;height:120px;background:var(--accent);left:-34px;bottom:-34px}.templateMockBrowser{position:relative;z-index:2;display:flex;align-items:center;gap:7px;background:#ffffff28;border:1px solid #ffffff50;border-radius:18px;padding:12px;color:white;backdrop-filter:blur(8px)}.templateMockBrowser span{width:9px;height:9px;background:#fff;border-radius:50%;opacity:.75}.templateMockBrowser strong{margin-left:auto;font-size:13px}.templateVisualStack{position:relative;z-index:2;min-height:130px}.visualTile{position:absolute;display:grid;place-items:center;border-radius:28px;background:#ffffff30;border:1px solid #ffffff55;box-shadow:0 18px 34px #00000026;backdrop-filter:blur(8px)}.visualTile span{font-size:46px}.primaryTile{width:110px;height:110px;left:14px;top:22px}.secondaryTile{width:92px;height:92px;right:30px;top:44px}.miniTile{width:64px;height:64px;right:118px;top:12px}.miniTile.alt{left:110px;top:94px}.miniTile span{font-size:28px}.templateMiniCards{position:relative;z-index:2;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.templateMiniCards em{font-style:normal;font-size:11px;color:white;background:#0000002d;border:1px solid #ffffff35;border-radius:14px;padding:9px;text-align:center;min-height:42px;display:grid;place-items:center}.theme-food .templateArtwork,.look-kitchen-realistic{background:radial-gradient(circle at 24% 30%,#ffcb88,transparent 24%),linear-gradient(135deg,#30130c,#d46a23)}.look-cartoon-food{background:radial-gradient(circle at 30% 25%,#fff072,transparent 24%),linear-gradient(135deg,#3b1142,#ff7a24)}.look-floral-glam{background:radial-gradient(circle at 26% 28%,#ffd6f0,transparent 24%),linear-gradient(135deg,#351832,#d86aa7)}.look-luxury-salon{background:radial-gradient(circle at 78% 20%,#ffe8ae,transparent 23%),linear-gradient(135deg,#211326,#c99544)}.look-building-pro{background:linear-gradient(135deg,#14233a,#b17a2f)}.look-modern-property{background:radial-gradient(circle at 76% 22%,#83c8ff,transparent 24%),linear-gradient(135deg,#16243d,#3f89c9)}.look-flowers-herbs{background:radial-gradient(circle at 22% 24%,#d7ffc8,transparent 25%),linear-gradient(135deg,#173829,#6fa44f)}.look-clean-minimal{background:linear-gradient(135deg,#f1fff9,#a9c95f)}.look-clean-minimal .templateMockBrowser,.look-clean-minimal .templateMiniCards em{color:#173829;background:#ffffffaa;border-color:#17382922}.look-service-3d{background:linear-gradient(135deg,#20172f,#c46a2d)}.look-service-realistic{background:linear-gradient(135deg,#1b2636,#2d90a6)}.look-bold-sales{background:linear-gradient(135deg,#15133b,#7b3ff2)}.look-creator-tool{background:radial-gradient(circle at 28% 24%,#ffd76e,transparent 24%),linear-gradient(135deg,#150e28,#f0a21f)}.look-warm-mission{background:linear-gradient(135deg,#24315a,#c66b2d)}.look-bold-action{background:linear-gradient(135deg,#2b1540,#e14f3d)}.look-cinematic{background:radial-gradient(circle at 77% 25%,#ad84ff,transparent 22%),linear-gradient(135deg,#12081f,#7a36d6)}.look-cartoon-creative{background:linear-gradient(135deg,#39115b,#ff6bba)}.look-clean-realistic{background:linear-gradient(135deg,#16334a,#4aa5bd)}.look-cartoon-sparkle{background:radial-gradient(circle at 28% 25%,#e9fdff,transparent 24%),linear-gradient(135deg,#1d3750,#65d0e8)}.look-expert-clean{background:linear-gradient(135deg,#1e2639,#6c8fc5)}.look-luxury-advisor{background:linear-gradient(135deg,#1e1230,#b98938)}.look-cartoon-bright{background:linear-gradient(135deg,#5924a4,#f05688)}.look-color-pop{background:linear-gradient(135deg,#1b1c72,#ffb01f)}.look-luxury-product{background:linear-gradient(135deg,#20172f,#c77a6d)}.look-storefront-realistic{background:linear-gradient(135deg,#252238,#d28e2e)}
 .launchTestPage .quickLinks{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0 26px}.launchGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;margin:22px 0}.launchCard{border:1px solid #eaddec;background:linear-gradient(135deg,#fff,#fff9f0);border-radius:22px;padding:18px;box-shadow:0 16px 34px #0000000e}.launchCard strong{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:#20172f;color:white;margin-bottom:10px}.launchCard h2{font-size:22px;margin:8px 0}.launchCard p{color:#5e4e6b}.builderPanel .navRow .btn,.builderPanel p .btn{margin-top:6px}
+
+/* Owner/customer cleanup + stronger background feel options */
+/* The final launch test is owner-facing only and no longer appears in the customer builder flow. */
+.sitePreview.bg-gradient .hero{
+  background:
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--accent) 70%, white 25%) 0, transparent 24%),
+    radial-gradient(circle at 90% 10%, #ffffff38 0, transparent 28%),
+    linear-gradient(120deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 65%, var(--accent) 35%) 42%, var(--accent) 100%) !important;
+}
+.sitePreview.bg-gradient .artCard{
+  background:linear-gradient(135deg,#ffffff30,#ffffff10) !important;
+  border-color:#ffffff70;
+}
+.sitePreview.bg-gradient .offerCard{border-top-color:var(--accent)}
+
+.sitePreview.bg-soft .hero{
+  background:
+    radial-gradient(circle at 18% 18%, #ffffff 0, transparent 22%),
+    radial-gradient(circle at 88% 18%, color-mix(in srgb, var(--accent) 30%, white 70%) 0, transparent 30%),
+    linear-gradient(135deg,#fff9f2 0%,#f5ecff 48%,#fff4dd 100%) !important;
+  color:#20172f !important;
+}
+.sitePreview.bg-soft .hero p,.sitePreview.bg-soft .hero h1{color:#20172f !important;}
+.sitePreview.bg-soft .cta{color:white !important;}
+.sitePreview.bg-soft .artCard{
+  background:linear-gradient(135deg,#ffffff,#fff7ef) !important;
+  color:#20172f;
+  border-color:#eaddec;
+  box-shadow:0 24px 54px #00000016;
+}
+.sitePreview.bg-soft .offers,.sitePreview.bg-soft .contentSection{background:#fffaf5 !important;color:#20172f;}
+
+.sitePreview.bg-pattern .hero{
+  background:
+    radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--accent) 65%, white 25%) 0, transparent 20%),
+    linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 58%, var(--accent) 42%)) !important;
+  color:white;
+}
+.sitePreview.bg-pattern .hero:after{
+  content:"";position:absolute;inset:0;opacity:.5;
+  background-image:
+    radial-gradient(#ffffff36 1.3px,transparent 1.3px),
+    linear-gradient(45deg,#ffffff15 25%,transparent 25%,transparent 50%,#ffffff15 50%,#ffffff15 75%,transparent 75%,transparent);
+  background-size:22px 22px,54px 54px;
+  mix-blend-mode:screen;
+}
+.sitePreview.bg-pattern .hero:before{
+  content:"";position:absolute;inset:-12%;opacity:.42;
+  background:
+    linear-gradient(115deg,transparent 0 30%,#ffffff28 30% 42%,transparent 42% 60%,#00000026 60% 72%,transparent 72%),
+    radial-gradient(circle at 78% 35%,#ffffff55 0,transparent 20%);
+  transform:rotate(-8deg);
+}
+.sitePreview.bg-pattern .artCard{
+  background:linear-gradient(135deg,#ffffff32,#ffffff16) !important;
+  border-color:#ffffff75;
+  position:relative;
+}
+.sitePreview.bg-pattern .artCard:after{
+  position:absolute;right:18px;bottom:12px;font-size:54px;opacity:.18;filter:drop-shadow(0 12px 14px #0005);
+}
+.sitePreview.bg-pattern.food .artCard:after{content:"🍳 🍽️";}
+.sitePreview.bg-pattern.beauty .artCard:after{content:"🌸 💄";}
+.sitePreview.bg-pattern.realestate .artCard:after{content:"🏢 🏡";}
+.sitePreview.bg-pattern.wellness .artCard:after{content:"🌿 🌺";}
+.sitePreview.bg-pattern.local .artCard:after{content:"📍 ⭐";}
+.sitePreview.bg-pattern.digital .artCard:after{content:"💻 🚀";}
+.sitePreview.bg-pattern.nonprofit .artCard:after{content:"🤝 💛";}
+.sitePreview.bg-pattern.creator .artCard:after{content:"🎬 ✨";}
+.sitePreview.bg-pattern.cleaning .artCard:after{content:"✨ 🧽";}
+.sitePreview.bg-pattern.coaching .artCard:after{content:"📘 🎯";}
+.sitePreview.bg-pattern.party .artCard:after{content:"🎈 🎉";}
+.sitePreview.bg-pattern.shop .artCard:after{content:"🛍️ 💎";}
+.sitePreview.bg-pattern .offers,.sitePreview.bg-pattern .contentSection{
+  background-color:#fffaf8 !important;
+  background-image:
+    radial-gradient(color-mix(in srgb,var(--accent) 16%, transparent) 1.2px,transparent 1.2px),
+    linear-gradient(135deg,transparent 0 70%,color-mix(in srgb,var(--accent) 8%, transparent) 70% 100%);
+  background-size:20px 20px,100% 100%;
+}
+.sitePreview.bg-pattern .offerCard,.sitePreview.bg-pattern .mediaItem{
+  background:linear-gradient(135deg,#ffffff,#fff7ee);
+  box-shadow:0 20px 42px #00000012;
+}
+
+.sitePreview.bg-dark .hero{
+  background:
+    radial-gradient(circle at 80% 20%, color-mix(in srgb,var(--accent) 45%, transparent) 0, transparent 24%),
+    linear-gradient(135deg,#080311 0%,#16091f 55%,#07030c 100%) !important;
+}
+.sitePreview.bg-dark .offers,.sitePreview.bg-dark .contentSection{background:#100719 !important;color:white;}
+.sitePreview.bg-dark .contentSection:nth-child(even){background:#160d22 !important;}
+
+/* make the design control area explain the selected background more clearly */
+.builderPanel .field select option[value="pattern"]{font-weight:900;}

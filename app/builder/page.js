@@ -464,7 +464,7 @@ export default function Builder() {
                   <Field label="Font feel"><select value={site.fontStyle || 'bold'} onChange={e => updateDesign({ fontStyle: e.target.value })}><option value="bold">Bold business</option><option value="elegant">Elegant</option><option value="playful">Playful</option><option value="clean">Clean modern</option></select></Field>
                 </div>
                 <div className="row">
-                  <Field label="Background feel"><select value={site.backgroundStyle || 'gradient'} onChange={e => updateDesign({ backgroundStyle: e.target.value })}><option value="gradient">Gradient glow</option><option value="dark">Dark luxury</option><option value="soft">Soft light</option><option value="pattern">Pattern / art</option></select></Field>
+                  <Field label="Background feel" help="Each option now changes the preview with a different mood. Pattern / art adds decorative artwork based on the website type."><select value={site.backgroundStyle || 'gradient'} onChange={e => updateDesign({ backgroundStyle: e.target.value })}><option value="gradient">Gradient glow</option><option value="dark">Dark luxury</option><option value="soft">Soft light</option><option value="pattern">Pattern / art</option></select></Field>
                   <Field label="Section style"><select value={site.sectionShape || 'cards'} onChange={e => updateDesign({ sectionShape: e.target.value })}><option value="cards">Clean cards</option><option value="floating">Floating 3D cards</option><option value="boxed">Boxed sections</option></select></Field>
                 </div>
                 <Field label="Upload hero image / website visual"><input type="file" accept="image/*" onChange={e => e.target.files?.[0] && uploadHero(e.target.files[0])} />{site.heroImage && <button className="btn dark" onClick={() => update({ heroImage: '' })}>Remove Uploaded Image</button>}</Field>
@@ -508,8 +508,6 @@ export default function Builder() {
                 <div className="notice"><strong>{draftSlugFor(site)}.cookiesdigitalcreations.com</strong></div>
                 <button className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}<a className="btn dark" href="/customer">Open My Drafts</a>{' '}
                 {site.plan === 'free' ? <button className="btn" onClick={publishFree}>Publish Free Page</button> : <button className="btn" onClick={checkoutPlan}>Go to {plans[site.plan]?.price} Checkout</button>}
-                <div className="notice smallNotice">Before launch: use the Final Launch Test page after publishing one Free site and one paid site.</div>
-                <p><a className="btn dark" href="/launch-test" target="_blank">Open Final Launch Test</a></p>
                 <div className="navRow"><button className="btn dark" onClick={back}>Back</button></div>
               </>
             )}

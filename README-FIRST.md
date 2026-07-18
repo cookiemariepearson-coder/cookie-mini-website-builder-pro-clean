@@ -1,20 +1,28 @@
-# Cookie Mini Website Builder Pro — Launch Readiness Pack
+# Cookie Mini Website Builder Pro — Background Feel + Owner Test Cleanup
 
-Upload the inside files/folders to the clean GitHub repo only:
+Upload this package to the **clean GitHub repo only**:
 
-cookie-mini-website-builder-pro-clean
+`cookie-mini-website-builder-pro-clean`
 
-This package does not change Supabase, Gumroad, IONOS, domains, or environment variables.
-No SQL migration is needed.
+What this fixes:
 
-It adds/updates:
-- /customer-start — customer how-to page
-- /launch-test — final launch testing checklist
-- /owner-launch — owner launch checklist for Cookie
-- docs/gumroad_delivery_text.md — copy/paste Gumroad product delivery wording
-- docs/final_customer_test_script.md — step-by-step test script
+- Removes **Open Final Launch Test** from the customer builder flow.
+- Keeps `/launch-test` as an owner/admin testing page only.
+- Improves the **Background feel** choices so they look different:
+  - Gradient glow
+  - Dark luxury
+  - Soft light
+  - Pattern / art
+- Adds stronger pattern/art backgrounds with decorative artwork based on the website type.
+- Keeps checkout routes, drafts, customer dashboard, admin dashboard, and AI Video Studio flow unchanged.
+
+No Supabase SQL is needed.
 
 After Vercel says Ready, test:
-- https://www.cookiesdigitalcreations.com/customer-start
-- https://www.cookiesdigitalcreations.com/launch-test
-- https://www.cookiesdigitalcreations.com/owner-launch
+
+- `/builder`
+- Step 3 Design → Background feel → try all 4 options
+- Confirm Pattern / art looks different and shows richer decorative artwork
+- Confirm Final Launch Test is no longer shown inside the customer builder
+
+AI Video Studio real video connection is not included in this patch. It requires choosing an API provider and adding that provider API key to Vercel.
