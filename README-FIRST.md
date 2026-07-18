@@ -1,30 +1,43 @@
-# Builder Draft + Media + Template Fix
+# Cookie Mini Website Builder Pro - Builder Stability + Template + Media Fix
 
 Upload these files to the CLEAN GitHub repo only:
 
 cookie-mini-website-builder-pro-clean
 
-## Important Supabase step
+This update focuses on the builder glitches reported during the Free Launch Page test.
 
-Before testing publish/save draft, run this SQL in the correct Website Builder Supabase project:
+## Fixes included
+
+- Reduces freezing while typing and editing by slowing autosave and using a deferred preview.
+- Keeps browser draft saving, but prevents constant heavy saves while customers type.
+- Compresses uploaded hero/gallery images before saving so the builder does not lock up as easily.
+- Makes gallery/media uploading more visible with separate buttons:
+  - Add Uploaded Image
+  - Add Video / Media Link
+- Lets customers choose which section a media item belongs to: Gallery, Portfolio, Projects, Before & After, Products, or Menu.
+- Template changes from the Design page now apply immediately and update preview colors/art style.
+- Design page now includes both Website Type and Template Look choices.
+- Adds stronger visual differences across template looks.
+- Keeps Save Draft, AI Video Studio return, Free Launch Page limits, checkout routes, and Supabase publish flow.
+
+## Supabase
+
+If you still see a missing `site` column error when publishing, run:
 
 supabase/builder_draft_site_column_migration.sql
 
-This fixes the error:
+Run it in the Website Builder Supabase project, not the casino project.
 
-Could not find the 'site' column of 'websites' in the schema cache
+## Test flow
 
-## What this update fixes
-
-- Adds Save Draft button and browser auto-save.
-- Lets customers return from AI Video Studio without losing their builder draft.
-- Adds Back to Builder buttons inside AI Video Studio.
-- Adds visible page wording fields for Home, About, Services, Gallery, Portfolio, etc.
-- Makes builder preview update as customers enter section wording.
-- Adds hero image upload and video/media link fields in Design.
-- Adds media upload/link support for gallery-style pages.
-- Adds clearer free-plan page limit messaging.
-- Improves template design differences with richer industry-specific visual styling.
-- Fixes the missing site column publish error once the SQL is run.
-
-After GitHub upload, wait for Vercel Ready and test /builder.
+1. Open /builder
+2. Start Free Launch Page
+3. Enter website info
+4. Change Design template/look
+5. Upload hero image
+6. Add Gallery media image and media link
+7. Click Save Draft
+8. Open AI Video Studio
+9. Return to builder
+10. Confirm draft still exists
+11. Publish Free Page

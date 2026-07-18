@@ -65,9 +65,9 @@ export default function SitePreview({ site, live = false, draftMode = false }) {
         <section className="contentSection" id={idFor(page)} key={page}>
           <h2>{page}</h2>
           <p>{sectionText(site, page)}</p>
-          {['Gallery','Portfolio','Projects','Before & After','Products','Menu'].includes(page) && site.media?.length > 0 && (
+          {['Gallery','Portfolio','Projects','Before & After','Products','Menu'].includes(page) && (site.media || []).filter(m => (m.section || 'Gallery') === page || (!m.section && page === 'Gallery')).filter(m => m.url).length > 0 && (
             <div className="mediaGrid">
-              {site.media.slice(0, 12).map((m, i) => (
+              {(site.media || []).filter(m => (m.section || 'Gallery') === page || (!m.section && page === 'Gallery')).filter(m => m.url).slice(0, 12).map((m, i) => (
                 <div className="mediaItem" key={i}>
                   {m.kind === 'image' ? <img src={m.url} alt={m.title || 'media'} /> : <a href={m.url} target="_blank" rel="noreferrer">▶ {m.title || 'Open media'}</a>}
                   {m.title && <small>{m.title}</small>}
