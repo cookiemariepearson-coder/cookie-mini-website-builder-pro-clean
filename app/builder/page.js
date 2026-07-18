@@ -39,7 +39,9 @@ function mergeDefaults(saved) {
     ...saved,
     sections: { ...base.sections, ...(saved?.sections || {}) },
     offers: Array.isArray(saved?.offers) && saved.offers.length ? saved.offers : base.offers,
-    media: Array.isArray(saved?.media) ? saved.media : []
+    media: Array.isArray(saved?.media) ? saved.media : [],
+    pages: Array.isArray(saved?.pages) && saved.pages.length ? saved.pages : base.pages,
+    desiredPages: Array.isArray(saved?.desiredPages) && saved.desiredPages.length ? saved.desiredPages : base.desiredPages
   };
 }
 
@@ -48,7 +50,7 @@ function getStyle(typeKey, styleKey) {
   return type.styles.find(s => s.key === styleKey) || type.styles[0];
 }
 
-async function compressImage(file, maxSize = 1200, quality = 0.78) {
+async function compressImage(file, maxSize = 900, quality = 0.68) {
   if (!file || !file.type?.startsWith('image/')) throw new Error('Please upload an image file.');
   const dataUrl = await new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -103,7 +105,7 @@ export default function Builder() {
         }
       }
       const saved = safeParse(localStorage.getItem(DRAFT_KEY));
-      const savedStep = Number(localStorage.getItem(LAST_STEP_KEY) || 0);
+      const savedStep = Number(localStorage.getItem(LAST_STEP_KEY || 0));
       if (saved) {
         setSite(mergeDefaults(saved));
         if (!Number.isNaN(savedStep)) setStep(Math.min(4, Math.max(0, savedStep)));
@@ -114,16 +116,10 @@ export default function Builder() {
   }, []);
 
   useEffect(() => {
-    // Slower autosave prevents freezing while typing or after image uploads.
-    const handle = setTimeout(() => {
-      try {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(site));
-        localStorage.setItem(LAST_STEP_KEY, String(step));
-      } catch (e) {
-        setSaveMessage('Draft is too large for browser storage. Use media links or smaller images.');
-      }
-    }, 1400);
+    // Slow autosave keeps the builder from freezing while typing or uploading images.
+    const handle = setTimeout(() => persistLocal('Draft auto-saved.'), 4200);
     return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site, step]);
 
   function update(patch) {
@@ -137,6 +133,10 @@ export default function Builder() {
 
   function updateSection(name, value) {
     setSite(current => ({ ...current, sections: { ...(current.sections || {}), [name]: value } }));
+  }
+
+  function updateDesign(patch) {
+    setSite(current => ({ ...current, ...patch, designUpdatedAt: Date.now() }));
   }
 
   function chooseType(key) {
@@ -154,11 +154,16 @@ export default function Builder() {
       heroImage: current.heroImage,
       heroMediaLink: current.heroMediaLink,
       media: current.media || [],
+      fontStyle: current.fontStyle || ns.fontStyle,
+      layoutStyle: current.layoutStyle || ns.layoutStyle,
+      backgroundStyle: current.backgroundStyle || ns.backgroundStyle,
+      sectionShape: current.sectionShape || ns.sectionShape,
       sections: { ...ns.sections, ...(current.sections || {}) },
       primaryColor: palette.primary || current.primaryColor,
       accentColor: palette.accent || current.accentColor,
-      pages: current.plan === 'free' ? ['Home'] : ['Home'],
-      desiredPages: type.pages
+      pages: current.plan === 'free' ? ['Home'] : (current.pages?.length ? current.pages : ['Home']),
+      desiredPages: type.pages,
+      designUpdatedAt: Date.now()
     }));
     setMessage('Website type changed. Choose a visual look, then continue adding your wording.');
   }
@@ -170,7 +175,8 @@ export default function Builder() {
       styleKey: key,
       primaryColor: style.palette?.primary || current.primaryColor,
       accentColor: style.palette?.accent || current.accentColor,
-      templateAppliedAt: Date.now()
+      templateAppliedAt: Date.now(),
+      designUpdatedAt: Date.now()
     }));
     setMessage(`Template look changed to ${style.name}.`);
   }
@@ -200,12 +206,12 @@ export default function Builder() {
       localStorage.setItem(LAST_STEP_KEY, String(step));
       setSaveMessage(`${note} ${nowStamp()}`);
     } catch (e) {
-      setSaveMessage('Draft is too large for browser storage. Use media links or smaller images.');
+      setSaveMessage('Draft is too large for browser storage. Use media links or smaller images, then click Save Draft.');
     }
   }
 
   async function saveDraft() {
-    const draft = { ...site, slug: slugify(site.businessName) };
+    const draft = { ...site, slug: slugify(site.businessName), status: 'draft' };
     setIsSaving(true);
     setSaveMessage('Saving draft...');
     try {
@@ -230,7 +236,7 @@ export default function Builder() {
   }
 
   async function publishFree() {
-    const published = { ...site, slug: slugify(site.businessName), pages: ['Home'], plan: 'free' };
+    const published = { ...site, slug: slugify(site.businessName), pages: ['Home'], plan: 'free', status: 'published' };
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(published)); } catch {}
     setMessage('Publishing free launch page...');
     try {
@@ -256,29 +262,32 @@ export default function Builder() {
   }
 
   async function uploadHero(file) {
-    setSaveMessage('Preparing image...');
+    setSaveMessage('Preparing hero image...');
     try {
-      const image = await compressImage(file, 1200, 0.78);
+      const image = await compressImage(file, 900, 0.68);
       update({ heroImage: image });
-      setSaveMessage('Hero image added.');
+      setSaveMessage('Hero image added. Click Save Draft to keep it online.');
     } catch (e) {
       setSaveMessage(e.message || 'Image upload failed.');
     }
   }
 
-  function next() { setStep(s => Math.min(4, s + 1)); persistLocal('Draft saved.'); }
-  function back() { setStep(s => Math.max(0, s - 1)); persistLocal('Draft saved.'); }
+  function next() { persistLocal('Draft saved.'); setStep(s => Math.min(4, s + 1)); }
+  function back() { persistLocal('Draft saved.'); setStep(s => Math.max(0, s - 1)); }
+
+  const previewKey = `${site.typeKey}-${site.styleKey}-${site.primaryColor}-${site.accentColor}-${site.fontStyle}-${site.layoutStyle}-${site.backgroundStyle}-${site.sectionShape}-${site.templateAppliedAt || ''}-${site.designUpdatedAt || ''}`;
 
   return (
     <main className="builderShell">
       <aside className="builderSide">
         <h1>Cookie Mini Website Builder Pro</h1>
         {['Choose Type & Look','Website Info','Design','Pages & Wording','Preview & Publish'].map((label, index) => (
-          <button className={`stepBtn ${step === index ? 'active' : ''}`} onClick={() => setStep(index)} key={label}>{index + 1}. {label}</button>
+          <button className={`stepBtn ${step === index ? 'active' : ''}`} onClick={() => { persistLocal('Draft saved.'); setStep(index); }} key={label}>{index + 1}. {label}</button>
         ))}
         <div className="notice">Any issues, click the Contact Us button for help.</div>
         <button className="btn light" onClick={saveDraft} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Draft'}</button>
         <button className="btn light" onClick={goVideo}>AI Video Studio</button>
+        <a className="btn light" href="/customer">Open My Drafts</a>
         {saveMessage && <div className="notice smallNotice">{saveMessage}</div>}
       </aside>
 
@@ -299,6 +308,7 @@ export default function Builder() {
                 </div>
                 <h3>Choose visual style</h3>
                 <StylePicker typeKey={site.typeKey} styleKey={site.styleKey} selectStyle={selectStyle} />
+                <NavRow back={back} next={next} />
               </>
             )}
 
@@ -337,14 +347,23 @@ export default function Builder() {
             {step === 2 && (
               <>
                 <h2>Design</h2>
-                <p className="mutedText">Change the website type, template look, colors, hero image, and media. Template changes now apply immediately to the preview.</p>
+                <p className="mutedText">Change the website type, template look, colors, layout, hero image, and media. Template changes apply immediately to the preview.</p>
                 <Field label="Plan"><select value={site.plan} onChange={e => update({ plan: e.target.value, pages: e.target.value === 'free' ? ['Home'] : site.pages })}>{Object.entries(plans).map(([k, v]) => <option value={k} key={k}>{v.label} - {v.price}</option>)}</select></Field>
                 <Field label="Website type"><select value={site.typeKey} onChange={e => chooseType(e.target.value)}>{templateLibrary.map(t => <option value={t.key} key={t.key}>{t.type}</option>)}</select></Field>
                 <h3>Template look</h3>
                 <StylePicker typeKey={site.typeKey} styleKey={site.styleKey} selectStyle={selectStyle} />
+                <h3>More design options</h3>
                 <div className="row">
-                  <Field label="Main color"><input type="color" value={site.primaryColor || '#20172f'} onChange={e => update({ primaryColor: e.target.value })} /></Field>
-                  <Field label="Accent color"><input type="color" value={site.accentColor || '#c46a2d'} onChange={e => update({ accentColor: e.target.value })} /></Field>
+                  <Field label="Main color"><input type="color" value={site.primaryColor || '#20172f'} onChange={e => updateDesign({ primaryColor: e.target.value })} /></Field>
+                  <Field label="Accent color"><input type="color" value={site.accentColor || '#c46a2d'} onChange={e => updateDesign({ accentColor: e.target.value })} /></Field>
+                </div>
+                <div className="row">
+                  <Field label="Page layout"><select value={site.layoutStyle || 'split'} onChange={e => updateDesign({ layoutStyle: e.target.value })}><option value="split">Split hero</option><option value="centered">Centered hero</option><option value="visual-first">Visual first</option></select></Field>
+                  <Field label="Font feel"><select value={site.fontStyle || 'bold'} onChange={e => updateDesign({ fontStyle: e.target.value })}><option value="bold">Bold business</option><option value="elegant">Elegant</option><option value="playful">Playful</option><option value="clean">Clean modern</option></select></Field>
+                </div>
+                <div className="row">
+                  <Field label="Background feel"><select value={site.backgroundStyle || 'gradient'} onChange={e => updateDesign({ backgroundStyle: e.target.value })}><option value="gradient">Gradient glow</option><option value="dark">Dark luxury</option><option value="soft">Soft light</option><option value="pattern">Pattern / art</option></select></Field>
+                  <Field label="Section style"><select value={site.sectionShape || 'cards'} onChange={e => updateDesign({ sectionShape: e.target.value })}><option value="cards">Clean cards</option><option value="floating">Floating 3D cards</option><option value="boxed">Boxed sections</option></select></Field>
                 </div>
                 <Field label="Upload hero image / website visual"><input type="file" accept="image/*" onChange={e => e.target.files?.[0] && uploadHero(e.target.files[0])} />{site.heroImage && <button className="btn dark" onClick={() => update({ heroImage: '' })}>Remove Uploaded Image</button>}</Field>
                 <Field label="Video or media link for this website"><input placeholder="https://youtube.com/... or TikTok/Instagram/Vimeo link" value={site.heroMediaLink || ''} onChange={e => update({ heroMediaLink: e.target.value })} /></Field>
@@ -366,8 +385,9 @@ export default function Builder() {
                   ))}
                 </div>
                 <h3>Write section wording</h3>
-                {site.pages.map(page => (
-                  <Field label={`${page} wording`} help={sectionPrompts[page]} key={page}>
+                <p className="mutedText">Selected sections show in the live preview. You can still type wording for other sections first, then select that page when you are ready.</p>
+                {pageOptions.map(page => (
+                  <Field label={`${site.pages.includes(page) ? '✓ ' : ''}${page} wording`} help={sectionPrompts[page]} key={page}>
                     <textarea value={site.sections?.[page] || ''} onChange={e => updateSection(page, e.target.value)} />
                   </Field>
                 ))}
@@ -393,7 +413,7 @@ export default function Builder() {
 
           <div className="previewSticky">
             <div className="previewTitle"><strong>Live Draft Preview</strong><span>Updates as you build</span></div>
-            <SitePreview key={`${site.typeKey}-${site.styleKey}-${site.primaryColor}-${site.accentColor}-${site.templateAppliedAt || ''}`} site={deferredSite} draftMode />
+            <SitePreview key={previewKey} site={deferredSite} draftMode />
           </div>
         </div>
       </section>
@@ -424,10 +444,17 @@ function StylePicker({ typeKey, styleKey, selectStyle }) {
 
 function MediaEditor({ site, update, setSaveMessage }) {
   const media = site.media || [];
+  const [quick, setQuick] = useState({ title: '', section: 'Gallery', url: '' });
 
   function setMedia(next) { update({ media: next }); }
-  function addImage() { setMedia([...media, { kind: 'image', url: '', title: '', section: 'Gallery' }]); }
-  function addLink() { setMedia([...media, { kind: 'link', url: '', title: '', section: 'Gallery' }]); }
+  function addImageSlot(section = 'Gallery') { setMedia([...media, { kind: 'image', url: '', title: '', section }]); }
+  function addLinkSlot(section = 'Gallery') { setMedia([...media, { kind: 'link', url: '', title: '', section }]); }
+  function addQuickLink() {
+    if (!quick.url.trim()) { setSaveMessage('Paste a media/video link first.'); return; }
+    setMedia([...media, { kind: 'link', url: quick.url.trim(), title: quick.title || 'Media link', section: quick.section }]);
+    setQuick({ ...quick, title: '', url: '' });
+    setSaveMessage('Media link added.');
+  }
   function updateItem(index, patch) {
     const next = [...media];
     next[index] = { ...next[index], ...patch };
@@ -437,25 +464,51 @@ function MediaEditor({ site, update, setSaveMessage }) {
   async function uploadMedia(index, file) {
     setSaveMessage('Preparing gallery image...');
     try {
-      const image = await compressImage(file, 1000, 0.76);
+      const image = await compressImage(file, 700, 0.65);
       updateItem(index, { kind: 'image', url: image, title: media[index]?.title || file.name });
-      setSaveMessage('Gallery image added.');
+      setSaveMessage('Gallery image added. Click Save Draft to keep it online.');
     } catch (e) {
       setSaveMessage(e.message || 'Gallery image upload failed.');
     }
   }
+  async function uploadQuick(file) {
+    setSaveMessage('Preparing uploaded image...');
+    try {
+      const image = await compressImage(file, 700, 0.65);
+      setMedia([...media, { kind: 'image', url: image, title: quick.title || file.name, section: quick.section }]);
+      setQuick({ ...quick, title: '' });
+      setSaveMessage('Image added to media section.');
+    } catch (e) {
+      setSaveMessage(e.message || 'Image upload failed.');
+    }
+  }
+
+  const sections = ['Gallery','Portfolio','Projects','Before & After','Products','Menu'];
 
   return <div className="mediaEditor">
+    <div className="quickMediaBox">
+      <h4>Quick add media</h4>
+      <div className="row">
+        <Field label="Title"><input placeholder="Example: Menu photo, portfolio video, product image" value={quick.title} onChange={e => setQuick({ ...quick, title: e.target.value })} /></Field>
+        <Field label="Show in section"><select value={quick.section} onChange={e => setQuick({ ...quick, section: e.target.value })}>{sections.map(p => <option key={p}>{p}</option>)}</select></Field>
+      </div>
+      <Field label="Upload image to this section"><input type="file" accept="image/*" onChange={e => e.target.files?.[0] && uploadQuick(e.target.files[0])} /></Field>
+      <div className="row">
+        <Field label="Or paste video/media link"><input placeholder="https://youtube.com/..." value={quick.url} onChange={e => setQuick({ ...quick, url: e.target.value })} /></Field>
+        <div className="field mediaButtonField"><label>&nbsp;</label><button className="btn dark" onClick={addQuickLink}>Add Media Link</button></div>
+      </div>
+    </div>
+
     <div className="navRow">
-      <button className="btn dark" onClick={addImage}>Add Uploaded Image</button>
-      <button className="btn dark" onClick={addLink}>Add Video / Media Link</button>
+      <button className="btn dark" onClick={() => addImageSlot('Gallery')}>Add Empty Image Slot</button>
+      <button className="btn dark" onClick={() => addLinkSlot('Gallery')}>Add Empty Video Link Slot</button>
     </div>
     {media.length === 0 && <div className="notice">No media added yet. Add an uploaded image or a video/media link.</div>}
     {media.map((item, index) => (
       <div className="card miniCard mediaCard" key={index}>
         <div className="row">
           <Field label="Media title"><input placeholder="Example: Featured product, Before photo, Food plate" value={item.title || ''} onChange={e => updateItem(index, { title: e.target.value })} /></Field>
-          <Field label="Show in section"><select value={item.section || 'Gallery'} onChange={e => updateItem(index, { section: e.target.value })}>{['Gallery','Portfolio','Projects','Before & After','Products','Menu'].map(p => <option key={p}>{p}</option>)}</select></Field>
+          <Field label="Show in section"><select value={item.section || 'Gallery'} onChange={e => updateItem(index, { section: e.target.value })}>{sections.map(p => <option key={p}>{p}</option>)}</select></Field>
         </div>
         <Field label="Media type"><select value={item.kind || 'link'} onChange={e => updateItem(index, { kind: e.target.value, url: '' })}><option value="image">Uploaded image</option><option value="link">Video/social/media link</option></select></Field>
         {item.kind === 'image' ? (
