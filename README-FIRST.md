@@ -1,34 +1,19 @@
-# Cookie Mini Website Builder Pro — Paid Checkout 404 Hard Fix
+# Builder Drafts + Customer Dashboard Fix
 
-This update fixes the 404 error when clicking paid checkout.
+Upload these inside files/folders to the clean repo only:
 
-It adds real checkout pages:
+`cookie-mini-website-builder-pro-clean`
 
-- /checkout/starter
-- /checkout/business
-- /checkout/premium
-- /checkout/extra
+Before testing, run this SQL in the Cookie Mini Website Builder Supabase project:
 
-Each page safely redirects to the Gumroad URL saved in Vercel Environment Variables.
+`supabase/builder_drafts_customer_dashboard_migration.sql`
 
-## Upload instructions
-
-1. Unzip this package.
-2. Upload the inside files/folders to the clean GitHub repo only:
-   cookie-mini-website-builder-pro-clean
-3. Commit changes.
-4. Wait for Vercel to say Ready.
-5. Test:
-   - https://www.cookiesdigitalcreations.com/checkout/starter
-   - https://www.cookiesdigitalcreations.com/checkout/business
-   - https://www.cookiesdigitalcreations.com/checkout/premium
-   - https://www.cookiesdigitalcreations.com/checkout/extra
-
-## Make sure these Vercel variables exist
-
-- NEXT_PUBLIC_STARTER_SUBSCRIPTION_CHECKOUT_URL
-- NEXT_PUBLIC_BUSINESS_SUBSCRIPTION_CHECKOUT_URL
-- NEXT_PUBLIC_PREMIUM_SUBSCRIPTION_CHECKOUT_URL
-- NEXT_PUBLIC_EXTRA_PAGE_SUBSCRIPTION_CHECKOUT_URL
-
-Each value should be the full Gumroad URL starting with https://
+This update adds:
+- customer dashboard search by email, slug, or full subdomain
+- one box showing all saved published sites and drafts
+- continue draft links back into the builder
+- builder opens online draft using `/builder?draft=site-slug`
+- save draft / continue later button
+- checkout routes preserved
+- AI Video Studio return flow preserved
+- media and template stability files preserved

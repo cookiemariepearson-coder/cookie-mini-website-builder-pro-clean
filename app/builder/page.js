@@ -18,6 +18,16 @@ function safeParse(raw) {
   try { return raw ? JSON.parse(raw) : null; } catch { return null; }
 }
 
+function normalizeSlug(input = '') {
+  let value = String(input || '').trim().toLowerCase();
+  value = value.replace(/^https?:\/\//, '').replace(/^www\./, '');
+  value = value.split('/')[0].split('?')[0].split('#')[0];
+  const root = 'cookiesdigitalcreations.com';
+  if (value.endsWith('.' + root)) value = value.slice(0, -1 * (root.length + 1));
+  if (value === root) value = '';
+  return slugify(value);
+}
+
 function nowStamp() {
   return new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
@@ -71,13 +81,36 @@ export default function Builder() {
   const tmpl = useMemo(() => getTemplate(site.typeKey, site.styleKey), [site.typeKey, site.styleKey]);
 
   useEffect(() => {
-    const saved = safeParse(localStorage.getItem(DRAFT_KEY));
-    const savedStep = Number(localStorage.getItem(LAST_STEP_KEY) || 0);
-    if (saved) {
-      setSite(mergeDefaults(saved));
-      if (!Number.isNaN(savedStep)) setStep(Math.min(4, Math.max(0, savedStep)));
-      setSaveMessage('Draft restored from this browser.');
+    async function restore() {
+      const params = new URLSearchParams(window.location.search);
+      const draftSlug = normalizeSlug(params.get('draft') || params.get('slug') || '');
+      if (draftSlug && draftSlug !== 'my-website') {
+        setSaveMessage('Opening saved draft...');
+        try {
+          const res = await fetch(`/api/site/get?slug=${encodeURIComponent(draftSlug)}`);
+          const data = await res.json();
+          if (data.ok && data.site) {
+            const merged = mergeDefaults(data.site);
+            setSite(merged);
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(merged));
+            setStep(1);
+            setSaveMessage('Saved website/draft opened. Continue editing, then save or publish.');
+            return;
+          }
+          setSaveMessage(data.error || 'Could not open that saved draft. Restoring browser draft instead.');
+        } catch (e) {
+          setSaveMessage(`Could not open online draft: ${e.message}`);
+        }
+      }
+      const saved = safeParse(localStorage.getItem(DRAFT_KEY));
+      const savedStep = Number(localStorage.getItem(LAST_STEP_KEY) || 0);
+      if (saved) {
+        setSite(mergeDefaults(saved));
+        if (!Number.isNaN(savedStep)) setStep(Math.min(4, Math.max(0, savedStep)));
+        setSaveMessage('Draft restored from this browser.');
+      }
     }
+    restore();
   }, []);
 
   useEffect(() => {
@@ -183,7 +216,7 @@ export default function Builder() {
         body: JSON.stringify({ site: draft })
       });
       const data = await res.json();
-      setSaveMessage(data.ok ? `Draft saved. ${nowStamp()}` : data.error || 'Draft saved in browser, but online save failed.');
+      setSaveMessage(data.ok ? `Draft saved online. Find it later from My Website using your email or this name: ${data.slug}. ${nowStamp()}` : data.error || 'Draft saved in browser, but online save failed.');
     } catch (e) {
       setSaveMessage(`Draft saved in this browser. Online draft could not save: ${e.message}`);
     } finally {
@@ -351,7 +384,7 @@ export default function Builder() {
                 {message && <div className="notice error">{message}</div>}
                 <p>Your website name will be:</p>
                 <div className="notice"><strong>{slugify(site.businessName)}.cookiesdigitalcreations.com</strong></div>
-                <button className="btn dark" onClick={saveDraft}>Save Draft First</button>{' '}
+                <button className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}<a className="btn dark" href="/customer">Open My Drafts</a>{' '}
                 {site.plan === 'free' ? <button className="btn" onClick={publishFree}>Publish Free Page</button> : <button className="btn" onClick={checkoutPlan}>Go to {plans[site.plan]?.price} Checkout</button>}
                 <div className="navRow"><button className="btn dark" onClick={back}>Back</button></div>
               </>

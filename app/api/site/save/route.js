@@ -8,7 +8,7 @@ export async function POST(req) {
     if (!slug || !site) return NextResponse.json({ ok:false,error:'Missing slug or site' }, { status:400 });
     const supabase = getSupabaseAdmin();
     const { error } = await supabase.from('websites').update({
-      customer_email: site.customerEmail || site.email || null,
+      customer_email: String(site.customerEmail || site.email || '').trim().toLowerCase() || null,
       business_name: site.businessName || null,
       plan: site.plan || 'free',
       extra_pages: Number(site.extraPages || 0),

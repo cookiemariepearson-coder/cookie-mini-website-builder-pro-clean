@@ -17,7 +17,7 @@ export async function POST(req) {
     const supabase = getSupabaseAdmin();
     const row = {
       slug,
-      customer_email: site.customerEmail || site.email || null,
+      customer_email: String(site.customerEmail || site.email || '').trim().toLowerCase() || null,
       business_name: site.businessName || null,
       plan: site.plan || 'free',
       status: 'draft',
