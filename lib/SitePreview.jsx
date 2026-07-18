@@ -1,6 +1,73 @@
 import React from 'react';
 import { getTemplate, plans, visiblePagesForPlan } from './siteDefaults';
 
+
+const visualScenes = {
+  food: ['🍳','🥘','🍽️','🔥'],
+  beauty: ['🌸','💇🏾‍♀️','💄','✨'],
+  realestate: ['🏢','🏡','🌆','📈'],
+  wellness: ['🌿','🌺','🍵','☀️'],
+  local: ['🏪','🛠️','📍','⭐'],
+  digital: ['💻','📱','⚙️','🚀'],
+  nonprofit: ['🤝','🌍','📣','💛'],
+  creator: ['🎬','🎥','🎨','⭐'],
+  cleaning: ['✨','🧽','🏠','💧'],
+  coaching: ['📘','💼','📊','🎯'],
+  party: ['🎈','🎉','🎁','🌈'],
+  shop: ['🛍️','👗','🏬','💎']
+};
+
+const styleEffects = {
+  'kitchen-realistic': ['steam','warm plate','recipe cards'],
+  'cartoon-food': ['cartoon menu','bold labels','playful shapes'],
+  'floral-glam': ['floral frame','soft glow','beauty sparkle'],
+  'luxury-salon': ['gold mirror','gloss shine','premium booking'],
+  'building-pro': ['city skyline','property grid','trust badges'],
+  'modern-property': ['3D home cards','clean map','investor panel'],
+  'flowers-herbs': ['herbal border','flower accent','calm glow'],
+  'clean-minimal': ['clean product','soft cards','calm space'],
+  'service-3d': ['3D tools','booking card','local badge'],
+  'service-realistic': ['storefront','map pin','reviews'],
+  'bold-sales': ['product mockups','sales badge','buy button'],
+  'creator-tool': ['3D dashboard','app cards','creator tools'],
+  'warm-mission': ['community cards','warm mission','support blocks'],
+  'bold-action': ['action banner','impact cards','donate prompt'],
+  cinematic: ['film strip','spotlight','portfolio reel'],
+  'cartoon-creative': ['cartoon shapes','bright project cards','creator art'],
+  'clean-realistic': ['sparkle room','before/after cards','trust icons'],
+  'cartoon-sparkle': ['cleaning bubbles','cartoon sparkle','friendly icons'],
+  'expert-clean': ['profile card','strategy blocks','calm expert'],
+  'luxury-advisor': ['gold cards','advisor badge','premium panel'],
+  'cartoon-bright': ['balloons','party cards','fun colors'],
+  'color-pop': ['bold shapes','event blocks','bright badges'],
+  'luxury-product': ['product shelf','boutique glow','premium cards'],
+  'storefront-realistic': ['storefront','product grid','shop window']
+};
+
+function TemplateArtwork({ type, style }) {
+  const icons = visualScenes[type.key] || ['✨','⭐','💻','📌'];
+  const effects = styleEffects[style.key] || [style.name, style.visual || style.mood, 'custom layout'];
+  return (
+    <div className={`templateArtwork theme-${type.key} look-${style.key}`}>
+      <div className="templateGlowOne" />
+      <div className="templateGlowTwo" />
+      <div className="templateMockBrowser">
+        <span></span><span></span><span></span>
+        <strong>{style.name}</strong>
+      </div>
+      <div className="templateVisualStack">
+        <div className="visualTile primaryTile"><span>{icons[0]}</span></div>
+        <div className="visualTile secondaryTile"><span>{icons[1]}</span></div>
+        <div className="visualTile miniTile"><span>{icons[2]}</span></div>
+        <div className="visualTile miniTile alt"><span>{icons[3]}</span></div>
+      </div>
+      <div className="templateMiniCards">
+        {effects.slice(0,3).map((item, index) => <em key={index}>{item}</em>)}
+      </div>
+    </div>
+  );
+}
+
 function sectionText(site, page) {
   return site.sections?.[page] || '';
 }
@@ -54,12 +121,7 @@ export default function SitePreview({ site, live = false, draftMode = false }) {
             <img className="heroUploadImage" src={site.heroImage} alt="Uploaded website visual" />
           ) : (
             <>
-              <div className="artGlow" />
-              <div className="artScene">
-                <span>{style.art}</span>
-                <span>{type.key === 'food' ? '🍽️' : type.key === 'beauty' ? '🌸' : type.key === 'realestate' ? '🏢' : type.key === 'wellness' ? '🌿' : type.key === 'creator' ? '🎥' : type.key === 'shop' ? '🛍️' : '✨'}</span>
-                <span>{type.key === 'cleaning' ? '🧽' : type.key === 'party' ? '🎈' : type.key === 'digital' ? '💻' : type.key === 'coaching' ? '📘' : '⭐'}</span>
-              </div>
+              <TemplateArtwork type={type} style={style} />
               <strong>{style.name}</strong>
               <p>{style.visual || style.mood}</p>
             </>

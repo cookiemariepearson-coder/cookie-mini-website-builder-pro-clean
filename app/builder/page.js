@@ -508,6 +508,8 @@ export default function Builder() {
                 <div className="notice"><strong>{draftSlugFor(site)}.cookiesdigitalcreations.com</strong></div>
                 <button className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}<a className="btn dark" href="/customer">Open My Drafts</a>{' '}
                 {site.plan === 'free' ? <button className="btn" onClick={publishFree}>Publish Free Page</button> : <button className="btn" onClick={checkoutPlan}>Go to {plans[site.plan]?.price} Checkout</button>}
+                <div className="notice smallNotice">Before launch: use the Final Launch Test page after publishing one Free site and one paid site.</div>
+                <p><a className="btn dark" href="/launch-test" target="_blank">Open Final Launch Test</a></p>
                 <div className="navRow"><button className="btn dark" onClick={back}>Back</button></div>
               </>
             )}
@@ -533,13 +535,15 @@ function NavRow({ back, next }) {
 
 function StylePicker({ typeKey, styleKey, selectStyle }) {
   const type = templateLibrary.find(t => t.key === typeKey) || templateLibrary[0];
-  return <div className="templateList stylePickList">{type.styles.map(style => (
-    <button className={`pick styleCard ${styleKey === style.key ? 'active' : ''}`} onClick={() => selectStyle(style.key)} key={style.key}>
-      <span className="styleIcon">{style.art}</span>
+  return <div className="templateList stylePickList enhancedStylePicker">{type.styles.map(style => (
+    <button className={`pick styleCard enhancedStyleCard ${styleKey === style.key ? 'active' : ''}`} onClick={() => selectStyle(style.key)} key={style.key}>
+      <span className="stylePalette" style={{ background: `linear-gradient(135deg, ${style.palette?.primary || '#20172f'}, ${style.palette?.accent || '#c46a2d'})` }} />
+      <span className={`styleThumb styleThumb-${type.key} styleThumb-${style.key}`}>
+        <b>{style.art}</b><i></i><i></i><i></i>
+      </span>
       <strong>{style.name}</strong>
       <small>{style.visual || style.mood}</small>
-      <span className="stylePalette" style={{ background: `linear-gradient(135deg, ${style.palette?.primary || '#20172f'}, ${style.palette?.accent || '#c46a2d'})` }} />
-      <em>Apply this look</em>
+      <em>{styleKey === style.key ? 'Selected look' : 'Apply this look'}</em>
     </button>
   ))}</div>;
 }
