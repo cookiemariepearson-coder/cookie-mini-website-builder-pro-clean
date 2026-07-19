@@ -1,43 +1,71 @@
-# Cookie Mini Website Builder Pro — HeyGen Real Video Beta Pack
+# Cookie Mini Website Builder Pro — AI Video Customer Plan Limits Upgrade
 
-Upload these inside files/folders to the clean GitHub repo only:
+This pack adds real HeyGen video limits by customer plan.
+
+## What it adds
+
+- Free users: creative video kit only
+- Starter users: creative video kit only
+- Business users: 1 real HeyGen video per month
+- Premium users: 3 real HeyGen videos per month
+- Owner/admin override using `HEYGEN_VIDEO_ACCESS_CODE` or `ADMIN_PIN`
+- Monthly usage tracking in Supabase
+- Bonus video credit field
+- Admin video credit control page at `/admin/video-credits`
+- Customer-facing Video Studio now asks for email or website/subdomain for plan check
+
+## Step 1 — Run Supabase SQL
+
+Run this SQL in the Cookie Mini Website Builder Supabase project:
+
+```text
+supabase/ai_video_customer_plan_limits_migration.sql
+```
+
+Do not run it in the casino project.
+
+## Step 2 — Upload code
+
+Upload the inside files/folders to the clean GitHub repo only:
 
 ```text
 cookie-mini-website-builder-pro-clean
 ```
 
-This pack adds:
+Commit changes and wait for Vercel to show Ready.
 
-- Server API route: `/api/heygen/create`
-- Server API route: `/api/heygen/status`
-- Updated `/video-studio` page
-- Protected real HeyGen video generation button
-- HeyGen status checker
-- HeyGen MP4/video link display when ready
-- Keeps creative kit mode in place
+## Step 3 — Optional Vercel variable
 
-## Required
-
-You already added:
+Add this to Vercel if you want a separate video access code:
 
 ```text
-HEYGEN_API_KEY
+HEYGEN_VIDEO_ACCESS_CODE
 ```
 
-Redeploy after upload.
+If you do not add it, the owner override uses your existing `ADMIN_PIN`.
 
-## Safety
+Optional plan limit overrides:
 
-The real video button asks for an AI Video Access Code. It uses `HEYGEN_VIDEO_ACCESS_CODE` if you add it, otherwise it uses `ADMIN_PIN`.
+```text
+HEYGEN_STARTER_MONTHLY_LIMIT=0
+HEYGEN_BUSINESS_MONTHLY_LIMIT=1
+HEYGEN_PREMIUM_MONTHLY_LIMIT=3
+```
 
-This prevents random visitors from using your paid HeyGen credits.
+Redeploy after adding or changing environment variables.
 
-## Test
+## Step 4 — Test
 
-After Vercel says Ready, open:
+Open:
 
 ```text
 https://www.cookiesdigitalcreations.com/video-studio
 ```
 
-Fill out the form, check the credit warning box, enter your access code, click Generate Real Video with HeyGen, then click Check Video Status until the MP4 is ready.
+Test as admin first using your AI video access code. Then test with a Business or Premium customer email/subdomain.
+
+Open the admin credit controls here:
+
+```text
+https://www.cookiesdigitalcreations.com/admin/video-credits
+```
