@@ -162,14 +162,9 @@ export default function Builder() {
   }, [site, step]);
 
   useEffect(() => {
-    const warn = (event) => {
-      persistLocal('Draft saved before leaving.', true);
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // No browser "Leave site?" popup. The builder already saves local drafts
+    // and Save Draft / checkout save the draft online before moving pages.
+    // This prevents customer confusion after they already clicked Save Draft.
   }, [site, step]);
 
   function update(patch) {
@@ -353,7 +348,7 @@ export default function Builder() {
   async function checkoutPlan() {
     const draft = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     try { const lightDraft = stripHeavyLocalData(draft); localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft)); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draft.slug); saveLocalDraftIndex(lightDraft); } catch {}
-    setMessage('Saving your draft before checkout...');
+    setMessage('Saving your draft before checkout. If checkout opens, your draft was saved.');
     try { await saveDraftOnline(draft, true); } catch {}
     const url = checkout[site.plan];
     if (!url) { setMessage('Checkout route missing.'); return; }

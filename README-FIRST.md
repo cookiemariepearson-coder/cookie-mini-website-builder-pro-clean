@@ -1,41 +1,34 @@
-# Cookie Mini Website Builder Pro — Gumroad Subscription Status + Website Access Control
+# Cookie Mini Website Builder Pro — Launch Kinks Cleanup Fix
 
-Upload this package to the CLEAN GitHub repo only:
+Upload the inside files/folders to the clean GitHub repo only:
 
-`cookie-mini-website-builder-pro-clean`
+cookie-mini-website-builder-pro-clean
 
-## Before upload / after upload steps
+This update fixes the small launch kinks found in testing:
 
-1. Run Supabase SQL:
-   `supabase/gumroad_subscription_status_access_migration.sql`
+- Removes the confusing browser “Leave site? Changes may not be saved” popup from the builder.
+- Keeps Save Draft / checkout draft saving in place.
+- Adds a stronger checkout success page that republishes the saved draft and updates the published slug before showing “Open Published Website.”
+- Helps prevent the Starter checkout return from opening a bad/old published link.
+- Makes the Gumroad subscription admin page use stacked website cards instead of a wide table, so the last columns/rows are not cut off.
+- Adds better admin PIN field autocomplete settings on the subscriptions page.
 
-2. Upload the inside files/folders to GitHub.
+No new Supabase SQL is needed.
 
-3. Add this Vercel environment variable:
-   `GUMROAD_ACCESS_TOKEN`
+After deploy, test:
 
-4. Redeploy Vercel.
+1. /builder
+2. Save Draft
+3. Go to Starter checkout
+4. Return to /checkout/success?paid=starter
+5. Open Published Website
+6. /admin/subscriptions
 
-5. Open:
-   `https://www.cookiesdigitalcreations.com/admin/subscriptions`
+Important Gumroad check:
+Make sure the Starter product return/content link points to:
+https://www.cookiesdigitalcreations.com/checkout/success?paid=starter
 
-6. Enter admin PIN and click:
-   **Register Gumroad Webhooks**
-
-## What this adds
-
-- Gumroad webhook receiver at `/api/gumroad/webhook`
-- Owner setup endpoint for Gumroad resource subscriptions
-- Admin subscription dashboard at `/admin/subscriptions`
-- Supabase logging table: `gumroad_events`
-- Website fields for subscription status and access status
-- Auto-pause for canceled/ended/refunded/disputed paid sites
-- Manual admin override for subscription/access/status
-
-## Do not touch
-
-- IONOS
-- Vercel domain settings
-- Supabase keys already working
-- HeyGen key
-- Gumroad checkout links
+Use matching links for the others:
+https://www.cookiesdigitalcreations.com/checkout/success?paid=business
+https://www.cookiesdigitalcreations.com/checkout/success?paid=premium
+https://www.cookiesdigitalcreations.com/checkout/success?paid=extra
