@@ -1,7 +1,6 @@
 import './globals.css';
 import './owner-footer.css';
 import './readability-fix.css';
-import OwnerFooter from '../lib/OwnerFooter';
 
 export const metadata = {
   title: 'Cookie Mini Website Builder Pro',
@@ -11,10 +10,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
-        {children}
-        <OwnerFooter />
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

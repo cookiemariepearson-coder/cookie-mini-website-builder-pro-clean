@@ -1,14 +1,16 @@
-# Cookie Mini Website Builder Pro — Readability Contrast Fix
+# Cookie Mini Website Builder Pro — Southern Realty Footer Home-Only Fix
 
-This is a small visual polish pack. It fixes places where text was too light or too dark against the background.
+This pack updates the ownership footer and keeps it ONLY on the initial Mini Builder home page.
 
-## What it fixes
+## What it changes
 
-- Customer Guide heading and paragraph are now dark and readable.
-- Pricing page heading and paragraph are now on a clean light panel.
-- Important subtext is no longer faded/low contrast.
-- Keeps the owner footer import.
-- Does not change checkout, Supabase, drafts, admin, customer dashboard, or AI Video Studio.
+- Removes the owner footer from the global layout so it does not show everywhere.
+- Adds the Southern Realty Investment Group, LLC footer only to `app/page.js`.
+- Adds the Southern Realty logo to `public/southern-realty-logo.png`.
+- Footer text now says:
+
+Owned and operated by Southern Realty Investment Group, LLC
+All proceeds from Cookie Mini Website Builder support the company's business operations.
 
 ## Upload instructions
 
@@ -16,10 +18,21 @@ Upload the inside files/folders to the clean GitHub repo only:
 
 cookie-mini-website-builder-pro-clean
 
-Then commit, wait for Vercel to say Ready, and hard refresh with Ctrl + F5.
+Commit changes and wait for the clean Vercel project to say Ready.
 
-## Test links
+## Test after deployment
 
-- https://www.cookiesdigitalcreations.com/customer-start
-- https://www.cookiesdigitalcreations.com/pricing
-- https://www.cookiesdigitalcreations.com/
+Footer SHOULD show here:
+https://www.cookiesdigitalcreations.com/
+
+Footer should NOT show on these:
+https://www.cookiesdigitalcreations.com/builder
+https://www.cookiesdigitalcreations.com/customer
+https://www.cookiesdigitalcreations.com/admin
+https://www.cookiesdigitalcreations.com/pricing
+
+Also open a published customer website and confirm the Southern Realty footer is not showing there.
+
+## Next step after footer passes
+
+Run the final launch test, then move into HeyGen AI Video Studio API setup.
