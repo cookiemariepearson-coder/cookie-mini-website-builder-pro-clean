@@ -1,38 +1,43 @@
-# Cookie Mini Website Builder Pro — Southern Realty Footer Home-Only Fix
+# Cookie Mini Website Builder Pro — HeyGen Real Video Beta Pack
 
-This pack updates the ownership footer and keeps it ONLY on the initial Mini Builder home page.
+Upload these inside files/folders to the clean GitHub repo only:
 
-## What it changes
-
-- Removes the owner footer from the global layout so it does not show everywhere.
-- Adds the Southern Realty Investment Group, LLC footer only to `app/page.js`.
-- Adds the Southern Realty logo to `public/southern-realty-logo.png`.
-- Footer text now says:
-
-Owned and operated by Southern Realty Investment Group, LLC
-All proceeds from Cookie Mini Website Builder support the company's business operations.
-
-## Upload instructions
-
-Upload the inside files/folders to the clean GitHub repo only:
-
+```text
 cookie-mini-website-builder-pro-clean
+```
 
-Commit changes and wait for the clean Vercel project to say Ready.
+This pack adds:
 
-## Test after deployment
+- Server API route: `/api/heygen/create`
+- Server API route: `/api/heygen/status`
+- Updated `/video-studio` page
+- Protected real HeyGen video generation button
+- HeyGen status checker
+- HeyGen MP4/video link display when ready
+- Keeps creative kit mode in place
 
-Footer SHOULD show here:
-https://www.cookiesdigitalcreations.com/
+## Required
 
-Footer should NOT show on these:
-https://www.cookiesdigitalcreations.com/builder
-https://www.cookiesdigitalcreations.com/customer
-https://www.cookiesdigitalcreations.com/admin
-https://www.cookiesdigitalcreations.com/pricing
+You already added:
 
-Also open a published customer website and confirm the Southern Realty footer is not showing there.
+```text
+HEYGEN_API_KEY
+```
 
-## Next step after footer passes
+Redeploy after upload.
 
-Run the final launch test, then move into HeyGen AI Video Studio API setup.
+## Safety
+
+The real video button asks for an AI Video Access Code. It uses `HEYGEN_VIDEO_ACCESS_CODE` if you add it, otherwise it uses `ADMIN_PIN`.
+
+This prevents random visitors from using your paid HeyGen credits.
+
+## Test
+
+After Vercel says Ready, open:
+
+```text
+https://www.cookiesdigitalcreations.com/video-studio
+```
+
+Fill out the form, check the credit warning box, enter your access code, click Generate Real Video with HeyGen, then click Check Video Status until the MP4 is ready.
