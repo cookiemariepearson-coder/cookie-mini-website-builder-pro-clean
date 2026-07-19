@@ -107,6 +107,21 @@ async function supabasePatch(path, update) {
   return { ok: res.ok, status: res.status, data };
 }
 
+async function supabasePost(path, row) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return { ok: false, missing: true, data: null };
+  const res = await fetch(`${url}/rest/v1/${path}`, {
+    method: 'POST',
+    headers: supabaseHeaders(),
+    body: JSON.stringify(row)
+  });
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = text; }
+  return { ok: res.ok, status: res.status, data };
+}
+
 async function findWebsite({ email, slug }) {
   if (slug) {
     const result = await supabaseGet(`websites?slug=eq.${encodeURIComponent(slug)}&select=*&limit=1`);
@@ -211,6 +226,34 @@ async function incrementUsage(access, heygenPayload) {
   });
 }
 
+
+async function saveVideoJob(access, body, heygenPayload, prompt) {
+  const sessionId = heygenPayload.session_id || heygenPayload.sessionId || null;
+  const videoId = heygenPayload.video_id || heygenPayload.videoId || null;
+  const email = getEmail(body.customerEmail || body.email || body.accountEmail || '');
+  const slug = normalizeSlug(body.websiteSlug || body.slug || body.websiteName || body.subdomain || '');
+  const row = {
+    website_id: access.website?.id || null,
+    customer_email: email || access.website?.email || access.website?.customer_email || null,
+    website_slug: slug || access.website?.slug || null,
+    business_name: cleanText(body.businessName, 'Your Business', 160),
+    prompt,
+    status: heygenPayload.status || 'generating',
+    heygen_session_id: sessionId,
+    heygen_video_id: videoId,
+    video_type: cleanText(body.videoType, 'Business Promo', 120),
+    platform: cleanText(body.platform, 'TikTok / Reels', 120),
+    owner_override: Boolean(access.ownerOverride),
+    plan: access.plan || null,
+    raw_response: heygenPayload
+  };
+  try {
+    const inserted = await supabasePost('heygen_video_jobs', row);
+    if (inserted.ok && Array.isArray(inserted.data) && inserted.data[0]) return inserted.data[0];
+  } catch {}
+  return null;
+}
+
 export async function POST(request) {
   try {
     const apiKey = process.env.HEYGEN_API_KEY;
@@ -251,6 +294,7 @@ export async function POST(request) {
     const usageUpdate = await incrementUsage(access, payload);
     const sessionId = payload.session_id || payload.sessionId || null;
     const videoId = payload.video_id || payload.videoId || null;
+    const savedJob = await saveVideoJob(access, body, payload, prompt);
     const nextUsed = access.ownerOverride ? 0 : (access.used + 1);
     const nextRemaining = access.ownerOverride ? 9999 : Math.max(0, access.limit - nextUsed);
 
@@ -259,6 +303,7 @@ export async function POST(request) {
       status: payload.status || 'generating',
       sessionId,
       videoId,
+      jobId: savedJob?.id || null,
       prompt,
       plan: access.plan,
       ownerOverride: access.ownerOverride,
@@ -269,6 +314,7 @@ export async function POST(request) {
         month: monthKey()
       },
       usageWarning: usageUpdate.ok ? null : 'Video was sent to HeyGen, but usage tracking could not be updated. Run the Supabase AI video migration if needed.',
+      resultsDashboard: '/video-studio/results',
       heygenSessionUrl: sessionId ? `https://app.heygen.com/video-agent/${sessionId}` : null,
       raw: data
     });

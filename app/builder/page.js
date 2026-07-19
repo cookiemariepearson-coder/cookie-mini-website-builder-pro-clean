@@ -116,6 +116,8 @@ export default function Builder() {
   const [message, setMessage] = useState('');
   const [saveMessage, setSaveMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
+  const [isSmallBuilderScreen, setIsSmallBuilderScreen] = useState(false);
   const deferredSite = useDeferredValue(site);
   const tmpl = useMemo(() => getTemplate(site.typeKey, site.styleKey), [site.typeKey, site.styleKey]);
 
@@ -152,6 +154,15 @@ export default function Builder() {
       }
     }
     restore();
+  }, []);
+
+  useEffect(() => {
+    function checkSize() {
+      setIsSmallBuilderScreen(window.innerWidth <= 980);
+    }
+    checkSize();
+    window.addEventListener('resize', checkSize);
+    return () => window.removeEventListener('resize', checkSize);
   }, []);
 
   useEffect(() => {
@@ -380,6 +391,7 @@ export default function Builder() {
         ))}
         <div className="notice">Any issues, click the Contact Us button for help.</div>
         <button className="btn light" onClick={saveDraft} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Draft'}</button>
+        {isSmallBuilderScreen && <button className="btn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button>}
         <button className="btn light" onClick={goVideo}>AI Video Studio</button>
         <a className="btn light" href="/customer">Open My Drafts</a>
         <button className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
@@ -390,6 +402,7 @@ export default function Builder() {
       <section className="builderMain">
         <div className="row builderTwoCol">
           <div className="dashboard builderPanel">
+            {isSmallBuilderScreen && <div className="notice"><strong>Mobile tip:</strong> Use the Open Live Preview button to view your site without scrolling to the bottom.</div>}
             {step === 0 && (
               <>
                 <h2>Choose website type and design look</h2>
@@ -508,12 +521,28 @@ export default function Builder() {
             )}
           </div>
 
-          <div className="previewSticky">
+          {!isSmallBuilderScreen && <div className="previewSticky">
             <div className="previewTitle"><strong>Live Draft Preview</strong><span>Updates as you build</span></div>
             <SitePreview key={previewKey} site={deferredSite} draftMode />
-          </div>
+          </div>}
         </div>
       </section>
+      {isSmallBuilderScreen && <button
+        type="button"
+        onClick={() => setIsMobilePreviewOpen(true)}
+        style={{ position: 'fixed', left: 14, right: 14, bottom: 14, zIndex: 60, border: 0, borderRadius: 999, padding: '15px 18px', background: 'linear-gradient(135deg,#20172f,#ff9e26)', color: '#fff', fontWeight: 900, boxShadow: '0 20px 45px rgba(0,0,0,.25)' }}
+      >Open Live Preview</button>}
+      {isSmallBuilderScreen && isMobilePreviewOpen && <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(18,7,29,.72)', display: 'grid', placeItems: 'stretch', padding: 10 }}>
+        <div style={{ background: '#fff8f1', borderRadius: 24, overflow: 'auto', boxShadow: '0 30px 90px rgba(0,0,0,.35)' }}>
+          <div style={{ position: 'sticky', top: 0, zIndex: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: 14, background: '#20172f', color: 'white' }}>
+            <strong>Live Draft Preview</strong>
+            <button type="button" onClick={() => setIsMobilePreviewOpen(false)} style={{ border: 0, borderRadius: 999, padding: '10px 14px', fontWeight: 900, background: '#ff9e26', color: '#20172f' }}>Close Preview</button>
+          </div>
+          <div style={{ padding: 12 }}>
+            <SitePreview key={`${previewKey}-mobile`} site={deferredSite} draftMode />
+          </div>
+        </div>
+      </div>}
     </main>
   );
 }

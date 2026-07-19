@@ -8,6 +8,53 @@ async function readJson(response) {
   try { return JSON.parse(text); } catch { return { raw: text }; }
 }
 
+function supabaseHeaders() {
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return {
+    apikey: key,
+    Authorization: `Bearer ${key}`,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation'
+  };
+}
+
+async function supabasePatch(path, update) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return { ok: false, missing: true, data: null };
+  const res = await fetch(`${url}/rest/v1/${path}`, {
+    method: 'PATCH',
+    headers: supabaseHeaders(),
+    body: JSON.stringify(update)
+  });
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = text; }
+  return { ok: res.ok, status: res.status, data };
+}
+
+async function updateStoredJob({ jobId, sessionId, videoId, result }) {
+  const patch = {
+    status: result.status || 'processing',
+    heygen_session_id: sessionId || null,
+    heygen_video_id: result.videoId || videoId || null,
+    video_url: result.videoUrl || null,
+    thumbnail_url: result.thumbnailUrl || null,
+    duration: result.duration || null,
+    failure_code: result.failureCode || null,
+    failure_message: result.failureMessage || null,
+    checked_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    raw_response: result.raw || null
+  };
+  try {
+    if (jobId) return await supabasePatch(`heygen_video_jobs?id=eq.${encodeURIComponent(jobId)}`, patch);
+    if (videoId) return await supabasePatch(`heygen_video_jobs?heygen_video_id=eq.${encodeURIComponent(videoId)}`, patch);
+    if (sessionId) return await supabasePatch(`heygen_video_jobs?heygen_session_id=eq.${encodeURIComponent(sessionId)}`, patch);
+  } catch {}
+  return { ok: false };
+}
+
 export async function POST(request) {
   try {
     const apiKey = process.env.HEYGEN_API_KEY;
@@ -18,6 +65,7 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     let sessionId = String(body.sessionId || '').trim();
     let videoId = String(body.videoId || '').trim();
+    const jobId = String(body.jobId || '').trim();
     let sessionData = null;
 
     if (sessionId && !videoId) {
@@ -46,10 +94,11 @@ export async function POST(request) {
     }
 
     const video = videoJson?.data || videoJson || {};
-    return NextResponse.json({
+    const result = {
       ok: true,
       status: video.status || sessionData?.status || 'processing',
       sessionId,
+      jobId: jobId || null,
       videoId: video.id || videoId,
       videoUrl: video.video_url || video.videoUrl || video.url || null,
       thumbnailUrl: video.thumbnail_url || video.thumbnailUrl || null,
@@ -58,7 +107,9 @@ export async function POST(request) {
       failureMessage: video.failure_message || video.failureMessage || null,
       session: sessionData,
       raw: videoJson
-    });
+    };
+    await updateStoredJob({ jobId, sessionId, videoId, result });
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json({ ok: false, error: error?.message || 'Unexpected HeyGen status error.' }, { status: 500 });
   }
