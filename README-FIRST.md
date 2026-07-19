@@ -1,28 +1,27 @@
-# Cookie Mini Website Builder Pro — Background Feel + Owner Test Cleanup
+Cookie Mini Website Builder Pro — Final Customer Polish Pack
 
-Upload this package to the **clean GitHub repo only**:
+Upload the inside files/folders to the clean GitHub repo only:
 
-`cookie-mini-website-builder-pro-clean`
+cookie-mini-website-builder-pro-clean
 
-What this fixes:
+This pack polishes customer-facing guidance and flow before AI Video Studio API setup.
 
-- Removes **Open Final Launch Test** from the customer builder flow.
-- Keeps `/launch-test` as an owner/admin testing page only.
-- Improves the **Background feel** choices so they look different:
-  - Gradient glow
-  - Dark luxury
-  - Soft light
-  - Pattern / art
-- Adds stronger pattern/art backgrounds with decorative artwork based on the website type.
-- Keeps checkout routes, drafts, customer dashboard, admin dashboard, and AI Video Studio flow unchanged.
+What it updates:
+- Improves the Customer Guide at /customer-start.
+- Makes the home page point customers to the guide.
+- Improves Pricing page guidance.
+- Makes Customer Dashboard instructions clearer.
+- Shows customers they can search by email, website name, or full subdomain.
+- Adds clearer saved drafts/published site wording.
+- Improves AI Video Studio wording for the upcoming real-video API phase.
+- Adds docs/AI_VIDEO_API_SETUP_PREP.md for the next setup step.
 
-No Supabase SQL is needed.
+No Supabase SQL is needed for this pack.
 
 After Vercel says Ready, test:
-
-- `/builder`
-- Step 3 Design → Background feel → try all 4 options
-- Confirm Pattern / art looks different and shows richer decorative artwork
-- Confirm Final Launch Test is no longer shown inside the customer builder
-
-AI Video Studio real video connection is not included in this patch. It requires choosing an API provider and adding that provider API key to Vercel.
+- /
+- /customer-start
+- /customer
+- /pricing
+- /video-studio
+- /builder

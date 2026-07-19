@@ -96,14 +96,19 @@ export default function Customer() {
         <section className="dashboard">
           <span className="kicker">My Website</span>
           <h1>Customer Dashboard</h1>
-          <p>Find your published websites and saved drafts in one place. Search by email, by website name, or by the full subdomain link.</p>
+          <p>Find your published websites and saved drafts in one place. You can search with only your email, only the short website name, or the full subdomain link.</p>
+          <div className="customerSearchTips">
+            <div><strong>Email only</strong><span>Best option if you forgot the website name.</span></div>
+            <div><strong>Website name</strong><span>Use the short name, like cookies-kitchen.</span></div>
+            <div><strong>Full link</strong><span>Paste the whole subdomain if you have it.</span></div>
+          </div>
           <div className="row">
             <div className="field">
-              <label>Email</label>
+              <label>Email, optional but recommended</label>
               <input placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} />
             </div>
             <div className="field">
-              <label>Website name or subdomain</label>
+              <label>Website name or subdomain, optional</label>
               <input placeholder="cookies-kitchen-digital-recipes or full website link" value={query} onChange={e => setQuery(e.target.value)} />
             </div>
           </div>
@@ -118,9 +123,9 @@ export default function Customer() {
 
         <section className="dashboard savedBox">
           <h2>Saved Websites & Drafts</h2>
-          <p className="mutedText">Published sites and saved drafts will show here together. Drafts open back inside the builder so customers can continue where they left off.</p>
+          <p className="mutedText">Published sites and saved drafts show in one box. Use Continue Draft to keep building, Open Website to view a live site, or Edit Published Site to update one that is already published.</p>
           {sites.length === 0 ? (
-            <div className="emptyState">No saved websites are showing yet. Search by email or website name to load them.</div>
+            <div className="emptyState"><strong>No saved websites are showing yet.</strong><br/>Search by email first. If nothing appears, check the spelling or start a new website. Browser draft backups may appear below when available.</div>
           ) : (
             <div className="savedSiteList">
               {sites.map(row => {
