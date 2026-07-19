@@ -14,11 +14,11 @@ export default function AcceptableUsePage() {
       <PolicySection title="2. Not allowed">
         <PolicyList items={[
           'Illegal goods, services, scams, fraud, phishing, malware, spam, or deceptive offers.',
-          'Content that infringes copyrights, trademarks, privacy rights, publicity rights, or another person's intellectual property.',
+          "Content that infringes copyrights, trademarks, privacy rights, publicity rights, or another person’s intellectual property.",
           'Hateful, harassing, threatening, exploitative, violent, abusive, or discriminatory content.',
           'Adult sexual content, explicit sexual services, or content involving minors in any unsafe or inappropriate way.',
           'False or unsupported claims about income, investment returns, health outcomes, legal results, safety, approvals, or guaranteed success.',
-          'Impersonation, fake endorsements, fake testimonials, fake customer reviews, or unauthorized use of another person's likeness or brand.',
+          "Impersonation, fake endorsements, fake testimonials, fake customer reviews, or unauthorized use of another person’s likeness or brand.",
           'Attempts to bypass plan limits, video credit limits, checkout, access control, admin controls, or platform security.'
         ]} />
       </PolicySection>
