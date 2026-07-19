@@ -1,34 +1,32 @@
-# Cookie Mini Website Builder Pro — Launch Kinks Cleanup Fix
+# Cookie Mini Website Builder Pro — Admin Subscriptions Organizer + Archive Box Fix
 
-Upload the inside files/folders to the clean GitHub repo only:
+Upload these files to the clean GitHub repo only:
 
 cookie-mini-website-builder-pro-clean
 
-This update fixes the small launch kinks found in testing:
+What this fixes:
 
-- Removes the confusing browser “Leave site? Changes may not be saved” popup from the builder.
-- Keeps Save Draft / checkout draft saving in place.
-- Adds a stronger checkout success page that republishes the saved draft and updates the published slug before showing “Open Published Website.”
-- Helps prevent the Starter checkout return from opening a bad/old published link.
-- Makes the Gumroad subscription admin page use stacked website cards instead of a wide table, so the last columns/rows are not cut off.
-- Adds better admin PIN field autocomplete settings on the subscriptions page.
+- Adds sort controls to `/admin/subscriptions`.
+- Adds search by website name, slug, email, plan, and status.
+- Adds plan filter.
+- Changes the subscription admin list into user-friendly website cards.
+- Adds an Archive Box.
+- When a site is archived, it leaves the active organizer view and appears in the Archive Box.
+- Adds Retrieve from Archive.
+- Adds Hide from View for owner-side organization only.
+- Adds Hidden Box so hidden sites can be restored.
+- Keeps Pause and Reactivate actions.
+- Does not require new Supabase SQL.
+- Does not change checkout, customer dashboard, builder, HeyGen, or Gumroad webhooks.
 
-No new Supabase SQL is needed.
+After Vercel says Ready, test:
 
-After deploy, test:
+https://www.cookiesdigitalcreations.com/admin/subscriptions
 
-1. /builder
-2. Save Draft
-3. Go to Starter checkout
-4. Return to /checkout/success?paid=starter
-5. Open Published Website
-6. /admin/subscriptions
+Use your admin PIN, then test:
 
-Important Gumroad check:
-Make sure the Starter product return/content link points to:
-https://www.cookiesdigitalcreations.com/checkout/success?paid=starter
-
-Use matching links for the others:
-https://www.cookiesdigitalcreations.com/checkout/success?paid=business
-https://www.cookiesdigitalcreations.com/checkout/success?paid=premium
-https://www.cookiesdigitalcreations.com/checkout/success?paid=extra
+1. Sort by name, plan, status, and newest.
+2. Hide one website from view, then restore it from Hidden Box.
+3. Archive one test site, confirm it moves to Archive Box.
+4. Retrieve it from Archive Box.
+5. Pause and reactivate a test site.
