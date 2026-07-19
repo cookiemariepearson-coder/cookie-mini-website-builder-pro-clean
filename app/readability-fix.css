@@ -1,0 +1,122 @@
+/* Cookie Mini Website Builder Pro — readability/contrast cleanup
+   This file only improves visibility. It does not change checkout, Supabase, drafts, admin, customer dashboard, or AI tools. */
+
+/* Customer Guide: light background needs dark, clear wording. */
+.customerStartPage .customerHero,
+.customerStartPage .heroPage.customerHero{
+  background: linear-gradient(135deg,#fffaf2 0%,#fff4e8 42%,#f3e9ff 100%) !important;
+  color:#20172f !important;
+  border:1px solid rgba(32,23,47,.12) !important;
+  box-shadow:0 28px 70px rgba(0,0,0,.14) !important;
+  text-align:left !important;
+}
+.customerStartPage .customerHero .kicker,
+.customerStartPage .heroPage.customerHero .kicker{
+  color:#b95517 !important;
+  opacity:1 !important;
+  text-shadow:none !important;
+}
+.customerStartPage .customerHero h1,
+.customerStartPage .heroPage.customerHero h1{
+  color:#20172f !important;
+  opacity:1 !important;
+  text-shadow:none !important;
+  max-width:980px !important;
+  margin-left:0 !important;
+  margin-right:0 !important;
+}
+.customerStartPage .customerHero p,
+.customerStartPage .heroPage.customerHero p{
+  color:#4d425d !important;
+  opacity:1 !important;
+  text-shadow:none !important;
+  font-weight:700 !important;
+  max-width:860px !important;
+  margin-left:0 !important;
+  margin-right:0 !important;
+}
+.customerStartPage .customerActionRow{
+  display:flex !important;
+  gap:12px !important;
+  flex-wrap:wrap !important;
+  margin-top:22px !important;
+}
+.customerStartPage .btn.light{
+  background:#fff !important;
+  color:#20172f !important;
+  border:1px solid #d9cbdf !important;
+}
+
+/* Pricing page: place text on a bright panel so it never disappears on the purple background. */
+main.pricingPage.wrap,
+.pricingPage.wrap{
+  background:linear-gradient(135deg,#fffaf3 0%,#ffffff 50%,#f3eaff 100%) !important;
+  border:1px solid rgba(32,23,47,.12) !important;
+  border-radius:32px !important;
+  margin-top:30px !important;
+  margin-bottom:30px !important;
+  box-shadow:0 28px 70px rgba(0,0,0,.18) !important;
+}
+.pricingPage .kicker{
+  color:#b95517 !important;
+  opacity:1 !important;
+  text-shadow:none !important;
+}
+.pricingPage h1{
+  color:#20172f !important;
+  opacity:1 !important;
+  text-shadow:none !important;
+}
+.pricingPage p,
+.pricingPage .leadText{
+  color:#4d425d !important;
+  opacity:1 !important;
+  text-shadow:none !important;
+  font-weight:650 !important;
+}
+.pricingPage .card p{
+  color:#5d5068 !important;
+  font-weight:600 !important;
+}
+.pricingPage .notice{
+  color:#5a2a0c !important;
+  background:#fff7ed !important;
+}
+
+/* Help/readability cards used on launch/customer pages. */
+.customerQuickPanel,
+.customerChecklist,
+.guideStep,
+.launchCard,
+.card{
+  color:#20172f;
+}
+.customerQuickPanel p,
+.guideStep p,
+.launchCard p,
+.card p,
+.friendlyList li{
+  color:#4d425d;
+  opacity:1;
+}
+
+/* If any pale gradient hero returns in future packs, keep the core headings readable. */
+.wrap .heroPage[style*="fff"],
+.wrap .heroPage[style*="f5ecff"]{
+  color:#20172f;
+}
+
+@media (max-width: 760px){
+  .customerStartPage .customerHero,
+  .customerStartPage .heroPage.customerHero,
+  main.pricingPage.wrap,
+  .pricingPage.wrap{
+    border-radius:22px !important;
+    margin:16px !important;
+    padding:24px 18px !important;
+  }
+  .customerStartPage .customerHero h1,
+  .customerStartPage .heroPage.customerHero h1{
+    font-size:44px !important;
+  }
+}

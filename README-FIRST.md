@@ -1,27 +1,25 @@
-Cookie Mini Website Builder Pro — Final Customer Polish Pack
+# Cookie Mini Website Builder Pro — Readability Contrast Fix
+
+This is a small visual polish pack. It fixes places where text was too light or too dark against the background.
+
+## What it fixes
+
+- Customer Guide heading and paragraph are now dark and readable.
+- Pricing page heading and paragraph are now on a clean light panel.
+- Important subtext is no longer faded/low contrast.
+- Keeps the owner footer import.
+- Does not change checkout, Supabase, drafts, admin, customer dashboard, or AI Video Studio.
+
+## Upload instructions
 
 Upload the inside files/folders to the clean GitHub repo only:
 
 cookie-mini-website-builder-pro-clean
 
-This pack polishes customer-facing guidance and flow before AI Video Studio API setup.
+Then commit, wait for Vercel to say Ready, and hard refresh with Ctrl + F5.
 
-What it updates:
-- Improves the Customer Guide at /customer-start.
-- Makes the home page point customers to the guide.
-- Improves Pricing page guidance.
-- Makes Customer Dashboard instructions clearer.
-- Shows customers they can search by email, website name, or full subdomain.
-- Adds clearer saved drafts/published site wording.
-- Improves AI Video Studio wording for the upcoming real-video API phase.
-- Adds docs/AI_VIDEO_API_SETUP_PREP.md for the next setup step.
+## Test links
 
-No Supabase SQL is needed for this pack.
-
-After Vercel says Ready, test:
-- /
-- /customer-start
-- /customer
-- /pricing
-- /video-studio
-- /builder
+- https://www.cookiesdigitalcreations.com/customer-start
+- https://www.cookiesdigitalcreations.com/pricing
+- https://www.cookiesdigitalcreations.com/
