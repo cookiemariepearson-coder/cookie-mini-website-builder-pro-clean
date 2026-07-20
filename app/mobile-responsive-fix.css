@@ -1,0 +1,321 @@
+/* Cookie Mini Website Builder Pro - Mobile Responsive Layout + Preview Position Fix
+   Purpose: stop side-to-side scrolling, keep plan graphics inside the screen,
+   stack oversized buttons on phones, and keep the mobile preview from covering builder buttons. */
+
+html,
+body{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+}
+
+*,
+*::before,
+*::after{
+  box-sizing:border-box;
+}
+
+img,
+video,
+iframe,
+canvas,
+svg{
+  max-width:100%;
+}
+
+img,
+video{
+  height:auto;
+}
+
+main,
+section,
+article,
+header,
+footer,
+nav,
+.wrap,
+.heroPage,
+.pricingPage,
+.dashboard,
+.card,
+.notice{
+  max-width:100%;
+}
+
+/* Long website addresses and long product wording should wrap instead of pushing the phone sideways. */
+.notice,
+.smallNotice,
+.planFinePrint,
+.planAccuracyNote,
+.planHeroVisualCard p,
+.pricingPage p,
+.card p,
+.field,
+.field label,
+.field small,
+.field input,
+.field textarea,
+.field select{
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+
+.btn,
+button,
+a{
+  max-width:100%;
+}
+
+/* Plan image sections */
+.planHeroVisualWrap,
+.planHeroVisualCard,
+.pricingImageIntro,
+.featuredPlanImage,
+.planImageGrid,
+.planImageCard,
+.planHeroImageStack{
+  min-width:0;
+  max-width:100%;
+}
+
+.planHeroVisualCard > *,
+.pricingImageIntro > *,
+.planImageCard > *{
+  min-width:0;
+}
+
+@media (max-width: 760px){
+  body{
+    position:relative;
+  }
+
+  .heroPage,
+  .wrap,
+  .pricingPage,
+  .planHeroVisualWrap{
+    width:100%;
+    padding-left:12px !important;
+    padding-right:12px !important;
+    margin-left:auto;
+    margin-right:auto;
+  }
+
+  .planHeroVisualCard{
+    grid-template-columns:minmax(0,1fr) !important;
+    gap:16px;
+    width:100%;
+    padding:14px !important;
+    border-radius:24px !important;
+    overflow:hidden;
+  }
+
+  .planHeroVisualCard h2,
+  .pricingPage h1,
+  .heroPage h1{
+    font-size:clamp(30px, 9vw, 44px) !important;
+    line-height:1.06 !important;
+  }
+
+  .planHeroVisualCard p,
+  .pricingPage .leadText,
+  .heroPage p{
+    font-size:16px !important;
+    line-height:1.45 !important;
+  }
+
+  .planHeroActions,
+  .pricingImageIntro .card p,
+  .heroPage p:last-child{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    gap:10px;
+  }
+
+  .planHeroActions .btn,
+  .pricingImageIntro .card .btn,
+  .heroPage .btn,
+  .customerQuickPanel .btn,
+  .planImageCard .btn,
+  .card .btn{
+    width:100%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    white-space:normal !important;
+    text-align:center;
+    line-height:1.18;
+    padding:14px 16px;
+  }
+
+  .pricingImageIntro{
+    grid-template-columns:minmax(0,1fr) !important;
+    gap:14px;
+  }
+
+  .featuredPlanImage,
+  .planImageCard,
+  .pricingImageIntro .card,
+  .planAccuracyNote,
+  .customerQuickPanel{
+    width:100%;
+    overflow:hidden;
+    border-radius:22px !important;
+  }
+
+  .featuredPlanImage{
+    padding:8px !important;
+  }
+
+  .planImageGrid{
+    grid-template-columns:minmax(0,1fr) !important;
+    gap:16px;
+  }
+
+  .planHeroImageStack{
+    grid-template-columns:minmax(0,1fr) !important;
+    gap:12px;
+  }
+
+  .planHeroImageStack img,
+  .planImageCard img,
+  .featuredPlanImage img{
+    width:100%;
+    max-width:100%;
+    border-radius:18px !important;
+  }
+
+  .cardGrid{
+    grid-template-columns:minmax(0,1fr) !important;
+  }
+
+  .customerQuickPanel{
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) !important;
+    gap:12px;
+  }
+}
+
+/* Builder mobile cleanup */
+@media (max-width: 980px){
+  .builderShell{
+    width:100%;
+    max-width:100vw;
+    overflow-x:hidden;
+    display:block !important;
+    padding-bottom:18px !important;
+  }
+
+  .builderSide,
+  .builderMain,
+  .builderPanel,
+  .dashboard{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    overflow-x:hidden;
+  }
+
+  .builderSide{
+    position:static !important;
+    top:auto !important;
+    height:auto !important;
+  }
+
+  .builderMain{
+    padding-left:12px !important;
+    padding-right:12px !important;
+  }
+
+  .builderTwoCol,
+  .builderMain .row,
+  .row{
+    grid-template-columns:minmax(0,1fr) !important;
+    flex-direction:column !important;
+    width:100%;
+    max-width:100%;
+  }
+
+  .previewSticky{
+    display:none !important;
+  }
+
+  .builderSide .btn,
+  .builderSide .stepBtn,
+  .builderPanel .btn,
+  .navRow .btn,
+  .mobilePreviewInlineBtn{
+    width:100%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    white-space:normal !important;
+    text-align:center;
+  }
+
+  .navRow{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:10px;
+    align-items:stretch !important;
+  }
+
+  .templateList,
+  .bigTemplateList,
+  .stylePickList,
+  .pagePickList{
+    grid-template-columns:minmax(0,1fr) !important;
+    width:100%;
+    max-width:100%;
+  }
+
+  .pick,
+  .styleCard,
+  .enhancedStyleCard{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+    overflow:hidden;
+  }
+
+  .field input,
+  .field textarea,
+  .field select{
+    width:100%;
+    max-width:100%;
+    min-width:0;
+  }
+
+  .mediaEditor,
+  .mediaEditor *{
+    max-width:100%;
+  }
+
+  .mobilePreviewNotice{
+    display:block;
+  }
+
+  .mobilePreviewInlineBtn{
+    margin-top:10px;
+  }
+}
+
+@media (max-width: 420px){
+  .planHeroVisualCard h2,
+  .pricingPage h1,
+  .heroPage h1{
+    font-size:clamp(28px, 10vw, 38px) !important;
+  }
+
+  .planHeroVisualCard,
+  .planImageCard,
+  .pricingImageIntro .card{
+    padding:12px !important;
+  }
+
+  .builderMain{
+    padding-left:10px !important;
+    padding-right:10px !important;
+  }
+}

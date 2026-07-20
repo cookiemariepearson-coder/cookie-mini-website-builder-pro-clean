@@ -402,7 +402,7 @@ export default function Builder() {
       <section className="builderMain">
         <div className="row builderTwoCol">
           <div className="dashboard builderPanel">
-            {isSmallBuilderScreen && <div className="notice"><strong>Mobile tip:</strong> Use the Open Live Preview button to view your site without scrolling to the bottom.</div>}
+            {isSmallBuilderScreen && <div className="notice mobilePreviewNotice"><strong>Mobile tip:</strong> Tap the button below to preview your site in a separate screen, then close it to keep editing.<br /><button type="button" className="btn mobilePreviewInlineBtn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button></div>}
             {step === 0 && (
               <>
                 <h2>Choose website type and design look</h2>
@@ -527,11 +527,6 @@ export default function Builder() {
           </div>}
         </div>
       </section>
-      {isSmallBuilderScreen && <button
-        type="button"
-        onClick={() => setIsMobilePreviewOpen(true)}
-        style={{ position: 'fixed', left: 14, right: 14, bottom: 14, zIndex: 60, border: 0, borderRadius: 999, padding: '15px 18px', background: 'linear-gradient(135deg,#20172f,#ff9e26)', color: '#fff', fontWeight: 900, boxShadow: '0 20px 45px rgba(0,0,0,.25)' }}
-      >Open Live Preview</button>}
       {isSmallBuilderScreen && isMobilePreviewOpen && <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(18,7,29,.72)', display: 'grid', placeItems: 'stretch', padding: 10 }}>
         <div style={{ background: '#fff8f1', borderRadius: 24, overflow: 'auto', boxShadow: '0 30px 90px rgba(0,0,0,.35)' }}>
           <div style={{ position: 'sticky', top: 0, zIndex: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: 14, background: '#20172f', color: 'white' }}>

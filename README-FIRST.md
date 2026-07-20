@@ -1,34 +1,48 @@
-# Cookie Mini Website Builder Pro - Plan Images Site Upgrade
+# Cookie Mini Website Builder Pro - Mobile Responsive Layout + Preview Position Fix
 
-Upload these inside files/folders to the clean GitHub repo only:
+This pack fixes the mobile issues Cookie found after adding the plan graphics.
+
+## What this fixes
+
+- Stops the phone screen from moving side-to-side.
+- Keeps all sections inside the mobile screen width.
+- Stacks oversized buttons on mobile.
+- Makes plan images/cards responsive.
+- Wraps long website addresses instead of pushing the page off-screen.
+- Removes the floating bottom mobile preview button that could cover other builder buttons.
+- Keeps Open Live Preview available inside the builder/sidebar and inside the mobile tip area.
+- Keeps desktop layout unchanged.
+
+## Upload location
+
+Upload the inside files/folders to the clean GitHub repo only:
 
 cookie-mini-website-builder-pro-clean
 
-This update adds the Gumroad plan images to the website builder site:
+## No SQL needed
 
-- Home page plan preview section
-- Pricing page plan image gallery
-- Starter Pro image
-- Business image
-- Premium image
-- Extra Page Add-On image
+This is a CSS/layout cleanup and builder preview-position fix only.
 
-It does NOT touch:
+## Test after Vercel is Ready
 
-- Builder workspace logic
-- Checkout routes
-- Gumroad links
-- Supabase tables
-- Admin dashboard
-- Customer dashboard
-- AI Video Studio
+1. Open the home page on your phone.
+2. Make sure the plans section does not slide left/right.
+3. Open the pricing page on your phone.
+4. Make sure every plan image fits the phone.
+5. Open the builder on your phone.
+6. Confirm the Live Preview button no longer covers buttons.
+7. Tap Open Live Preview, then close it and keep editing.
+8. Test desktop quickly to confirm it still looks normal.
 
-No Supabase SQL is needed.
-
-After Vercel says Ready, test:
+Test URLs:
 
 https://www.cookiesdigitalcreations.com/
 https://www.cookiesdigitalcreations.com/pricing
 https://www.cookiesdigitalcreations.com/builder
 
-Important: I did not display the full Choose Your Plan comparison image by default because that image says Custom Domain, and custom domains are a later upgrade. The image is included in the assets folder for later use.
+## Files included
+
+app/layout.js
+app/mobile-responsive-fix.css
+app/builder/page.js
+app/page.js

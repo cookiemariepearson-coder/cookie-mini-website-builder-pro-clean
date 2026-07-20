@@ -24,7 +24,7 @@ export default function Home(){
               <span className="kicker">Plans that grow with you</span>
               <h2>Start free, then upgrade when your website needs more.</h2>
               <p>
-                Your customers can see the plans clearly before they buy. The full builder stays clean, while the home page and pricing page now show your polished plan graphics.
+                Compare plans clearly before checkout. The builder stays clean while the home page and pricing page show polished plan graphics.
               </p>
               <div className="planHeroActions">
                 <Link className="btn" href="/pricing">Compare Plans</Link>
