@@ -17,6 +17,31 @@ export default function Home(){
             <Link className="btn light" href="/pricing">View Pricing</Link>
           </p>
         </section>
+
+        <section className="planHeroVisualWrap" aria-label="Cookie Mini Website Builder plan previews">
+          <div className="planHeroVisualCard">
+            <div>
+              <span className="kicker">Plans that grow with you</span>
+              <h2>Start free, then upgrade when your website needs more.</h2>
+              <p>
+                Your customers can see the plans clearly before they buy. The full builder stays clean, while the home page and pricing page now show your polished plan graphics.
+              </p>
+              <div className="planHeroActions">
+                <Link className="btn" href="/pricing">Compare Plans</Link>
+                <Link className="btn dark" href="/builder">Build Free Page</Link>
+              </div>
+              <p className="planFinePrint">
+                Current launch websites publish as customername.cookiesdigitalcreations.com. Custom domains are a later Premium/add-on upgrade.
+              </p>
+            </div>
+            <div className="planHeroImageStack">
+              <img src="/gumroad-plan-images/business.png" alt="Cookie Mini Website Builder Business plan" />
+              <img src="/gumroad-plan-images/starter-pro.png" alt="Cookie Mini Website Builder Starter Pro plan" />
+              <img src="/gumroad-plan-images/premium.png" alt="Cookie Mini Website Builder Premium plan" />
+            </div>
+          </div>
+        </section>
+
         <section className="wrap cardGrid">
           <div className="card">
             <h2>Purpose-based templates</h2>
@@ -28,7 +53,7 @@ export default function Home(){
           </div>
           <div className="card">
             <h2>AI Video Studio</h2>
-            <p>Create promo scripts, captions, shot lists, voiceover text, and AI video prompts. Real HeyGen video connection comes next.</p>
+            <p>Create promo kits and real HeyGen videos. Finished videos can show inside your Cookie Mini Website Builder site.</p>
           </div>
         </section>
         <OwnerFooter />

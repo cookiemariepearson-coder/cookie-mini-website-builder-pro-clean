@@ -1,31 +1,34 @@
-# Cookie Mini Website Builder Pro - AI Video Customer View Cleanup + Status Sync Fix
+# Cookie Mini Website Builder Pro - Plan Images Site Upgrade
 
-Upload these files to the clean GitHub repo only:
+Upload these inside files/folders to the clean GitHub repo only:
 
 cookie-mini-website-builder-pro-clean
 
-## What this fixes
+This update adds the Gumroad plan images to the website builder site:
 
-- Hides "Open in HeyGen" from customers.
-- Keeps the HeyGen troubleshooting link owner-only.
-- Shows generated videos inside your own site.
-- Adds Download MP4 and Copy Video Link options.
-- Hides the owner/admin access code box unless Owner Test Mode is opened.
-- Adds Refresh Video Status to the saved results page.
-- Updates old stuck processing videos when HeyGen returns a completed video URL.
-- Shows completed videos first.
+- Home page plan preview section
+- Pricing page plan image gallery
+- Starter Pro image
+- Business image
+- Premium image
+- Extra Page Add-On image
 
-## Supabase
+It does NOT touch:
 
-No new SQL is needed if you already ran:
+- Builder workspace logic
+- Checkout routes
+- Gumroad links
+- Supabase tables
+- Admin dashboard
+- Customer dashboard
+- AI Video Studio
 
-supabase/heygen_video_results_migration.sql
+No Supabase SQL is needed.
 
-If /video-studio/results says the table does not exist, run that migration again in the Cookie Mini Website Builder Supabase project.
+After Vercel says Ready, test:
 
-## Test after Vercel is Ready
+https://www.cookiesdigitalcreations.com/
+https://www.cookiesdigitalcreations.com/pricing
+https://www.cookiesdigitalcreations.com/builder
 
-https://www.cookiesdigitalcreations.com/video-studio
-https://www.cookiesdigitalcreations.com/video-studio/results
-
-Test with one old processing video and click Refresh Video Status.
+Important: I did not display the full Choose Your Plan comparison image by default because that image says Custom Domain, and custom domains are a later upgrade. The image is included in the assets folder for later use.

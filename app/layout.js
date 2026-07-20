@@ -1,6 +1,7 @@
 import './globals.css';
 import './owner-footer.css';
 import './readability-fix.css';
+import './plan-showcase.css';
 
 export const metadata = {
   title: 'Cookie Mini Website Builder Pro',

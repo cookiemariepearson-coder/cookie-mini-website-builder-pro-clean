@@ -1,0 +1,90 @@
+/* Cookie Mini Website Builder Pro - plan image showcase upgrade */
+.planHeroVisualWrap{
+  max-width:1180px;
+  margin:0 auto 28px;
+  padding:0 28px 18px;
+}
+.planHeroVisualCard{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+  align-items:center;
+  background:linear-gradient(135deg,#fff,#fff7ef);
+  border:1px solid #eaddec;
+  border-radius:32px;
+  padding:22px;
+  box-shadow:0 30px 70px rgba(0,0,0,.16);
+}
+.planHeroVisualCard h2{font-size:clamp(28px,4vw,48px);line-height:1.02;margin:8px 0;color:#20172f;}
+.planHeroVisualCard p{color:#5f506d;line-height:1.55;font-size:17px;}
+.planHeroActions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;}
+.planHeroImageStack{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.planHeroImageStack img,
+.planImageCard img,
+.featuredPlanImage img{
+  width:100%;
+  display:block;
+  border-radius:24px;
+  border:1px solid rgba(255,255,255,.45);
+  box-shadow:0 24px 60px rgba(0,0,0,.22);
+  background:#16091f;
+}
+.planHeroImageStack img:first-child{
+  grid-column:1 / -1;
+}
+.pricingImageIntro{
+  margin:18px 0 26px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 330px;
+  gap:18px;
+  align-items:center;
+}
+.featuredPlanImage{
+  padding:10px;
+  border-radius:30px;
+  background:linear-gradient(135deg,#2a103b,#12071d);
+  border:1px solid #ffffff24;
+  box-shadow:0 24px 64px rgba(0,0,0,.24);
+}
+.planImageGrid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:18px;
+  margin:24px 0 30px;
+}
+.planImageCard{
+  background:linear-gradient(135deg,#ffffff,#fff7ef);
+  border:1px solid #eaddec;
+  border-radius:30px;
+  padding:14px;
+  box-shadow:0 24px 54px rgba(0,0,0,.12);
+}
+.planImageCard h2{margin:12px 4px 6px;font-size:22px;color:#20172f;}
+.planImageCard p{margin:0 4px 12px;color:#655774;line-height:1.45;}
+.planImageCard .btn{margin:0 4px 6px;}
+.planAccuracyNote{
+  border:2px dashed #e79b64;
+  background:#fff8f1;
+  color:#5e2d0d;
+  border-radius:22px;
+  padding:16px 18px;
+  margin:18px 0 26px;
+  line-height:1.5;
+}
+.planAccuracyNote strong{color:#20172f;}
+.planFinePrint{
+  font-size:14px;
+  color:#6d5c7e;
+  line-height:1.55;
+  margin-top:8px;
+}
+@media(max-width:900px){
+  .planHeroVisualCard,.pricingImageIntro{grid-template-columns:1fr;}
+  .planHeroImageStack{grid-template-columns:1fr;}
+  .planHeroVisualWrap{padding:0 16px 18px;}
+  .planHeroVisualCard{border-radius:24px;padding:16px;}
+}
