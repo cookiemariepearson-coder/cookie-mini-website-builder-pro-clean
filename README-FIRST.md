@@ -1,37 +1,31 @@
-# Cookie Mini Website Builder Pro — Mobile Preview + HeyGen Results Upgrade
+# Cookie Mini Website Builder Pro - AI Video Customer View Cleanup + Status Sync Fix
 
-Upload the inside files/folders to the **clean GitHub repo only**:
+Upload these files to the clean GitHub repo only:
 
-`cookie-mini-website-builder-pro-clean`
+cookie-mini-website-builder-pro-clean
 
-## What this upgrade adds
+## What this fixes
 
-- Mobile builder preview drawer.
-- Sticky **Open Live Preview** button on mobile.
-- Desktop builder preview stays side-by-side.
-- HeyGen video jobs save to Supabase.
-- New customer video results page:
+- Hides "Open in HeyGen" from customers.
+- Keeps the HeyGen troubleshooting link owner-only.
+- Shows generated videos inside your own site.
+- Adds Download MP4 and Copy Video Link options.
+- Hides the owner/admin access code box unless Owner Test Mode is opened.
+- Adds Refresh Video Status to the saved results page.
+- Updates old stuck processing videos when HeyGen returns a completed video URL.
+- Shows completed videos first.
 
-`https://www.cookiesdigitalcreations.com/video-studio/results`
+## Supabase
 
-- AI Video Studio includes a button to open the results dashboard.
-- HeyGen status checks update the saved video record when the MP4 is ready.
+No new SQL is needed if you already ran:
 
-## Supabase step
+supabase/heygen_video_results_migration.sql
 
-Run this SQL once in the **Cookie Mini Website Builder Supabase project**:
+If /video-studio/results says the table does not exist, run that migration again in the Cookie Mini Website Builder Supabase project.
 
-`supabase/heygen_video_results_migration.sql`
+## Test after Vercel is Ready
 
-This creates the table for saved HeyGen video results.
+https://www.cookiesdigitalcreations.com/video-studio
+https://www.cookiesdigitalcreations.com/video-studio/results
 
-## Test after Vercel says Ready
-
-1. Open `/builder` on your phone or narrow browser.
-2. Confirm **Open Live Preview** opens the preview without scrolling all the way down.
-3. Close preview and keep editing.
-4. Open `/video-studio` and create/check a HeyGen video.
-5. Open `/video-studio/results` and search by email or website/subdomain.
-6. Confirm finished videos play inside your site.
-
-No new Vercel environment variables are required.
+Test with one old processing video and click Refresh Video Status.

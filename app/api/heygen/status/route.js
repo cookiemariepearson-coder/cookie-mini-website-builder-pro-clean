@@ -35,11 +35,11 @@ async function supabasePatch(path, update) {
 
 async function updateStoredJob({ jobId, sessionId, videoId, result }) {
   const patch = {
-    status: result.status || 'processing',
+    status: result.videoUrl ? 'completed' : (result.status || 'processing'),
     heygen_session_id: sessionId || null,
     heygen_video_id: result.videoId || videoId || null,
-    video_url: result.videoUrl || null,
-    thumbnail_url: result.thumbnailUrl || null,
+    ...(result.videoUrl ? { video_url: result.videoUrl } : {}),
+    ...(result.thumbnailUrl ? { thumbnail_url: result.thumbnailUrl } : {}),
     duration: result.duration || null,
     failure_code: result.failureCode || null,
     failure_message: result.failureMessage || null,
@@ -94,13 +94,14 @@ export async function POST(request) {
     }
 
     const video = videoJson?.data || videoJson || {};
+    const readyUrl = video.video_url || video.videoUrl || video.url || null;
     const result = {
       ok: true,
-      status: video.status || sessionData?.status || 'processing',
+      status: readyUrl ? 'completed' : (video.status || sessionData?.status || 'processing'),
       sessionId,
       jobId: jobId || null,
       videoId: video.id || videoId,
-      videoUrl: video.video_url || video.videoUrl || video.url || null,
+      videoUrl: readyUrl,
       thumbnailUrl: video.thumbnail_url || video.thumbnailUrl || null,
       duration: video.duration || null,
       failureCode: video.failure_code || video.failureCode || null,
