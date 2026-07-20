@@ -2,6 +2,14 @@ import Link from 'next/link';
 import Nav from '../lib/Nav';
 import OwnerFooter from '../lib/OwnerFooter';
 
+const launchPlans = [
+  ['Free Launch Page', '$0', 'Start with one free basic launch page.'],
+  ['Starter Pro', '$19/mo', 'One professional page website.'],
+  ['Business', '$30/mo', 'Up to 3 page website.'],
+  ['Premium', '$50/mo', 'Access to all pages.'],
+  ['Extra Page Add-On', '$10/mo per page', 'Add extra pages later as needed.'],
+];
+
 export default function Home(){
   return (
     <>
@@ -26,6 +34,17 @@ export default function Home(){
               <p>
                 Compare plans clearly before checkout. The builder stays clean while the home page and pricing page show polished plan graphics.
               </p>
+
+              <div className="frontPlanOrder" aria-label="Current plan order">
+                {launchPlans.map(([name, price, desc]) => (
+                  <div className="frontPlanPill" key={name}>
+                    <strong>{name}</strong>
+                    <span>{price}</span>
+                    <small>{desc}</small>
+                  </div>
+                ))}
+              </div>
+
               <div className="planHeroActions">
                 <Link className="btn" href="/pricing">Compare Plans</Link>
                 <Link className="btn dark" href="/builder">Build Free Page</Link>

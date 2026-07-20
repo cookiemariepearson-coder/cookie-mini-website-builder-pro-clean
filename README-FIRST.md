@@ -1,48 +1,41 @@
-# Cookie Mini Website Builder Pro - Mobile Responsive Layout + Preview Position Fix
+# Cookie Mini Website Builder Pro - Pricing Duplicate Cleanup + Current Plan Order Fix
 
-This pack fixes the mobile issues Cookie found after adding the plan graphics.
-
-## What this fixes
-
-- Stops the phone screen from moving side-to-side.
-- Keeps all sections inside the mobile screen width.
-- Stacks oversized buttons on mobile.
-- Makes plan images/cards responsive.
-- Wraps long website addresses instead of pushing the page off-screen.
-- Removes the floating bottom mobile preview button that could cover other builder buttons.
-- Keeps Open Live Preview available inside the builder/sidebar and inside the mobile tip area.
-- Keeps desktop layout unchanged.
-
-## Upload location
-
-Upload the inside files/folders to the clean GitHub repo only:
+Upload these inside files/folders to the clean GitHub repo only:
 
 cookie-mini-website-builder-pro-clean
 
+## What this fixes
+
+- Removes the duplicated old non-image pricing card section from the Pricing page.
+- Keeps one clean pricing display.
+- Lists the plans in the correct order:
+  1. Free Launch Page — $0
+  2. Starter Pro — $19/mo
+  3. Business — $30/mo
+  4. Premium — $50/mo
+  5. Extra Page Add-On — $10/mo per page
+- Adds that same plan order to the home page/front section.
+- Replaces the optional Choose Your Plan image with the corrected wording:
+  - Starter Pro: 1 Page Website
+  - Business: Up to 3 Page Website
+  - Premium: Access to All Pages
+- Keeps Custom Domain wording out of the live text offer because custom domains are a later upgrade.
+- Adds extra mobile-safe CSS so this pricing section does not slide side-to-side.
+
 ## No SQL needed
 
-This is a CSS/layout cleanup and builder preview-position fix only.
+This is only a page, CSS, and image cleanup.
 
 ## Test after Vercel is Ready
 
-1. Open the home page on your phone.
-2. Make sure the plans section does not slide left/right.
-3. Open the pricing page on your phone.
-4. Make sure every plan image fits the phone.
-5. Open the builder on your phone.
-6. Confirm the Live Preview button no longer covers buttons.
-7. Tap Open Live Preview, then close it and keep editing.
-8. Test desktop quickly to confirm it still looks normal.
-
-Test URLs:
+Test on phone and desktop:
 
 https://www.cookiesdigitalcreations.com/
 https://www.cookiesdigitalcreations.com/pricing
-https://www.cookiesdigitalcreations.com/builder
 
-## Files included
+Confirm:
 
-app/layout.js
-app/mobile-responsive-fix.css
-app/builder/page.js
-app/page.js
+- The pricing list is not duplicated.
+- The mobile page does not slide side-to-side.
+- The order is $0, $19, $30, $50, $10 add-on.
+- The image pricing section still looks polished.

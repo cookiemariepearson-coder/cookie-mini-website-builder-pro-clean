@@ -8,43 +8,42 @@ const checkoutLinks = {
   extra: '/checkout/extra',
 };
 
-const planImages = [
+const currentPlans = [
+  {
+    name: 'Free Launch Page',
+    price: '$0',
+    desc: 'Start with one free basic launch page.',
+    href: '/builder',
+    type: 'free',
+  },
   {
     name: 'Starter Pro',
     price: '$19/month',
-    desc: 'Best for a clean one-page professional website.',
+    desc: 'One professional page website.',
     img: '/gumroad-plan-images/starter-pro.png',
     href: checkoutLinks.starter,
   },
   {
     name: 'Business',
     price: '$30/month',
-    desc: 'Best for growing brands that need more pages and sections.',
+    desc: 'Up to 3 page website for growing brands.',
     img: '/gumroad-plan-images/business.png',
     href: checkoutLinks.business,
   },
   {
     name: 'Premium',
     price: '$50/month',
-    desc: 'Best for fuller brands that want the most complete website option.',
+    desc: 'Access to all pages for the most complete website option.',
     img: '/gumroad-plan-images/premium.png',
     href: checkoutLinks.premium,
   },
   {
     name: 'Extra Page Add-On',
     price: '$10/month per page',
-    desc: 'Add more pages as the customer website grows.',
+    desc: 'Add extra pages as the customer website grows.',
     img: '/gumroad-plan-images/extra-page-addon.png',
     href: checkoutLinks.extra,
   },
-];
-
-const cards = [
-  ['Free Launch Page','$0','One free basic launch page to start building and publishing.'],
-  ['Starter Pro','$19/mo','One professional page, dashboard access, save drafts, publish, and customer subdomain.'],
-  ['Business','$30/mo','Up to 3 pages for small businesses, creators, and service providers.'],
-  ['Premium','$50/mo','Most complete plan with the strongest page and section access.'],
-  ['Extra Page','$10/mo','Add one extra page to Starter or Business.'],
 ];
 
 export default function Pricing(){
@@ -55,6 +54,15 @@ export default function Pricing(){
         <span className="kicker">Simple subscriptions</span>
         <h1>Choose the plan that fits your website.</h1>
         <p className="leadText">Start free, save a draft, then upgrade when you need more pages, stronger features, or AI Video Studio access.</p>
+
+        <section className="pricingOrderStrip" aria-label="Current pricing plan order">
+          {currentPlans.map((plan) => (
+            <div className="pricingOrderItem" key={plan.name}>
+              <strong>{plan.name}</strong>
+              <span>{plan.price}</span>
+            </div>
+          ))}
+        </section>
 
         <section className="pricingImageIntro">
           <div className="card">
@@ -77,26 +85,23 @@ export default function Pricing(){
           <strong>Current launch website address:</strong> customername.cookiesdigitalcreations.com. Custom domain support is planned for a later Premium/add-on upgrade, so the written plan details on this page are the current live offer.
         </div>
 
-        <section className="planImageGrid" aria-label="Plan image gallery">
-          {planImages.map((plan) => (
-            <article className="planImageCard" key={plan.name}>
-              <img src={plan.img} alt={`${plan.name} plan graphic`} />
+        <section className="planImageGrid currentPlanImageGrid" aria-label="Current plan image gallery">
+          {currentPlans.map((plan) => (
+            <article className={plan.type === 'free' ? 'planImageCard freeLaunchPlanCard' : 'planImageCard'} key={plan.name}>
+              {plan.img ? (
+                <img src={plan.img} alt={`${plan.name} plan graphic`} />
+              ) : (
+                <div className="freeLaunchBadge" aria-label="Free Launch Page">
+                  <span>FREE</span>
+                  <strong>$0</strong>
+                  <small>Launch Page</small>
+                </div>
+              )}
               <h2>{plan.name}</h2>
               <p><strong>{plan.price}</strong></p>
               <p>{plan.desc}</p>
-              <Link className="btn" href={plan.href}>Choose {plan.name}</Link>
+              <Link className="btn" href={plan.href}>{plan.type === 'free' ? 'Start Free' : `Choose ${plan.name}`}</Link>
             </article>
-          ))}
-        </section>
-
-        <section className="cardGrid">
-          {cards.map(([name,price,desc]) => (
-            <div className="card" key={name}>
-              <h2>{name}</h2>
-              <div className="price">{price}</div>
-              <p>{desc}</p>
-              <Link className="btn" href={name === 'Free Launch Page' ? '/builder' : '/builder'}>Start Here</Link>
-            </div>
           ))}
         </section>
 
