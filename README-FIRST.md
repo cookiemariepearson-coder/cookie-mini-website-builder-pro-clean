@@ -1,4 +1,4 @@
-# Cookie Mini Website Builder Pro - Kinks Cleanup + Templates + AI Studio + Policy Upgrade
+# Cookie Mini Website Builder Pro - Final Kinks: Template Switching + AI Credits + Section Actions
 
 Upload these inside files/folders to the clean GitHub repo only:
 
@@ -6,60 +6,84 @@ cookie-mini-website-builder-pro-clean
 
 ## What this fixes
 
-### AI Video Studio
-- Fixes the $5 AI Video Studio route so it opens the studio in standalone mode.
-- Keeps standalone AI Video Studio as creative planning mode.
-- Business/Premium still have real HeyGen video access based on plan limits.
-- Adds stronger AI Video Studio buttons on checkout success and builder areas.
+### Template switching
+Some template looks were changing only a little. This makes every look switch more visibly.
 
-### Builder plan/page selection
-- Changing from Free to Business/Premium no longer auto-picks the pages for the customer.
-- Changing website type keeps selected sections instead of forcing template default pages.
-- Customers can choose their own selected sections up to the plan limit.
+It strengthens:
+- Cartoon / Color Pop looks
+- Luxury / Glam looks
+- Realistic looks
+- Clean / Minimal looks
+- 3D looks
+- Cinematic looks
 
-### Template design controls
-- Font feel now visibly changes the customer template.
-- Background feel now visibly changes the customer template.
-- Section style now visibly changes the customer template.
-- Layout style now visibly changes the customer template.
+It also keeps:
+- Font feel changes
+- Background feel changes
+- Section style changes
+- Layout changes
 
-### Customer website templates
-- Rebuilds the customer site template design with richer purple/gold branding.
-- Keeps the new Order / Book / Buy section and customer action buttons.
-- Keeps template type personality while avoiding the generic layout feel.
+### Pick your own sections
+Changing from Free to Business/Premium no longer lets the template choose sections for the customer.
 
-### Terms / Privacy / AI policy
-- Replaces plain policies with more complete, launch-ready policies.
-- Adds stronger wording for:
-  - AI Video Studio
-  - HeyGen / third-party AI video services
-  - customer content
-  - customer action buttons
-  - third-party checkout/payment/booking links
-  - subscriptions, refunds, cancellations, published subdomains, and no guarantees
+The builder now keeps selected sections and clearly tells the user to pick their own sections.
+
+### Order / Book / Buy
+The builder now makes this option easier to find.
+
+It adds a guide:
+1. Pick your own sections.
+2. Select Order / Book / Buy.
+3. Add Book Now, Order Now, Buy Now, or Request Quote.
+
+It also adds quick preset buttons:
+- Use Book Now
+- Use Order Now
+- Use Buy Now
+- Use Request Quote
+
+### AI Video Studio / credits
+The Business plan credit error is expected once the Business plan uses its 1 real HeyGen video for the month.
+
+This update makes Owner Testing Mode more visible so you can test without using a customer's Business/Premium monthly video credit.
+
+Business still gets 1 real HeyGen video/month.
+Premium still gets 3 real HeyGen videos/month.
+$5 AI Video Studio still opens creative planning mode.
+
+### API wording
+The HeyGen create API now explains that Owner Testing Mode can bypass customer credits when the correct owner access code is entered.
 
 ## No SQL needed
 
-This is code, template, page, and policy cleanup only.
+This is code/layout/API wording cleanup only.
 
 ## Test after Vercel says Ready
 
-Test these URLs:
+Test these:
 
 https://www.cookiesdigitalcreations.com/builder
 https://www.cookiesdigitalcreations.com/video-studio?mode=standalone
 https://www.cookiesdigitalcreations.com/checkout/success?paid=ai-video
-https://www.cookiesdigitalcreations.com/legal/terms
-https://www.cookiesdigitalcreations.com/legal/privacy
-https://www.cookiesdigitalcreations.com/legal/ai-video
-https://www.cookiesdigitalcreations.com/legal/customer-content-media
 
 Builder test:
-1. Change plan from Free to Business.
-2. Confirm it does not auto-pick the sections for you.
-3. Select your own sections.
-4. Select Order / Book / Buy.
-5. Add a Book Now, Order Now, or Request Quote button.
-6. Change Font feel, Background feel, Section style, and Layout.
-7. Confirm the preview changes visually.
-8. Publish and confirm the published site matches the preview.
+
+1. Choose a website type.
+2. Switch between both template looks.
+3. Confirm the preview visibly changes.
+4. Change Font Feel, Background Feel, Section Style, and Layout.
+5. Confirm those visibly change too.
+6. Change from Free to Business.
+7. Confirm it does NOT automatically choose all sections.
+8. Go to Sections & Wording.
+9. Select Order / Book / Buy.
+10. Use a quick preset like Book Now or Order Now.
+11. Add a test link or phone number.
+12. Preview and publish.
+
+AI Video test:
+
+1. Open AI Video Studio.
+2. If Business says credits are used for the month, turn on Owner Testing Mode.
+3. Enter your owner access code.
+4. Generate the test video again.

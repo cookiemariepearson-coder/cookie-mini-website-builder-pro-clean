@@ -209,7 +209,7 @@ async function checkCustomerAccess(body) {
     return { ok: false, status: 403, plan, used, limit: totalLimit, remaining: 0, error: 'Real HeyGen video is not included with this plan. Use the creative kit, or upgrade to Business or Premium.' };
   }
   if (remaining <= 0) {
-    return { ok: false, status: 403, plan, used, limit: totalLimit, remaining: 0, error: `This ${plan} plan has used all real AI video credits for ${currentMonth}.` };
+    return { ok: false, status: 403, plan, used, limit: totalLimit, remaining: 0, error: `This ${plan} plan has used all real AI video credits for ${currentMonth}. Owner testing mode can bypass customer credits when the correct owner access code is entered.` };
   }
 
   return { ok: true, ownerOverride: false, website, plan, used, limit: totalLimit, remaining, month: currentMonth };

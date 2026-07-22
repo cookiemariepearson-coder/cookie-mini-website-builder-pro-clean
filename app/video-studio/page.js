@@ -83,7 +83,8 @@ export default function VideoStudio() {
           voice,
           accessCode: ownerMode ? accessCode : '',
           customerEmail,
-          websiteSlug
+          websiteSlug,
+          standalonePass: standaloneAccess
         })
       });
       const data = await res.json().catch(() => ({ ok: false, error: 'Could not read server response.' }));
@@ -143,12 +144,12 @@ export default function VideoStudio() {
         <p>Free Launch Page and Starter Pro customers can see this upgrade offer. Website plan customers need Business or Premium for real HeyGen video generation. The separate $5 AI Video Studio opens the creative script and planning studio.</p>
         <div className="notice success"><strong>Current AI Video access:</strong><br />Business: 1 real HeyGen video/month. Premium: 3 real HeyGen videos/month. $5 AI Video Studio: creative video planning studio only.</div>
         <div className="navRow"><a className="btn" href="/pricing?upgrade=ai-video">View Upgrade Plans</a><a className="btn dark" href={websiteSlug ? `/builder?draft=${encodeURIComponent(websiteSlug)}` : '/builder?restore=1'}>Back to Builder</a><a className="btn light" href="/customer">My Website</a></div>
-        <details className="notice" style={{ marginTop: 14 }}>
-          <summary><strong>Owner/admin testing only</strong></summary>
+        <div className="notice ownerTestPanel" style={{ marginTop: 14 }}>
+          <strong>Owner/admin testing only</strong>
           <p>This is only for the site owner testing HeyGen. Customers do not need this.</p>
           <label className="checkLine"><input type="checkbox" checked={ownerMode} onChange={e => setOwnerMode(e.target.checked)} /> Use owner test mode</label>
           {ownerMode && <div className="field"><label>Owner AI Video Access Code</label><input value={accessCode} onChange={e => setAccessCode(e.target.value)} placeholder="Owner testing code" type="password" autoComplete="new-password" /></div>}
-        </details>
+        </div>
       </section>
     </main></>;
   }
@@ -180,14 +181,18 @@ export default function VideoStudio() {
       </div>
       <div className="field"><label>Voice style</label><select value={voice} onChange={e => setVoice(e.target.value)}>{['Warm female voice', 'Sassy female voice', 'Professional narrator', 'Friendly upbeat voice', 'Luxury commercial voice'].map(x => <option key={x}>{x}</option>)}</select></div>
       {canCreateRealVideo ? <label className="checkLine"><input type="checkbox" checked={generateReal} onChange={e => setGenerateReal(e.target.checked)} /> I understand real video generation uses monthly AI video credits.</label> : <div className="notice"><strong>Creative planning mode:</strong> This access creates scripts, captions, shot lists, voiceover text, and video prompts. Real HeyGen video generation is included with Business/Premium website plans or owner testing only.</div>}
-      <details className="notice" style={{ marginTop: 14 }}>
-        <summary><strong>Owner/admin testing only</strong></summary>
-        <p>Customers do not need this. Use this only when you want to test HeyGen video creation without using a customer plan limit.</p>
+      <div className="notice ownerTestPanel" style={{ marginTop: 14 }}>
+        <strong>Owner testing mode</strong>
+        <p>Use this when you are testing and do not want to use a customer&apos;s monthly Business/Premium video credit.</p>
         <label className="checkLine"><input type="checkbox" checked={ownerMode} onChange={e => setOwnerMode(e.target.checked)} /> Use owner test mode for this video</label>
         {ownerMode && <div className="field"><label>Owner AI Video Access Code</label><input value={accessCode} onChange={e => setAccessCode(e.target.value)} placeholder="Owner testing code" type="password" autoComplete="new-password" /></div>}
-      </details>
+      </div>
       {canCreateRealVideo ? <button className="btn" disabled={!generateReal || loading} onClick={createRealVideo}>{loading ? 'Checking plan and sending to HeyGen...' : 'Generate Real Video with HeyGen'}</button> : <a className="btn dark" href="/pricing?upgrade=ai-video#ai-video">Upgrade for Real HeyGen Video</a>}
-      {error && <div className="notice danger"><strong>Error:</strong> {error}</div>}
+      {error && <div className="notice danger"><strong>Error:</strong> {error}
+        {String(error).toLowerCase().includes('used all real ai video credits') && <div style={{ marginTop: 10 }}>
+          <strong>Testing note:</strong> Turn on Owner testing mode above and enter your owner access code to test HeyGen without using the customer&apos;s monthly credit.
+        </div>}
+      </div>}
     </section>
 
     <section className="dashboard">

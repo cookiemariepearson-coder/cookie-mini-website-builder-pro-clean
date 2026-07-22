@@ -228,7 +228,7 @@ export default function Builder() {
       sections: ns.sections,
       designUpdatedAt: Date.now()
     }));
-    setMessage('Website type changed. Your selected sections were kept so you can choose the pages you want.');
+    setMessage('Website type changed. Your selected sections were kept. Go to Sections & Wording to pick your own sections and add Order / Book / Buy buttons.');
   }
 
   function selectStyle(key) {
@@ -339,7 +339,7 @@ export default function Builder() {
     if (!planAllowsAiVideo(site.plan)) {
       persistLocal('Draft saved before viewing AI Video upgrade options.');
       setMessage('AI Video Studio is available on Business and Premium. Upgrade to unlock real AI video creation.');
-      setTimeout(() => { window.location.href = '/pricing?upgrade=ai-video#ai-video'; }, 650);
+      setTimeout(() => { window.location.href = '/checkout/ai-video'; }, 650);
       return;
     }
     const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
@@ -480,6 +480,7 @@ export default function Builder() {
                 <Field label="Plan"><select value={site.plan} onChange={e => {
                   const nextPlan = e.target.value;
                   update({ plan: nextPlan, pages: normalizeSelectedPagesForPlan(site.pages || ['Home'], nextPlan), customerActions: normalizeCustomerActions(site.customerActions, nextPlan) });
+                  setMessage(`Plan changed to ${plans[nextPlan]?.label}. Pick your own sections below instead of letting a template choose for you.`);
                 }}>{Object.entries(plans).map(([k, v]) => <option value={k} key={k}>{v.label} - {v.price}</option>)}</select></Field>
                 <Field label="Website type"><select value={site.typeKey} onChange={e => chooseType(e.target.value)}>{templateLibrary.map(t => <option value={t.key} key={t.key}>{t.type}</option>)}</select></Field>
                 <h3>Template look</h3>
@@ -519,6 +520,12 @@ export default function Builder() {
                     <li>Premium: all built-in sections plus image/video upload options and AI Video Studio.</li>
                     <li>Order / Book / Buy buttons: Free 1, Starter 2, Business 4, Premium 8.</li>
                   </ul>
+                </div>
+                <div className="builderActionGuide">
+                  <strong>Build the customer path:</strong>
+                  <span>1. Pick your own sections.</span>
+                  <span>2. Select <b>Order / Book / Buy</b>.</span>
+                  <span>3. Add buttons like <b>Book Now</b>, <b>Order Now</b>, <b>Buy Now</b>, or <b>Request Quote</b>.</span>
                 </div>
                 <div className="templateList pagePickList sectionPickList">
                   {pageOptions.map(page => {
@@ -663,6 +670,13 @@ function CustomerActionEditor({ site, updateSection, updateCustomerActions }) {
 
       <div className="notice">
         <strong>{plans[site.plan]?.label}</strong> includes up to {limit} customer action button{limit === 1 ? '' : 's'}.
+      </div>
+
+      <div className="quickActionPresetGrid">
+        <button type="button" className="btn light" onClick={() => updateCustomerActions([{ label: 'Book Now', type: 'book', value: '', note: 'Add your booking link.' }])}>Use Book Now</button>
+        <button type="button" className="btn light" onClick={() => updateCustomerActions([{ label: 'Order Now', type: 'order', value: '', note: 'Add your order form or menu link.' }])}>Use Order Now</button>
+        <button type="button" className="btn light" onClick={() => updateCustomerActions([{ label: 'Buy Now', type: 'buy', value: '', note: 'Add your checkout or product link.' }])}>Use Buy Now</button>
+        <button type="button" className="btn light" onClick={() => updateCustomerActions([{ label: 'Request Quote', type: 'quote', value: '', note: 'Add your quote form or contact link.' }])}>Use Request Quote</button>
       </div>
 
       <div className="customerActionList">
