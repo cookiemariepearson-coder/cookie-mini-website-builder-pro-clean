@@ -1,0 +1,244 @@
+/* Cookie Mini Website Builder Pro - clean pricing organization + standalone AI Video option */
+
+*,
+*::before,
+*::after{box-sizing:border-box;}
+
+html,body{max-width:100%;overflow-x:hidden;}
+
+.heroButtonRow,
+.pricingHeaderActions,
+.landingChoiceGrid,
+.cleanPlanGrid{
+  max-width:100%;
+}
+
+.landingChoiceWrap{
+  max-width:1180px;
+  margin:0 auto 28px;
+  padding:0 28px;
+}
+
+.landingChoiceCard,
+.pricingHeaderCard,
+.standaloneVideoCard{
+  background:linear-gradient(135deg,#ffffff,#fff8ef);
+  border:1px solid #eaddec;
+  border-radius:32px;
+  padding:24px;
+  box-shadow:0 24px 58px rgba(0,0,0,.12);
+}
+
+.landingChoiceCard h2,
+.pricingHeaderCard h1,
+.standaloneVideoCard h2{
+  color:#20172f;
+  line-height:1.05;
+}
+
+.landingChoiceCard p,
+.pricingHeaderCard p,
+.standaloneVideoCard p{
+  color:#5f506d;
+  line-height:1.55;
+}
+
+.landingChoiceGrid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+  margin-top:18px;
+}
+
+.landingChoiceGrid > div,
+.landingAiSideCard{
+  background:linear-gradient(135deg,#2a103b,#12071d);
+  border:1px solid rgba(255,255,255,.16);
+  color:#fff;
+  border-radius:24px;
+  padding:18px;
+  box-shadow:0 18px 42px rgba(0,0,0,.2);
+}
+
+.landingChoiceGrid h3,
+.landingAiSideCard h3{color:#fff;margin-top:0;}
+
+.landingChoiceGrid p,
+.landingAiSideCard p{color:#f2e9fb;}
+
+.cleanPlanHero{
+  align-items:stretch;
+}
+
+.landingAiSideCard{
+  align-self:stretch;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+.cleanPricingPage{
+  padding-top:30px;
+}
+
+.pricingHeaderCard{
+  margin-bottom:24px;
+}
+
+.pricingHeaderActions{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-top:18px;
+}
+
+.cleanPlanGrid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+  gap:18px;
+  margin:24px 0;
+}
+
+.cleanPlanCard{
+  position:relative;
+  background:linear-gradient(135deg,#fff,#fff7ef);
+  border:1px solid #eaddec;
+  border-radius:28px;
+  padding:22px;
+  box-shadow:0 22px 50px rgba(0,0,0,.12);
+  min-width:0;
+  overflow:hidden;
+}
+
+.cleanPlanCard h2{
+  margin:0 0 8px;
+  color:#20172f;
+  font-size:24px;
+}
+
+.cleanPlanPrice{
+  font-size:30px;
+  font-weight:900;
+  color:#d8731b;
+  margin:8px 0 12px;
+  line-height:1.1;
+  overflow-wrap:break-word;
+}
+
+.cleanPlanCard p{
+  color:#4d3f5d;
+  line-height:1.45;
+  min-height:72px;
+}
+
+.featuredCleanPlanCard{
+  border:2px solid #f59a23;
+  box-shadow:0 26px 60px rgba(245,154,35,.22);
+}
+
+.popularRibbon{
+  display:inline-block;
+  background:#ffbd49;
+  color:#1d102c;
+  padding:7px 12px;
+  border-radius:999px;
+  font-weight:900;
+  font-size:13px;
+  margin-bottom:12px;
+}
+
+.standaloneVideoCard{
+  margin:28px 0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+}
+
+.aiVideoCheckoutCard code{
+  display:inline-block;
+  background:#160c22;
+  color:#fff;
+  padding:5px 8px;
+  border-radius:8px;
+  margin:6px 0;
+}
+
+.frontPlanVisualList{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+  width:100%;
+  margin-top:16px;
+}
+
+.frontPlanVisualCard{
+  display:block;
+  border-radius:20px;
+  padding:14px;
+  background:linear-gradient(135deg,#2a103b,#12071d);
+  color:#fff;
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:0 18px 40px rgba(0,0,0,.18);
+}
+
+.frontPlanVisualCard strong,
+.frontPlanVisualCard span,
+.frontPlanVisualCard small{
+  display:block;
+}
+
+.frontPlanVisualCard span{
+  color:#ffbd49;
+  font-weight:900;
+  font-size:1.25rem;
+  margin:5px 0;
+}
+
+.frontPlanVisualCard small{
+  color:#f5e7ff;
+  line-height:1.35;
+}
+
+@media(max-width:900px){
+  .landingChoiceGrid,
+  .standaloneVideoCard{
+    grid-template-columns:1fr;
+    display:grid;
+  }
+
+  .landingChoiceWrap{
+    padding:0 16px;
+  }
+
+  .pricingHeaderActions,
+  .heroButtonRow{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+  }
+
+  .pricingHeaderActions .btn,
+  .heroButtonRow .btn,
+  .standaloneVideoCard .btn{
+    width:100%;
+    text-align:center;
+  }
+}
+
+@media(max-width:520px){
+  .landingChoiceCard,
+  .pricingHeaderCard,
+  .standaloneVideoCard{
+    border-radius:24px;
+    padding:18px;
+  }
+
+  .cleanPlanGrid{
+    grid-template-columns:1fr;
+  }
+
+  .cleanPlanCard p{
+    min-height:auto;
+  }
+}

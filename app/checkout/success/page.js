@@ -14,7 +14,8 @@ const planSummary = {
   starter: 'Starter Pro — includes up to 4 selected sections plus image/video upload options.',
   business: 'Business — includes up to 6 selected sections, image/video upload options, and AI Video Studio access.',
   premium: 'Premium — includes access to all built-in sections, image/video upload options, and AI Video Studio access.',
-  extra: 'Extra Page Add-On — adds extra section/page space to an existing paid website.'
+  extra: 'Extra Page Add-On — adds extra section/page space to an existing paid website.',
+  'ai-video': 'AI Video Studio — one standalone AI video access purchase.'
 };
 
 function safeParse(raw) {
@@ -27,6 +28,7 @@ function pickSlug(site) {
 
 function normalizePaidPlan(value, fallback = 'starter') {
   const raw = String(value || '').toLowerCase();
+  if (raw === 'ai-video') return 'ai-video';
   if (raw === '1' || raw === 'true') return fallback || 'starter';
   if (['free','starter','business','premium'].includes(raw)) return raw;
   if (raw === 'extra') return fallback && fallback !== 'free' ? fallback : 'starter';
@@ -45,18 +47,34 @@ function updateLocalDraft(site) {
 
 export default function CheckoutSuccess() {
   const [site, setSite] = useState(null);
-  const [message, setMessage] = useState('Publishing your website...');
+  const [message, setMessage] = useState('Completing checkout...');
   const [publishedSlug, setPublishedSlug] = useState('');
   const [error, setError] = useState('');
   const [isPublishing, setIsPublishing] = useState(true);
+  const [aiVideoPurchase, setAiVideoPurchase] = useState(false);
 
   const siteUrl = useMemo(() => publishedSlug ? `https://${publishedSlug}.${ROOT}` : '', [publishedSlug]);
   const displayedPlan = site?.plan || 'free';
-  const completedPurchase = site?.completedPurchase || displayedPlan;
+  const completedPurchase = aiVideoPurchase ? 'ai-video' : (site?.completedPurchase || displayedPlan);
   const selectedSections = site?.pages?.length ? site.pages.join(', ') : 'Home';
 
   useEffect(() => {
-    async function publishSavedDraft() {
+    async function completeCheckout() {
+      const params = new URLSearchParams(window.location.search);
+      const paidParam = params.get('paid') || '';
+
+      if (String(paidParam).toLowerCase() === 'ai-video') {
+        try {
+          localStorage.setItem('cookieAiVideoStandalonePass', 'true');
+          localStorage.setItem('cookieAiVideoStandaloneCredits', '1');
+          localStorage.setItem('cookieAiVideoStandalonePurchasedAt', new Date().toISOString());
+        } catch {}
+        setAiVideoPurchase(true);
+        setMessage('AI Video Studio checkout complete. Your video access is ready on this device.');
+        setIsPublishing(false);
+        return;
+      }
+
       const raw = localStorage.getItem(DRAFT_KEY);
       if (!raw) {
         setIsPublishing(false);
@@ -71,9 +89,7 @@ export default function CheckoutSuccess() {
         return;
       }
 
-      const params = new URLSearchParams(window.location.search);
-      const paidParam = params.get('paid') || saved.plan || 'starter';
-      const paidPlan = normalizePaidPlan(paidParam, saved.plan || 'starter');
+      const paidPlan = normalizePaidPlan(paidParam || saved.plan || 'starter', saved.plan || 'starter');
       const slug = pickSlug(saved);
       const finalSite = {
         ...saved,
@@ -81,7 +97,7 @@ export default function CheckoutSuccess() {
         plan: paidPlan,
         pages: normalizeSelectedPagesForPlan(saved.pages, paidPlan),
         status: 'published',
-        completedPurchase: paidParam
+        completedPurchase: paidParam || paidPlan
       };
 
       setSite(finalSite);
@@ -110,7 +126,7 @@ export default function CheckoutSuccess() {
       }
     }
 
-    publishSavedDraft();
+    completeCheckout();
   }, []);
 
   function startFreshDraft() {
@@ -119,6 +135,33 @@ export default function CheckoutSuccess() {
       localStorage.removeItem(CURRENT_DRAFT_SLUG_KEY);
     } catch {}
     window.location.href = '/builder';
+  }
+
+  if (aiVideoPurchase) {
+    return (
+      <main className="wrap dashboard checkoutSuccessPage">
+        <span className="kicker">Checkout Complete</span>
+        <h1>AI Video Studio is ready.</h1>
+        <p>{message}</p>
+
+        <div className="notice success">
+          <strong>Purchase confirmed:</strong> AI Video Studio — $5<br />
+          This standalone option is for customers who want a video workflow without purchasing a website plan.
+        </div>
+
+        <div className="navRow checkoutSuccessActions">
+          <a className="btn" href="/video-studio?mode=standalone">Open AI Video Studio</a>
+          <a className="btn dark" href="/video-studio/results">Open Video Results</a>
+          <a className="btn light" href="/pricing">View Website Plans</a>
+          <a className="btn light" href="/builder">Build a Website</a>
+        </div>
+
+        <div className="notice supportAfterActions">
+          <strong>Any issues?</strong> Click Contact Us after trying the buttons above.
+          <br /><a className="btn light" href="/contact">Contact Us</a>
+        </div>
+      </main>
+    );
   }
 
   return (

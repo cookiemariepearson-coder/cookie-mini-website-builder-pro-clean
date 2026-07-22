@@ -4,9 +4,19 @@ import Nav from '../../lib/Nav';
 
 function safeJson(value) { try { return JSON.parse(value); } catch { return null; } }
 function getInitialParams() {
-  if (typeof window === 'undefined') return { shouldReturn: false, draftSlug: '' };
+  if (typeof window === 'undefined') return { shouldReturn: false, draftSlug: '', standalone: false };
   const params = new URLSearchParams(window.location.search);
-  return { shouldReturn: params.get('return') === 'builder', draftSlug: params.get('draft') || '' };
+  const standalone = params.get('mode') === 'standalone' || localStorage.getItem('cookieAiVideoStandalonePass') === 'true';
+  return { shouldReturn: params.get('return') === 'builder', draftSlug: params.get('draft') || '', standalone };
+}
+function standaloneCredits() {
+  if (typeof window === 'undefined') return 0;
+  return Number(localStorage.getItem('cookieAiVideoStandaloneCredits') || 0);
+}
+function useStandaloneCredit() {
+  if (typeof window === 'undefined') return;
+  const left = Math.max(0, standaloneCredits() - 1);
+  localStorage.setItem('cookieAiVideoStandaloneCredits', String(left));
 }
 function download(name, text, type = 'text/plain') {
   const a = document.createElement('a');
@@ -34,7 +44,7 @@ export default function VideoStudio() {
   const [style, setStyle] = useState('Professional');
   const [length, setLength] = useState('15 seconds');
   const [voice, setVoice] = useState('Warm female voice');
-  const [customerEmail, setCustomerEmail] = useState(draft?.customerEmail || draft?.email || savedCustomer?.email || '');
+  const [customerEmail, setCustomerEmail] = useState(draft?.email || savedCustomer?.email || '');
   const [websiteSlug, setWebsiteSlug] = useState(initial.draftSlug || draft?.slug || savedCustomer?.slug || '');
   const [accessCode, setAccessCode] = useState('');
   const [ownerMode, setOwnerMode] = useState(false);
@@ -57,11 +67,15 @@ export default function VideoStudio() {
     try { localStorage.setItem('cookieHeyGenJob', JSON.stringify(nextJob)); } catch {}
   }
   function rememberCustomer() {
-    try { localStorage.setItem('cookieVideoCustomer', JSON.stringify({ email: customerEmail, slug: websiteSlug, businessName: biz, plan: draft?.plan || savedCustomer?.plan || '' })); } catch {}
+    try { localStorage.setItem('cookieVideoCustomer', JSON.stringify({ email: customerEmail, slug: websiteSlug, businessName: biz })); } catch {}
   }
 
   async function createRealVideo() {
     setError('');
+    if (initial.standalone && standaloneCredits() <= 0 && !ownerMode) {
+      setError('This $5 AI Video Studio pass has already been used on this device. Purchase another pass or use an active Business/Premium website plan.');
+      return;
+    }
     setLoading(true);
     rememberCustomer();
     try {
@@ -78,6 +92,7 @@ export default function VideoStudio() {
           length,
           voice,
           accessCode: ownerMode ? accessCode : '',
+          standalonePass: initial.standalone,
           customerEmail,
           websiteSlug
         })
@@ -85,6 +100,7 @@ export default function VideoStudio() {
       const data = await res.json().catch(() => ({ ok: false, error: 'Could not read server response.' }));
       if (!res.ok || !data.ok) throw new Error(data.error || 'HeyGen request failed.');
       rememberJob({ ...data, createdAt: new Date().toISOString(), businessName: biz || 'Your Business' });
+      if (initial.standalone && !ownerMode) useStandaloneCredit();
     } catch (err) {
       setError(err.message || 'Something went wrong creating the video.');
     }
@@ -125,35 +141,15 @@ export default function VideoStudio() {
 
   const videoUrl = jobVideoUrl(job);
   const thumbUrl = jobThumbnailUrl(job);
-  const draftPlan = String(draft?.plan || savedCustomer?.plan || '').toLowerCase();
-  const planHasVideoAccess = ['business', 'premium'].includes(draftPlan);
-  const canOpenStudio = planHasVideoAccess || ownerMode;
-
-  if (!canOpenStudio) {
-    return <><Nav /><main className="wrap aiKit">
-      <section className="dashboard">
-        <span className="kicker">AI Video Studio Upgrade</span>
-        <h1>AI Video Studio opens on Business and Premium.</h1>
-        <p>Free Launch Page and Starter Pro customers can see this upgrade offer, but they cannot create real AI videos until they upgrade to Business or Premium.</p>
-        <div className="notice success"><strong>Current AI Video access:</strong><br />Business: 1 real AI video/month. Premium: 3 real AI videos/month.</div>
-        <div className="navRow"><a className="btn" href="/pricing?upgrade=ai-video">View Upgrade Plans</a><a className="btn dark" href={websiteSlug ? `/builder?draft=${encodeURIComponent(websiteSlug)}` : '/builder?restore=1'}>Back to Builder</a><a className="btn light" href="/customer">My Website</a></div>
-        <details className="notice" style={{ marginTop: 14 }}>
-          <summary><strong>Owner/admin testing only</strong></summary>
-          <p>This is only for the site owner testing HeyGen. Customers do not need this.</p>
-          <label className="checkLine"><input type="checkbox" checked={ownerMode} onChange={e => setOwnerMode(e.target.checked)} /> Use owner test mode</label>
-          {ownerMode && <div className="field"><label>Owner AI Video Access Code</label><input value={accessCode} onChange={e => setAccessCode(e.target.value)} placeholder="Owner testing code" type="password" autoComplete="new-password" /></div>}
-        </details>
-      </section>
-    </main></>;
-  }
 
   return <><Nav /><main className="wrap aiKit">
     <section className="dashboard">
       <span className="kicker">AI Video Studio</span>
       <h1>Create a Video Kit + Real HeyGen Video</h1>
-      <p>Business and Premium customers can create real videos based on monthly plan limits. Lower plans see the upgrade offer instead of opening the studio.</p>
+      <p>Create scripts, captions, prompts, and real AI video workflows. Business and Premium website plans include AI Video Studio access. A separate $5 AI Video option is available for customers who do not need a website plan.</p>
       {initial.shouldReturn && <div className="notice"><strong>Your website draft was saved before opening AI Video Studio.</strong><br />Use the button below to return to the builder without losing your work.</div>}
-      <div className="notice success"><strong>Plan limits:</strong><br />Business: 1 real HeyGen video/month. Premium: 3 real HeyGen videos/month. Free and Starter must upgrade to open AI Video Studio.</div>
+      <div className="notice success"><strong>AI Video access:</strong><br />Free and Starter website plans can use creative kit mode only. Business includes 1 real video/month. Premium includes 3 real videos/month. The separate $5 AI Video option gives standalone video access without a website plan.</div>
+      {initial.standalone && <div className="notice"><strong>Standalone AI Video pass active.</strong><br />Credits left on this device: {standaloneCredits()}</div>}
       <div className="navRow">
         <button className="btn dark" onClick={goBack}>Back to Website Builder</button>
         <a className="btn light" href="/customer">Open My Website</a>
@@ -173,7 +169,7 @@ export default function VideoStudio() {
         <div className="field"><label>Length</label><select value={length} onChange={e => setLength(e.target.value)}>{['15 seconds', '30 seconds', '45 seconds'].map(x => <option key={x}>{x}</option>)}</select></div>
       </div>
       <div className="field"><label>Voice style</label><select value={voice} onChange={e => setVoice(e.target.value)}>{['Warm female voice', 'Sassy female voice', 'Professional narrator', 'Friendly upbeat voice', 'Luxury commercial voice'].map(x => <option key={x}>{x}</option>)}</select></div>
-      <label className="checkLine"><input type="checkbox" checked={generateReal} onChange={e => setGenerateReal(e.target.checked)} /> I understand real video generation uses monthly AI video credits.</label>
+      <label className="checkLine"><input type="checkbox" checked={generateReal} onChange={e => setGenerateReal(e.target.checked)} /> I understand real video generation uses AI video access from a Business/Premium plan or the separate $5 AI Video option.</label>
       <details className="notice" style={{ marginTop: 14 }}>
         <summary><strong>Owner/admin testing only</strong></summary>
         <p>Customers do not need this. Use this only when you want to test HeyGen video creation without using a customer plan limit.</p>
@@ -201,7 +197,7 @@ export default function VideoStudio() {
       {!job && <p>No real HeyGen video has been started in this browser yet.</p>}
       {job && <div>
         <p><strong>Status:</strong> {videoUrl ? 'completed' : (job.status || 'generating')}</p>
-        {job.plan && <p><strong>Plan checked:</strong> {job.ownerOverride ? 'Owner override' : job.plan}</p>}
+        {job.plan && <p><strong>Access checked:</strong> {job.ownerOverride ? 'Owner override' : (job.plan === 'ai-video-pass' ? 'AI Video Studio $5 pass' : job.plan)}</p>}
         {job.videoUsage && !job.ownerOverride && <p><strong>Monthly usage:</strong> {job.videoUsage.used} of {job.videoUsage.limit} used. {job.videoUsage.remaining} remaining.</p>}
         {job.usageWarning && <div className="notice danger">{job.usageWarning}</div>}
         {jobSessionId(job) && <p><strong>Session:</strong> {jobSessionId(job)}</p>}
@@ -225,6 +221,6 @@ function makeKit({ biz, promo, aud, type, platform, style, length, voice }) {
     'Shot List': `1. Opening logo/title card\n2. Product/service close-up\n3. Three benefit text overlays\n4. Customer trust/review moment\n5. Call-to-action screen`,
     'Video Prompt': `Create a ${length} vertical 9:16 ${type} for ${b}. Promote: ${p}. Style: ${style}. Platform: ${platform}. Use clean motion graphics, bold captions, smooth transitions, and a strong call to action. No copyrighted logos or celebrity likenesses.`,
     Voiceover: `Use a ${voice}. Say: Need ${p}? ${b} makes it simple. We help ${aud} get what they need with a clear, professional experience. Visit our website today.`,
-    'Next Steps': `Copy the script, captions, and prompt, or use the protected HeyGen button to create a real video. Business includes 1 real video per month. Premium includes 3 real videos per month. Owner testing is hidden inside Owner/Admin testing only.`
+    'Next Steps': `Copy the script, captions, and prompt, or use the protected HeyGen button to create a real video. Business includes 1 real video per month. Premium includes 3 real videos per month. The separate $5 AI Video option can be used when a customer does not need a website plan. Owner testing is hidden inside Owner/Admin testing only.`
   };
 }

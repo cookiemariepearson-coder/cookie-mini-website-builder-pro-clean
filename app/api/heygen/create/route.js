@@ -167,6 +167,11 @@ async function checkCustomerAccess(body) {
     return { ok: true, ownerOverride: true, plan: 'owner', limit: 9999, used: 0, remaining: 9999, website: null };
   }
 
+  const standalonePass = body.standalonePass === true || String(body.standalonePass || '').toLowerCase() === 'true';
+  if (standalonePass) {
+    return { ok: true, ownerOverride: false, standalonePass: true, plan: 'ai-video-pass', limit: 1, used: 0, remaining: 1, website: null };
+  }
+
   const email = getEmail(body.customerEmail || body.email || body.accountEmail || '');
   const slug = normalizeSlug(body.websiteSlug || body.slug || body.websiteName || body.subdomain || '');
 

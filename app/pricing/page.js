@@ -1,48 +1,42 @@
 import Link from 'next/link';
 import Nav from '../../lib/Nav';
 
-const checkoutLinks = {
-  starter: '/checkout/starter',
-  business: '/checkout/business',
-  premium: '/checkout/premium',
-  extra: '/checkout/extra',
-};
-
-const currentPlans = [
+const websitePlans = [
   {
     name: 'Free Launch Page',
     price: '$0',
-    desc: 'Includes up to 3 selected sections for a simple starter launch page.',
+    desc: 'Choose up to 3 sections for a simple starter launch page.',
     href: '/builder',
-    type: 'free',
+    cta: 'Start Free',
   },
   {
     name: 'Starter Pro',
     price: '$19/month',
-    desc: 'Includes up to 4 selected sections plus image/video upload options.',
-    img: '/gumroad-plan-images/starter-pro.png',
-    href: checkoutLinks.starter,
+    desc: 'Choose up to 4 sections with image/video upload options.',
+    href: '/checkout/starter',
+    cta: 'Choose Starter Pro',
   },
   {
     name: 'Business',
     price: '$30/month',
-    desc: 'Includes up to 6 selected sections, uploads/media links, and AI Video Studio access.',
-    img: '/gumroad-plan-images/business.png',
-    href: checkoutLinks.business,
+    desc: 'Choose up to 6 sections with upload/media options and AI Video Studio access.',
+    href: '/checkout/business',
+    cta: 'Choose Business',
+    featured: true,
   },
   {
     name: 'Premium',
     price: '$50/month',
-    desc: 'Includes all built-in sections, uploads/media links, and the strongest AI Video Studio access.',
-    img: '/gumroad-plan-images/premium.png',
-    href: checkoutLinks.premium,
+    desc: 'Use all built-in sections with upload/media options and the strongest AI Video Studio access.',
+    href: '/checkout/premium',
+    cta: 'Choose Premium',
   },
   {
     name: 'Extra Page Add-On',
     price: '$10/month per page',
     desc: 'Add extra page/section space as the customer website grows.',
-    img: '/gumroad-plan-images/extra-page-addon.png',
-    href: checkoutLinks.extra,
+    href: '/checkout/extra',
+    cta: 'Choose Extra Page Add-On',
   },
 ];
 
@@ -50,66 +44,41 @@ export default function Pricing(){
   return (
     <>
       <Nav />
-      <main className="wrap pricingPage">
-        <span className="kicker">Simple subscriptions</span>
-        <h1>Choose the plan that fits your website.</h1>
-        <p className="leadText">Start free, save a draft, then upgrade when you need more sections, image/video upload options, or AI Video Studio access.</p>
-
-        <section className="pricingOrderStrip" aria-label="Current pricing plan order">
-          {currentPlans.map((plan) => (
-            <div className="pricingOrderItem" key={plan.name}>
-              <strong>{plan.name}</strong>
-              <span>{plan.price}</span>
-            </div>
-          ))}
-        </section>
-
-        <section className="pricingImageIntro">
-          <div className="card">
-            <span className="kicker">Launch ready</span>
-            <h2>Accurate plan details are now part of your site.</h2>
-            <p>
-              The written details below match the current live offer. Replace Gumroad and website images after the new section-based plan graphics are finalized.
-            </p>
-            <p>
-              <Link className="btn" href="/builder">Start Free</Link>{' '}
-              <Link className="btn dark" href="/customer-start">How It Works</Link>
-            </p>
-          </div>
-          <div className="pricingPlanSnapshot">
-            {currentPlans.map((plan) => (
-              <div className="pricingPlanSnapshotItem" key={plan.name}>
-                <strong>{plan.name}</strong>
-                <span>{plan.price}</span>
-                <small>{plan.desc}</small>
-              </div>
-            ))}
+      <main className="wrap pricingPage cleanPricingPage">
+        <section className="pricingHeaderCard">
+          <span className="kicker">Website plans</span>
+          <h1>Choose the plan that fits your content.</h1>
+          <p>
+            Start with the sections you need today, then upgrade when your website needs more room, media options, or AI Video Studio access.
+          </p>
+          <div className="pricingHeaderActions">
+            <Link className="btn" href="/builder">Start Free</Link>
+            <Link className="btn dark" href="/checkout/ai-video">AI Video Studio — $5</Link>
           </div>
         </section>
 
-        <div className="planAccuracyNote">
-          <strong>Current launch website address:</strong> customername.cookiesdigitalcreations.com. Custom domain support is planned for a later upgrade, so the written plan details on this page are the current live offer.
-        </div>
-
-        <section className="planImageGrid currentPlanImageGrid" aria-label="Current accurate plan list">
-          {currentPlans.map((plan) => (
-            <article className={plan.type === 'free' ? 'planImageCard freeLaunchPlanCard' : 'planImageCard'} key={plan.name}>
-              <div className="accuratePlanBadge" aria-label={plan.name}>
-                <strong>{plan.name}</strong>
-                <span>{plan.price}</span>
-                <small>{plan.desc}</small>
-              </div>
+        <section className="cleanPlanGrid" aria-label="Cookie Mini Website Builder plan options">
+          {websitePlans.map((plan) => (
+            <article className={plan.featured ? 'cleanPlanCard featuredCleanPlanCard' : 'cleanPlanCard'} key={plan.name}>
+              {plan.featured && <div className="popularRibbon">Most Popular</div>}
               <h2>{plan.name}</h2>
-              <p><strong>{plan.price}</strong></p>
+              <div className="cleanPlanPrice">{plan.price}</div>
               <p>{plan.desc}</p>
-              <Link className="btn" href={plan.href}>{plan.type === 'free' ? 'Start Free' : `Choose ${plan.name}`}</Link>
+              <Link className="btn" href={plan.href}>{plan.cta}</Link>
             </article>
           ))}
         </section>
 
-        <div className="notice">
-          <strong>Cookie Credits and AI Video:</strong> website sections/pages are subscription-based. AI Video Studio access depends on the customer plan and the available video limits connected to the platform.
-        </div>
+        <section className="standaloneVideoCard">
+          <div>
+            <span className="kicker">Need video only?</span>
+            <h2>AI Video Studio — $5</h2>
+            <p>
+              Use this option for customers who want help creating a promotional social media video but do not need a website plan.
+            </p>
+          </div>
+          <Link className="btn dark" href="/checkout/ai-video">Start AI Video Checkout</Link>
+        </section>
 
         <section className="customerQuickPanel">
           <div>
