@@ -34,7 +34,7 @@ export default function VideoStudio() {
   const [style, setStyle] = useState('Professional');
   const [length, setLength] = useState('15 seconds');
   const [voice, setVoice] = useState('Warm female voice');
-  const [customerEmail, setCustomerEmail] = useState(draft?.email || savedCustomer?.email || '');
+  const [customerEmail, setCustomerEmail] = useState(draft?.customerEmail || draft?.email || savedCustomer?.email || '');
   const [websiteSlug, setWebsiteSlug] = useState(initial.draftSlug || draft?.slug || savedCustomer?.slug || '');
   const [accessCode, setAccessCode] = useState('');
   const [ownerMode, setOwnerMode] = useState(false);
@@ -57,7 +57,7 @@ export default function VideoStudio() {
     try { localStorage.setItem('cookieHeyGenJob', JSON.stringify(nextJob)); } catch {}
   }
   function rememberCustomer() {
-    try { localStorage.setItem('cookieVideoCustomer', JSON.stringify({ email: customerEmail, slug: websiteSlug, businessName: biz })); } catch {}
+    try { localStorage.setItem('cookieVideoCustomer', JSON.stringify({ email: customerEmail, slug: websiteSlug, businessName: biz, plan: draft?.plan || savedCustomer?.plan || '' })); } catch {}
   }
 
   async function createRealVideo() {
@@ -125,14 +125,35 @@ export default function VideoStudio() {
 
   const videoUrl = jobVideoUrl(job);
   const thumbUrl = jobThumbnailUrl(job);
+  const draftPlan = String(draft?.plan || savedCustomer?.plan || '').toLowerCase();
+  const planHasVideoAccess = ['business', 'premium'].includes(draftPlan);
+  const canOpenStudio = planHasVideoAccess || ownerMode;
+
+  if (!canOpenStudio) {
+    return <><Nav /><main className="wrap aiKit">
+      <section className="dashboard">
+        <span className="kicker">AI Video Studio Upgrade</span>
+        <h1>AI Video Studio opens on Business and Premium.</h1>
+        <p>Free Launch Page and Starter Pro customers can see this upgrade offer, but they cannot create real AI videos until they upgrade to Business or Premium.</p>
+        <div className="notice success"><strong>Current AI Video access:</strong><br />Business: 1 real AI video/month. Premium: 3 real AI videos/month.</div>
+        <div className="navRow"><a className="btn" href="/pricing?upgrade=ai-video">View Upgrade Plans</a><a className="btn dark" href={websiteSlug ? `/builder?draft=${encodeURIComponent(websiteSlug)}` : '/builder?restore=1'}>Back to Builder</a><a className="btn light" href="/customer">My Website</a></div>
+        <details className="notice" style={{ marginTop: 14 }}>
+          <summary><strong>Owner/admin testing only</strong></summary>
+          <p>This is only for the site owner testing HeyGen. Customers do not need this.</p>
+          <label className="checkLine"><input type="checkbox" checked={ownerMode} onChange={e => setOwnerMode(e.target.checked)} /> Use owner test mode</label>
+          {ownerMode && <div className="field"><label>Owner AI Video Access Code</label><input value={accessCode} onChange={e => setAccessCode(e.target.value)} placeholder="Owner testing code" type="password" autoComplete="new-password" /></div>}
+        </details>
+      </section>
+    </main></>;
+  }
 
   return <><Nav /><main className="wrap aiKit">
     <section className="dashboard">
       <span className="kicker">AI Video Studio</span>
       <h1>Create a Video Kit + Real HeyGen Video</h1>
-      <p>Create scripts and captions for any plan. Business and Premium customers can generate real videos based on monthly plan limits.</p>
+      <p>Business and Premium customers can create real videos based on monthly plan limits. Lower plans see the upgrade offer instead of opening the studio.</p>
       {initial.shouldReturn && <div className="notice"><strong>Your website draft was saved before opening AI Video Studio.</strong><br />Use the button below to return to the builder without losing your work.</div>}
-      <div className="notice success"><strong>Plan limits:</strong><br />Free: kit only. Starter: kit only. Business: 1 real HeyGen video/month. Premium: 3 real HeyGen videos/month.</div>
+      <div className="notice success"><strong>Plan limits:</strong><br />Business: 1 real HeyGen video/month. Premium: 3 real HeyGen videos/month. Free and Starter must upgrade to open AI Video Studio.</div>
       <div className="navRow">
         <button className="btn dark" onClick={goBack}>Back to Website Builder</button>
         <a className="btn light" href="/customer">Open My Website</a>

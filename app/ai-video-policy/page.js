@@ -1,2 +1,1 @@
-import { redirect } from 'next/navigation';
-export default function Page(){ redirect('/legal/ai-video'); }
+export { default, metadata } from '../../legal/ai-video/page';

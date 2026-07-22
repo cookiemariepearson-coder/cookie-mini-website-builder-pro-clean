@@ -12,35 +12,35 @@ const currentPlans = [
   {
     name: 'Free Launch Page',
     price: '$0',
-    desc: 'Start with one free basic launch page.',
+    desc: 'Includes up to 3 selected sections for a simple starter launch page.',
     href: '/builder',
     type: 'free',
   },
   {
     name: 'Starter Pro',
     price: '$19/month',
-    desc: 'One professional page website.',
+    desc: 'Includes up to 4 selected sections plus image/video upload options.',
     img: '/gumroad-plan-images/starter-pro.png',
     href: checkoutLinks.starter,
   },
   {
     name: 'Business',
     price: '$30/month',
-    desc: 'Up to 3 page website for growing brands.',
+    desc: 'Includes up to 6 selected sections, uploads/media links, and AI Video Studio access.',
     img: '/gumroad-plan-images/business.png',
     href: checkoutLinks.business,
   },
   {
     name: 'Premium',
     price: '$50/month',
-    desc: 'Access to all pages for the most complete website option.',
+    desc: 'Includes all built-in sections, uploads/media links, and the strongest AI Video Studio access.',
     img: '/gumroad-plan-images/premium.png',
     href: checkoutLinks.premium,
   },
   {
     name: 'Extra Page Add-On',
     price: '$10/month per page',
-    desc: 'Add extra pages as the customer website grows.',
+    desc: 'Add extra page/section space as the customer website grows.',
     img: '/gumroad-plan-images/extra-page-addon.png',
     href: checkoutLinks.extra,
   },
@@ -53,7 +53,7 @@ export default function Pricing(){
       <main className="wrap pricingPage">
         <span className="kicker">Simple subscriptions</span>
         <h1>Choose the plan that fits your website.</h1>
-        <p className="leadText">Start free, save a draft, then upgrade when you need more pages, stronger features, or AI Video Studio access.</p>
+        <p className="leadText">Start free, save a draft, then upgrade when you need more sections, image/video upload options, or AI Video Studio access.</p>
 
         <section className="pricingOrderStrip" aria-label="Current pricing plan order">
           {currentPlans.map((plan) => (
@@ -67,36 +67,38 @@ export default function Pricing(){
         <section className="pricingImageIntro">
           <div className="card">
             <span className="kicker">Launch ready</span>
-            <h2>Professional plan graphics are now part of your site.</h2>
+            <h2>Accurate plan details are now part of your site.</h2>
             <p>
-              These images match your Gumroad products so visitors see the same polished brand before checkout and after they reach Gumroad.
+              The written details below match the current live offer. Replace Gumroad and website images after the new section-based plan graphics are finalized.
             </p>
             <p>
               <Link className="btn" href="/builder">Start Free</Link>{' '}
               <Link className="btn dark" href="/customer-start">How It Works</Link>
             </p>
           </div>
-          <div className="featuredPlanImage">
-            <img src="/gumroad-plan-images/business.png" alt="Business plan promotional graphic" />
+          <div className="pricingPlanSnapshot">
+            {currentPlans.map((plan) => (
+              <div className="pricingPlanSnapshotItem" key={plan.name}>
+                <strong>{plan.name}</strong>
+                <span>{plan.price}</span>
+                <small>{plan.desc}</small>
+              </div>
+            ))}
           </div>
         </section>
 
         <div className="planAccuracyNote">
-          <strong>Current launch website address:</strong> customername.cookiesdigitalcreations.com. Custom domain support is planned for a later Premium/add-on upgrade, so the written plan details on this page are the current live offer.
+          <strong>Current launch website address:</strong> customername.cookiesdigitalcreations.com. Custom domain support is planned for a later upgrade, so the written plan details on this page are the current live offer.
         </div>
 
-        <section className="planImageGrid currentPlanImageGrid" aria-label="Current plan image gallery">
+        <section className="planImageGrid currentPlanImageGrid" aria-label="Current accurate plan list">
           {currentPlans.map((plan) => (
             <article className={plan.type === 'free' ? 'planImageCard freeLaunchPlanCard' : 'planImageCard'} key={plan.name}>
-              {plan.img ? (
-                <img src={plan.img} alt={`${plan.name} plan graphic`} />
-              ) : (
-                <div className="freeLaunchBadge" aria-label="Free Launch Page">
-                  <span>FREE</span>
-                  <strong>$0</strong>
-                  <small>Launch Page</small>
-                </div>
-              )}
+              <div className="accuratePlanBadge" aria-label={plan.name}>
+                <strong>{plan.name}</strong>
+                <span>{plan.price}</span>
+                <small>{plan.desc}</small>
+              </div>
               <h2>{plan.name}</h2>
               <p><strong>{plan.price}</strong></p>
               <p>{plan.desc}</p>
@@ -106,7 +108,7 @@ export default function Pricing(){
         </section>
 
         <div className="notice">
-          <strong>Cookie Credits and AI Video:</strong> website pages are subscription-based. AI video access depends on the customer plan and the available video limits connected to the platform.
+          <strong>Cookie Credits and AI Video:</strong> website sections/pages are subscription-based. AI Video Studio access depends on the customer plan and the available video limits connected to the platform.
         </div>
 
         <section className="customerQuickPanel">

@@ -1,0 +1,65 @@
+/* Cookie Mini Website Builder Pro - plan accuracy, section limits, and AI gating */
+.planRulesBox{
+  border:1px solid rgba(31,23,52,.14);
+  border-radius:22px;
+  background:#fff8ef;
+  color:#2a1d3b;
+  padding:14px 16px;
+  margin:14px 0 18px;
+}
+.planRulesBox ul{margin:8px 0 0 20px;padding:0;line-height:1.5;}
+.sectionPickList .pick.lockedPick{opacity:.55;cursor:not-allowed;filter:grayscale(.2);}
+.lockedBtn{opacity:.92;border-style:dashed!important;}
+.supportAfterActions{margin-top:18px;}
+.checkoutSuccessActions{margin-bottom:12px;}
+.checkoutSuccessPage .notice.success{background:#f0fff4;border-color:#8bd69e;color:#184927;}
+@media(max-width:760px){
+  .planRulesBox{font-size:14px;}
+  .checkoutSuccessActions{display:grid;grid-template-columns:1fr;}
+  .checkoutSuccessActions .btn,.supportAfterActions .btn{width:100%;text-align:center;}
+}
+
+.frontPlanVisualList,
+.pricingPlanSnapshot{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+  width:100%;
+}
+.frontPlanVisualCard,
+.pricingPlanSnapshotItem,
+.accuratePlanBadge{
+  display:block;
+  border-radius:22px;
+  padding:16px;
+  background:linear-gradient(135deg,#2a103b,#12071d);
+  color:#fff;
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:0 18px 40px rgba(0,0,0,.18);
+}
+.frontPlanVisualCard strong,
+.frontPlanVisualCard span,
+.frontPlanVisualCard small,
+.pricingPlanSnapshotItem strong,
+.pricingPlanSnapshotItem span,
+.pricingPlanSnapshotItem small,
+.accuratePlanBadge strong,
+.accuratePlanBadge span,
+.accuratePlanBadge small{
+  display:block;
+}
+.frontPlanVisualCard span,
+.pricingPlanSnapshotItem span,
+.accuratePlanBadge span{
+  color:#ffbd49;
+  font-weight:900;
+  font-size:1.35rem;
+  margin:5px 0;
+}
+.frontPlanVisualCard small,
+.pricingPlanSnapshotItem small,
+.accuratePlanBadge small{
+  color:#f5e7ff;
+  line-height:1.35;
+}
+.accuratePlanBadge{min-height:210px;display:flex;flex-direction:column;justify-content:center;}

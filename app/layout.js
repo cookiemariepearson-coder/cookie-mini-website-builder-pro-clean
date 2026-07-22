@@ -4,6 +4,7 @@ import './readability-fix.css';
 import './plan-showcase.css';
 import './mobile-responsive-fix.css';
 import './pricing-cleanup-fix.css';
+import './plan-accuracy-fix.css';
 
 export const metadata = {
   title: 'Cookie Mini Website Builder Pro',

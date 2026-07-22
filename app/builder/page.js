@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useDeferredValue } from 'react';
 import SitePreview from '../../lib/SitePreview';
-import { createDefaultSite, templateLibrary, getTemplate, pageOptions, plans, slugify, sectionPrompts } from '../../lib/siteDefaults';
+import { createDefaultSite, templateLibrary, getTemplate, pageOptions, plans, slugify, sectionPrompts, normalizeSelectedPagesForPlan, planAllowsMedia, planAllowsAiVideo, planSectionLimit } from '../../lib/siteDefaults';
 
 const checkout = {
   starter: '/checkout/starter',
@@ -77,7 +77,7 @@ function mergeDefaults(saved) {
     sections: { ...base.sections, ...(saved?.sections || {}) },
     offers: Array.isArray(saved?.offers) && saved.offers.length ? saved.offers : base.offers,
     media: Array.isArray(saved?.media) ? saved.media : [],
-    pages: Array.isArray(saved?.pages) && saved.pages.length ? saved.pages : base.pages,
+    pages: normalizeSelectedPagesForPlan(Array.isArray(saved?.pages) && saved.pages.length ? saved.pages : base.pages, saved?.plan || base.plan),
     desiredPages: Array.isArray(saved?.desiredPages) && saved.desiredPages.length ? saved.desiredPages : base.desiredPages
   };
 }
@@ -215,7 +215,7 @@ export default function Builder() {
       ...preset,
       primaryColor: palette.primary || current.primaryColor,
       accentColor: palette.accent || current.accentColor,
-      pages: current.plan === 'free' ? ['Home'] : ns.pages.slice(0, plans[current.plan]?.maxPages || 1),
+      pages: normalizeSelectedPagesForPlan(ns.pages, current.plan),
       desiredPages: type.pages,
       offerTitle: ns.offerTitle,
       offers: ns.offers,
@@ -240,18 +240,18 @@ export default function Builder() {
     setMessage(`Template look changed to ${style.name}. Layout, background, font feel, and card style were updated too.`);
   }
 
-  function planLimit() { return plans[site.plan]?.maxPages || 1; }
+  function planLimit() { return planSectionLimit(site.plan); }
 
   function addPage(page) {
     if (site.pages.includes(page)) return;
     const limit = planLimit();
     if (site.pages.length >= limit && site.plan !== 'premium') {
-      setMessage(`${plans[site.plan]?.label} includes ${limit} page(s). Extra pages are $10/month each. Sending you to the extra-page checkout.`);
+      setMessage(`${plans[site.plan]?.label} includes ${limit} selected section(s). Extra sections/pages are $10/month each. Sending you to the add-on checkout.`);
       persistLocal('Draft saved before extra page checkout.');
       setTimeout(() => { window.location.href = checkout.extra; }, 550);
       return;
     }
-    update({ pages: [...site.pages, page] });
+    update({ pages: normalizeSelectedPagesForPlan([...site.pages, page], site.plan) });
   }
 
   function removePage(page) {
@@ -273,17 +273,17 @@ export default function Builder() {
 
   function ensureMediaSection(section) {
     if (!section || site.pages.includes(section) || !pageOptions.includes(section)) return true;
-    if (site.plan === 'free') {
-      setMessage(`${section} media is saved in your draft. Free Launch Page publishes Home only. Upgrade to publish ${section}.`);
+    if (!planAllowsMedia(site.plan)) {
+      setMessage('Image and video/media uploads unlock with Starter Pro, Business, and Premium. Upgrade to add uploaded visuals or media links.');
       return false;
     }
     const limit = planLimit();
     if (site.pages.length >= limit && site.plan !== 'premium') {
-      setMessage(`${plans[site.plan]?.label} includes ${limit} page(s). The media was saved, but publishing ${section} requires an extra page add-on.`);
+      setMessage(`${plans[site.plan]?.label} includes ${limit} selected section(s). The media was saved, but showing ${section} requires the add-on or a higher plan.`);
       return false;
     }
-    setSite(current => current.pages.includes(section) ? current : { ...current, pages: [...current.pages, section] });
-    setSaveMessage(`${section} was added to your selected pages so the media can show in the preview.`);
+    setSite(current => current.pages.includes(section) ? current : { ...current, pages: normalizeSelectedPagesForPlan([...current.pages, section], current.plan) });
+    setSaveMessage(`${section} was added to your selected sections so the media can show in the preview.`);
     return true;
   }
 
@@ -313,7 +313,7 @@ export default function Builder() {
   }
 
   async function saveDraft() {
-    const draft = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
+    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     setIsSaving(true);
     setSaveMessage('Saving draft...');
     try {
@@ -330,7 +330,13 @@ export default function Builder() {
   }
 
   async function goVideo() {
-    const draft = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
+    if (!planAllowsAiVideo(site.plan)) {
+      persistLocal('Draft saved before viewing AI Video upgrade options.');
+      setMessage('AI Video Studio is available on Business and Premium. Upgrade to unlock real AI video creation.');
+      setTimeout(() => { window.location.href = '/pricing?upgrade=ai-video'; }, 650);
+      return;
+    }
+    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     persistLocal('Draft saved before opening AI Video Studio.');
     saveLocalDraftIndex(draft);
     setSaveMessage('Saving your draft before opening AI Video Studio...');
@@ -339,7 +345,7 @@ export default function Builder() {
   }
 
   async function publishFree() {
-    const published = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, pages: ['Home'], plan: 'free', status: 'published' };
+    const published = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, pages: normalizeSelectedPagesForPlan(site.pages, 'free'), plan: 'free', status: 'published' };
     try { const lightPublished = stripHeavyLocalData(published); localStorage.setItem(DRAFT_KEY, JSON.stringify(lightPublished)); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, published.slug); saveLocalDraftIndex(lightPublished); } catch {}
     setMessage('Publishing free launch page...');
     try {
@@ -357,7 +363,7 @@ export default function Builder() {
   }
 
   async function checkoutPlan() {
-    const draft = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
+    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     try { const lightDraft = stripHeavyLocalData(draft); localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft)); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draft.slug); saveLocalDraftIndex(lightDraft); } catch {}
     setMessage('Saving your draft before checkout. If checkout opens, your draft was saved.');
     try { await saveDraftOnline(draft, true); } catch {}
@@ -380,19 +386,26 @@ export default function Builder() {
   function next() { persistLocal('Draft saved.'); setStep(s => Math.min(4, s + 1)); }
   function back() { persistLocal('Draft saved.'); setStep(s => Math.max(0, s - 1)); }
 
+  const selectedSections = normalizeSelectedPagesForPlan(site.pages, site.plan);
+  const selectedCount = selectedSections.length;
+  const limitText = plans[site.plan]?.maxPages >= 99 ? 'all built-in sections' : `${planLimit()} selected section(s)`;
+  const canUseMedia = planAllowsMedia(site.plan);
+  const canUseAiVideo = planAllowsAiVideo(site.plan);
+  const previewSite = { ...deferredSite, pages: normalizeSelectedPagesForPlan(deferredSite.pages, deferredSite.plan) };
+
   const previewKey = `${site.typeKey}-${site.styleKey}-${site.primaryColor}-${site.accentColor}-${site.fontStyle}-${site.layoutStyle}-${site.backgroundStyle}-${site.sectionShape}-${site.templateAppliedAt || ''}-${site.designUpdatedAt || ''}`;
 
   return (
     <main className="builderShell">
       <aside className="builderSide">
         <h1>Cookie Mini Website Builder Pro</h1>
-        {['Choose Type & Look','Website Info','Design','Pages & Wording','Preview & Publish'].map((label, index) => (
+        {['Choose Type & Look','Website Info','Design','Sections & Wording','Preview & Publish'].map((label, index) => (
           <button className={`stepBtn ${step === index ? 'active' : ''}`} onClick={() => { persistLocal('Draft saved.'); setStep(index); }} key={label}>{index + 1}. {label}</button>
         ))}
         <div className="notice">Any issues, click the Contact Us button for help.</div>
         <button className="btn light" onClick={saveDraft} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Draft'}</button>
         {isSmallBuilderScreen && <button className="btn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button>}
-        <button className="btn light" onClick={goVideo}>AI Video Studio</button>
+        {planAllowsAiVideo(site.plan) ? <button className="btn light" onClick={goVideo}>AI Video Studio</button> : <button className="btn light lockedBtn" onClick={goVideo}>AI Video Upgrade</button>}
         <a className="btn light" href="/customer">Open My Drafts</a>
         <button className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
         <div className="notice smallNotice"><strong>Current draft:</strong><br />{draftSlugFor(site)}.cookiesdigitalcreations.com</div>
@@ -475,35 +488,60 @@ export default function Builder() {
                   <Field label="Background feel" help="Each option now changes the preview with a different mood. Pattern / art adds decorative artwork based on the website type."><select value={site.backgroundStyle || 'gradient'} onChange={e => updateDesign({ backgroundStyle: e.target.value })}><option value="gradient">Gradient glow</option><option value="dark">Dark luxury</option><option value="soft">Soft light</option><option value="pattern">Pattern / art</option></select></Field>
                   <Field label="Section style"><select value={site.sectionShape || 'cards'} onChange={e => updateDesign({ sectionShape: e.target.value })}><option value="cards">Clean cards</option><option value="floating">Floating 3D cards</option><option value="boxed">Boxed sections</option></select></Field>
                 </div>
-                <Field label="Upload hero image / website visual"><input type="file" accept="image/*" onChange={e => e.target.files?.[0] && uploadHero(e.target.files[0])} />{site.heroImage && <button className="btn dark" onClick={() => update({ heroImage: '' })}>Remove Uploaded Image</button>}</Field>
-                <Field label="Video or media link for this website"><input placeholder="https://youtube.com/... or TikTok/Instagram/Vimeo link" value={site.heroMediaLink || ''} onChange={e => update({ heroMediaLink: e.target.value })} /></Field>
+                {planAllowsMedia(site.plan) ? <>
+                  <Field label="Upload hero image / website visual"><input type="file" accept="image/*" onChange={e => e.target.files?.[0] && uploadHero(e.target.files[0])} />{site.heroImage && <button className="btn dark" onClick={() => update({ heroImage: '' })}>Remove Uploaded Image</button>}</Field>
+                  <Field label="Video or media link for this website"><input placeholder="https://youtube.com/... or TikTok/Instagram/Vimeo link" value={site.heroMediaLink || ''} onChange={e => update({ heroMediaLink: e.target.value })} /></Field>
+                </> : <div className="notice"><strong>Image/video uploads are not included on the Free Launch Page.</strong><br />Starter Pro, Business, and Premium unlock image uploads and video/media links.</div>}
                 <NavRow back={back} next={next} />
               </>
             )}
 
             {step === 3 && (
               <>
-                <h2>Pages & Wording</h2>
-                <p className="mutedText">Free publishes Home only. Starter publishes 1 page. Business publishes up to 3 pages. Premium publishes all selected pages.</p>
-                <div className="notice"><strong>{plans[site.plan]?.label}</strong> includes {plans[site.plan]?.maxPages >= 99 ? 'all built-in pages' : `${plans[site.plan]?.maxPages} page(s)`}. Extra pages are $10/month per page.</div>
-                <div className="templateList pagePickList">
-                  {pageOptions.map(page => (
-                    <button className={`pick ${site.pages.includes(page) ? 'active' : ''}`} key={page} onClick={() => site.pages.includes(page) ? removePage(page) : addPage(page)}>
-                      {site.pages.includes(page) ? '✓ ' : ''}{page}<br />
-                      <small>{sectionPrompts[page]}</small>
-                    </button>
-                  ))}
+                <h2>Sections & Wording</h2>
+                <p className="mutedText">Choose only the sections this customer will complete. Only selected sections appear below and in the live preview, which keeps the builder shorter and less confusing.</p>
+                <div className="notice"><strong>{plans[site.plan]?.label}</strong> includes {limitText}. Selected now: {selectedCount}{plans[site.plan]?.maxPages >= 99 ? '' : ` / ${planLimit()}`}.</div>
+                <div className="planRulesBox">
+                  <strong>Current plan rules:</strong>
+                  <ul>
+                    <li>Free Launch Page: 3 selected sections.</li>
+                    <li>Starter Pro: 4 selected sections plus image/video upload options.</li>
+                    <li>Business: 6 selected sections plus image/video upload options and AI Video Studio.</li>
+                    <li>Premium: all built-in sections plus image/video upload options and AI Video Studio.</li>
+                  </ul>
                 </div>
-                <h3>Write section wording</h3>
-                <p className="mutedText">Selected sections show in the live preview. You can still type wording for other sections first, then select that page when you are ready.</p>
-                {pageOptions.map(page => (
-                  <Field label={`${site.pages.includes(page) ? '✓ ' : ''}${page} wording`} help={sectionPrompts[page]} key={page}>
+                <div className="templateList pagePickList sectionPickList">
+                  {pageOptions.map(page => {
+                    const isSelected = selectedSections.includes(page);
+                    const isHome = page === 'Home';
+                    const isAtLimit = !isSelected && plans[site.plan]?.maxPages < 99 && selectedCount >= planLimit();
+                    return (
+                      <button
+                        className={`pick ${isSelected ? 'active' : ''} ${isAtLimit ? 'lockedPick' : ''}`}
+                        key={page}
+                        disabled={isAtLimit || (isHome && isSelected)}
+                        onClick={() => isSelected ? removePage(page) : addPage(page)}
+                        title={isAtLimit ? 'Upgrade or remove another section first.' : ''}
+                      >
+                        {isSelected ? '✓ ' : ''}{page}{isHome ? ' (required)' : ''}<br />
+                        <small>{isAtLimit ? 'Plan limit reached. Upgrade or remove another selected section.' : sectionPrompts[page]}</small>
+                      </button>
+                    );
+                  })}
+                </div>
+                <h3>Write wording for selected sections only</h3>
+                <p className="mutedText">These are the only sections that will appear in the live preview and on the published website for this plan.</p>
+                {selectedSections.map(page => (
+                  <Field label={`${page} wording`} help={sectionPrompts[page]} key={page}>
                     <textarea value={site.sections?.[page] || ''} onChange={e => updateSection(page, e.target.value)} />
                   </Field>
                 ))}
                 <h3>Gallery / media items</h3>
-                <p className="mutedText">Use this for Gallery, Portfolio, Products, Menu, Projects, or Before & After pages. Large videos should be links for now.</p>
-                <MediaEditor site={site} update={update} setSaveMessage={setSaveMessage} ensureMediaSection={ensureMediaSection} />
+                {canUseMedia ? <>
+                  <p className="mutedText">Starter Pro, Business, and Premium can add uploaded images and video/media links to selected visual sections.</p>
+                  <MediaEditor site={{ ...site, pages: selectedSections }} update={update} setSaveMessage={setSaveMessage} ensureMediaSection={ensureMediaSection} />
+                </> : <div className="notice"><strong>Media uploads unlock with Starter Pro and higher.</strong><br />Free Launch Page customers can choose 3 sections and publish text-based launch information. Upgrade to add images or video/media links.</div>}
+                {!canUseAiVideo && <div className="notice"><strong>AI Video Studio upgrade:</strong> Real AI Video Studio opens on Business and Premium. Lower plans can see the upgrade offer, but they cannot open the studio from the builder.</div>}
                 <NavRow back={back} next={next} />
               </>
             )}
@@ -513,6 +551,7 @@ export default function Builder() {
                 <h2>Preview & Publish</h2>
                 {message && <div className="notice error">{message}</div>}
                 <p>Your website name will be:</p>
+                <div className="notice"><strong>{plans[site.plan]?.label}</strong> will publish {limitText}. Selected sections: {selectedSections.join(', ')}.</div>
                 <div className="notice"><strong>{draftSlugFor(site)}.cookiesdigitalcreations.com</strong></div>
                 <button className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}<a className="btn dark" href="/customer">Open My Drafts</a>{' '}
                 {site.plan === 'free' ? <button className="btn" onClick={publishFree}>Publish Free Page</button> : <button className="btn" onClick={checkoutPlan}>Go to {plans[site.plan]?.price} Checkout</button>}
@@ -523,7 +562,7 @@ export default function Builder() {
 
           {!isSmallBuilderScreen && <div className="previewSticky">
             <div className="previewTitle"><strong>Live Draft Preview</strong><span>Updates as you build</span></div>
-            <SitePreview key={previewKey} site={deferredSite} draftMode />
+            <SitePreview key={previewKey} site={previewSite} draftMode />
           </div>}
         </div>
       </section>
@@ -534,7 +573,7 @@ export default function Builder() {
             <button type="button" onClick={() => setIsMobilePreviewOpen(false)} style={{ border: 0, borderRadius: 999, padding: '10px 14px', fontWeight: 900, background: '#ff9e26', color: '#20172f' }}>Close Preview</button>
           </div>
           <div style={{ padding: 12 }}>
-            <SitePreview key={`${previewKey}-mobile`} site={deferredSite} draftMode />
+            <SitePreview key={`${previewKey}-mobile`} site={previewSite} draftMode />
           </div>
         </div>
       </div>}
@@ -613,10 +652,10 @@ function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
   const mediaSectionsSelected = sections.filter(sec => site.pages?.includes(sec));
 
   return <div className="mediaEditor">
-    {mediaSectionsSelected.length === 0 && <div className="notice"><strong>Tip:</strong> Add Gallery, Portfolio, Products, Menu, Projects, or Before & After as a page if you want media to show on the live site. Free Launch Page keeps media saved in draft, but publishes Home only.</div>}
+    {mediaSectionsSelected.length === 0 && <div className="notice"><strong>Tip:</strong> Select Gallery, Portfolio, Products, Menu, Projects, or Before & After if you want media to show on the live site. Free Launch Page does not include uploads; Starter Pro and higher can add images/media.</div>}
     <div className="quickMediaBox">
       <h4>Quick add media</h4>
-      <p className="mutedText">Choose the section first. Paid plans will auto-select that page if your plan has room; Free keeps media in draft until upgrade.</p>
+      <p className="mutedText">Choose the section first. Starter Pro, Business, and Premium will auto-select that section if your plan has room.</p>
       <div className="row">
         <Field label="Title"><input placeholder="Example: Menu photo, portfolio video, product image" value={quick.title} onChange={e => setQuick({ ...quick, title: e.target.value })} /></Field>
         <Field label="Show in section"><select value={quick.section} onChange={e => setQuick({ ...quick, section: e.target.value })}>{sections.map(p => <option key={p}>{p}</option>)}</select></Field>

@@ -3,11 +3,11 @@ import Nav from '../lib/Nav';
 import OwnerFooter from '../lib/OwnerFooter';
 
 const launchPlans = [
-  ['Free Launch Page', '$0', 'Start with one free basic launch page.'],
-  ['Starter Pro', '$19/mo', 'One professional page website.'],
-  ['Business', '$30/mo', 'Up to 3 page website.'],
-  ['Premium', '$50/mo', 'Access to all pages.'],
-  ['Extra Page Add-On', '$10/mo per page', 'Add extra pages later as needed.'],
+  ['Free Launch Page', '$0', '3 selected sections.'],
+  ['Starter Pro', '$19/mo', '4 selected sections plus image/video uploads.'],
+  ['Business', '$30/mo', '6 selected sections plus image/video uploads and AI Video Studio.'],
+  ['Premium', '$50/mo', 'All built-in sections plus AI Video Studio.'],
+  ['Extra Page Add-On', '$10/mo per page', 'Add extra section/page space later as needed.'],
 ];
 
 export default function Home(){
@@ -50,13 +50,17 @@ export default function Home(){
                 <Link className="btn dark" href="/builder">Build Free Page</Link>
               </div>
               <p className="planFinePrint">
-                Current launch websites publish as customername.cookiesdigitalcreations.com. Custom domains are a later Premium/add-on upgrade.
+                Current launch websites publish as customername.cookiesdigitalcreations.com. Custom domains are a later upgrade.
               </p>
             </div>
-            <div className="planHeroImageStack">
-              <img src="/gumroad-plan-images/business.png" alt="Cookie Mini Website Builder Business plan" />
-              <img src="/gumroad-plan-images/starter-pro.png" alt="Cookie Mini Website Builder Starter Pro plan" />
-              <img src="/gumroad-plan-images/premium.png" alt="Cookie Mini Website Builder Premium plan" />
+            <div className="frontPlanVisualList" aria-label="Current accurate plan limits">
+              {launchPlans.map(([name, price, desc]) => (
+                <div className="frontPlanVisualCard" key={name}>
+                  <strong>{name}</strong>
+                  <span>{price}</span>
+                  <small>{desc}</small>
+                </div>
+              ))}
             </div>
           </div>
         </section>
