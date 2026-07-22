@@ -519,3 +519,179 @@
     linear-gradient(180deg,#160720,#fff8ef 38%,#fff);
   min-height:100vh;
 }
+
+
+/* Floral Glam Readability Final Fix
+   Keeps the floral look, but darkens the wording area so letters are easy to read. */
+
+.cookieCustomerSite.look-floral-glam .siteHero{
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255,183,217,.22), transparent 28%),
+    radial-gradient(circle at 86% 14%, rgba(255,189,73,.18), transparent 26%),
+    linear-gradient(135deg,#fff7fc,#fff8ef)!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteHeroCopy{
+  background:rgba(255,255,255,.88);
+  border:1px solid rgba(90,26,88,.14);
+  border-radius:28px;
+  padding:22px;
+  box-shadow:0 18px 48px rgba(90,26,88,.12);
+}
+
+.cookieCustomerSite.look-floral-glam .siteHero h1{
+  color:#2a103b!important;
+  text-shadow:none!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteHero p{
+  color:#46324f!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteKicker{
+  color:#7a255e!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteHeroArt{
+  background:
+    radial-gradient(circle at 18% 20%, rgba(255,183,217,.28), transparent 24%),
+    radial-gradient(circle at 84% 24%, rgba(255,189,73,.20), transparent 25%),
+    linear-gradient(135deg,#4a154f,#220d31)!important;
+  border:3px solid rgba(255,183,217,.42)!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteHeroArt strong,
+.cookieCustomerSite.look-floral-glam .siteHeroArt small,
+.cookieCustomerSite.look-floral-glam .styleBadge{
+  color:#fff!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteOfferCard{
+  background:linear-gradient(135deg,#fff,#fff7fc)!important;
+  border:2px solid rgba(122,37,94,.22)!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteOfferCard strong{
+  color:#2a103b!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteOfferCard p{
+  color:#46324f!important;
+}
+
+@media(max-width:560px){
+  .cookieCustomerSite.look-floral-glam .siteHeroCopy{
+    padding:18px;
+    border-radius:22px;
+  }
+}
+
+
+/* Floral Glam Dark Readability Fix
+   Strong override: makes Floral Glam readable by moving it to a darker luxury floral hero. */
+
+.cookieCustomerSite.look-floral-glam{
+  background:
+    radial-gradient(circle at 90% 8%, rgba(255,183,217,.12), transparent 28%),
+    linear-gradient(180deg,#12071d,#2a103b 42%,#fff8ef 42%,#fff)!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteHero{
+  background:
+    radial-gradient(circle at 12% 16%, rgba(255,183,217,.16), transparent 24%),
+    radial-gradient(circle at 88% 12%, rgba(255,189,73,.12), transparent 26%),
+    linear-gradient(135deg,#12071d,#2a103b,#3b134a)!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteHeroCopy{
+  background:rgba(18,7,29,.92)!important;
+  border:2px solid rgba(255,183,217,.34)!important;
+  border-radius:30px!important;
+  padding:24px!important;
+  box-shadow:0 28px 78px rgba(0,0,0,.42)!important;
+  backdrop-filter:blur(4px);
+}
+
+.cookieCustomerSite.look-floral-glam .siteHero h1{
+  color:#ffffff!important;
+  text-shadow:0 8px 28px rgba(0,0,0,.55)!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteHero p{
+  color:#f8eaff!important;
+  text-shadow:0 3px 14px rgba(0,0,0,.35)!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteKicker{
+  color:#ffbd49!important;
+  text-shadow:0 3px 12px rgba(0,0,0,.35)!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteActionBtn{
+  background:linear-gradient(135deg,#ffbd49,#f28a1e)!important;
+  color:#20172f!important;
+  box-shadow:0 18px 44px rgba(0,0,0,.28)!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteHeroArt{
+  background:
+    radial-gradient(circle at 18% 20%, rgba(255,183,217,.20), transparent 24%),
+    radial-gradient(circle at 84% 24%, rgba(255,189,73,.16), transparent 25%),
+    linear-gradient(135deg,#220d31,#12071d)!important;
+  border:3px solid rgba(255,183,217,.34)!important;
+  box-shadow:0 34px 90px rgba(0,0,0,.48)!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteHeroArt:after{
+  content:"✿ ✿ ✿"!important;
+  position:absolute!important;
+  left:22px!important;
+  bottom:20px!important;
+  color:rgba(255,183,217,.28)!important;
+  font-size:28px!important;
+  letter-spacing:8px!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteHeroArt strong,
+.cookieCustomerSite.look-floral-glam .siteHeroArt small,
+.cookieCustomerSite.look-floral-glam .styleBadge{
+  color:#ffffff!important;
+}
+
+.cookieCustomerSite.look-floral-glam .styleBadge{
+  background:rgba(255,255,255,.12)!important;
+  border:1px solid rgba(255,183,217,.32)!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteOfferCard{
+  background:linear-gradient(135deg,#2a103b,#12071d)!important;
+  border:2px solid rgba(255,183,217,.26)!important;
+  box-shadow:0 22px 58px rgba(18,7,29,.20)!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteOfferCard strong{
+  color:#ffffff!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteOfferCard p{
+  color:#f8eaff!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteSection{
+  background:#ffffff!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteSection h2{
+  color:#2a103b!important;
+}
+
+.cookieCustomerSite.look-floral-glam .siteSection p{
+  color:#46324f!important;
+}
+
+@media(max-width:560px){
+  .cookieCustomerSite.look-floral-glam .siteHeroCopy{
+    padding:20px!important;
+    border-radius:24px!important;
+  }
+}
