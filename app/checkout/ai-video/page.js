@@ -30,33 +30,18 @@ export default function AiVideoCheckoutPage() {
             </ul>
           </div>
 
-          <div className="notice success">
-            <strong>Start here:</strong><br />
-            {hasCheckout ? (
-              <>
-                Click the checkout button below to purchase AI Video Studio for $5. After checkout,
-                you will be sent back to open the studio.
-              </>
-            ) : (
-              <>
-                The checkout link is not connected yet, but the studio route is available for owner
-                testing and soft-launch review.
-              </>
-            )}
-          </div>
-
           <div className="navRow checkoutSuccessActions">
             {hasCheckout ? (
               <a className="btn aiStudioSuccessBtn" href={checkoutUrl}>
                 Start AI Video Studio — $5
               </a>
             ) : (
-              <a className="btn aiStudioSuccessBtn" href="/video-studio?mode=standalone">
+              <a className="btn aiStudioSuccessBtn" href="/video-studio">
                 Open AI Video Studio
               </a>
             )}
 
-            <a className="btn dark" href="/video-studio?mode=standalone">
+            <a className="btn dark" href="/video-studio">
               Already Purchased / Open Studio
             </a>
 
@@ -72,18 +57,14 @@ export default function AiVideoCheckoutPage() {
           {!hasCheckout && (
             <div className="notice">
               <strong>Owner note:</strong><br />
-              To turn on the real $5 checkout button later, add this Vercel Environment Variable:
-              <br />
-              <code>NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL</code>
-              <br />
-              Use the Gumroad AI Video Studio checkout link as the value, then redeploy.
+              The studio button is now using <code>/video-studio</code>. To connect a real $5 Gumroad checkout later,
+              add <code>NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL</code> in Vercel and redeploy.
             </div>
           )}
 
           <div className="notice">
             <strong>After purchase:</strong><br />
-            You should be sent back to Cookie&apos;s AI Video Studio so you can start creating your
-            video content plan.
+            You should be sent back to Cookie&apos;s AI Video Studio so you can start creating your video content plan.
           </div>
         </section>
       </main>

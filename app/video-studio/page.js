@@ -1,241 +1,205 @@
 'use client';
+
 import { useMemo, useState } from 'react';
 import Nav from '../../lib/Nav';
 
-function safeJson(value) { try { return JSON.parse(value); } catch { return null; } }
-function getInitialParams() {
-  if (typeof window === 'undefined') return { shouldReturn: false, draftSlug: '', mode: '' };
-  const params = new URLSearchParams(window.location.search);
+function clean(value = '') {
+  return String(value || '').trim();
+}
+
+function makeKit({ biz, promo, audience, videoType, platform, style, length, voice }) {
+  const business = clean(biz) || 'Your Business';
+  const offer = clean(promo) || 'your offer';
+  const target = clean(audience) || 'your customers';
+
   return {
-    shouldReturn: params.get('return') === 'builder',
-    draftSlug: params.get('draft') || '',
-    mode: params.get('mode') || ''
+    Script: `HOOK:
+Stop scrolling — ${business} has something made for you.
+
+SCENE 1:
+Show the business, product, service, or website with a bold opening shot.
+
+VOICEOVER:
+Looking for ${offer}? ${business} is here to help.
+
+SCENE 2:
+Show the main benefit for ${target}. Keep it clear, quick, and easy to understand.
+
+VOICEOVER:
+Whether you need help today or you are planning ahead, this makes it simple to get started.
+
+SCENE 3:
+Show proof, services, products, menu items, booking options, or the website.
+
+VOICEOVER:
+Choose what you need, tap the button, and connect with ${business}.
+
+CTA:
+Visit the website, book now, order now, buy now, or request a quote today.`,
+
+    Captions: `${business} is ready to help with ${offer}.
+
+Clear. Simple. Easy to start.
+
+Tap the website button to book, order, buy, or request a quote today.`,
+
+    'Shot List': `1. Opening logo or website shot
+2. Product, service, menu, or offer close-up
+3. Customer benefit text on screen
+4. Website preview or action button close-up
+5. Final call-to-action screen`,
+
+    'Video Prompt': `Create a ${length} ${videoType} for ${business}.
+Main promotion: ${offer}.
+Target audience: ${target}.
+Platform: ${platform}.
+Visual style: ${style}.
+Voice style: ${voice}.
+Use clean branding, clear captions, smooth transitions, and a strong call to action.
+Do not use copyrighted logos, celebrities, or protected brand assets.`,
+
+    Voiceover: `Looking for ${offer}? ${business} makes it easy to get started. Visit the website, choose the option that fits you, and tap Book Now, Order Now, Buy Now, or Request a Quote today.`,
+
+    'Next Steps': `1. Copy the script.
+2. Paste it into HeyGen, CapCut, Canva, TikTok, Instagram, Facebook, or YouTube Shorts.
+3. Add your real business photos, website screenshots, product images, or service clips.
+4. Add captions.
+5. End with your website or customer action button.`
   };
 }
-function download(name, text, type = 'text/plain') {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([text], { type }));
-  a.download = name;
-  a.click();
-}
-function jobVideoUrl(job) { return job?.videoUrl || job?.video_url || ''; }
-function jobThumbnailUrl(job) { return job?.thumbnailUrl || job?.thumbnail_url || ''; }
-function jobVideoId(job) { return job?.videoId || job?.heygen_video_id || ''; }
-function jobSessionId(job) { return job?.sessionId || job?.heygen_session_id || ''; }
 
-export default function VideoStudio() {
-  const initial = getInitialParams();
-  const savedDraft = typeof window !== 'undefined' ? localStorage.getItem('cookieDraftSite') : null;
-  const draft = savedDraft ? safeJson(savedDraft) : null;
-  const savedJob = typeof window !== 'undefined' ? safeJson(localStorage.getItem('cookieHeyGenJob') || 'null') : null;
-  const savedCustomer = typeof window !== 'undefined' ? safeJson(localStorage.getItem('cookieVideoCustomer') || 'null') : null;
-
-  const [biz, setBiz] = useState(draft?.businessName || savedCustomer?.businessName || '');
+export default function VideoStudioPage() {
+  const [biz, setBiz] = useState('');
   const [promo, setPromo] = useState('');
-  const [aud, setAud] = useState('local customers');
-  const [type, setType] = useState('Business Promo');
+  const [audience, setAudience] = useState('local customers');
+  const [videoType, setVideoType] = useState('Business Promo');
   const [platform, setPlatform] = useState('TikTok / Reels');
   const [style, setStyle] = useState('Professional');
   const [length, setLength] = useState('15 seconds');
   const [voice, setVoice] = useState('Warm female voice');
-  const [customerEmail, setCustomerEmail] = useState(draft?.customerEmail || draft?.email || savedCustomer?.email || '');
-  const [websiteSlug, setWebsiteSlug] = useState(initial.draftSlug || draft?.slug || savedCustomer?.slug || '');
-  const [accessCode, setAccessCode] = useState('');
-  const [ownerMode, setOwnerMode] = useState(false);
   const [tab, setTab] = useState('Script');
-  const [generateReal, setGenerateReal] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [statusLoading, setStatusLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [job, setJob] = useState(savedJob || null);
+  const [copied, setCopied] = useState('');
 
-  const tabNames = ['Script', 'Captions', 'Shot List', 'Video Prompt', 'Voiceover', 'Next Steps'];
-  const kit = useMemo(() => makeKit({ biz, promo, aud, type, platform, style, length, voice }), [biz, promo, aud, type, platform, style, length, voice]);
-  const kitText = Object.entries(kit).map(([k, v]) => `${k}\n${v}`).join('\n\n---\n\n');
+  const kit = useMemo(
+    () => makeKit({ biz, promo, audience, videoType, platform, style, length, voice }),
+    [biz, promo, audience, videoType, platform, style, length, voice]
+  );
 
-  function goBack() {
-    window.location.href = websiteSlug ? `/builder?draft=${encodeURIComponent(websiteSlug)}` : '/builder?restore=1';
-  }
-  function rememberJob(nextJob) {
-    setJob(nextJob);
-    try { localStorage.setItem('cookieHeyGenJob', JSON.stringify(nextJob)); } catch {}
-  }
-  function rememberCustomer() {
-    try { localStorage.setItem('cookieVideoCustomer', JSON.stringify({ email: customerEmail, slug: websiteSlug, businessName: biz, plan: draft?.plan || savedCustomer?.plan || '' })); } catch {}
+  const tabNames = Object.keys(kit);
+  const kitText = tabNames.map(name => `${name}\n${kit[name]}`).join('\n\n---\n\n');
+
+  function copyText(value, label) {
+    navigator.clipboard.writeText(value);
+    setCopied(`${label} copied.`);
+    setTimeout(() => setCopied(''), 1800);
   }
 
-  async function createRealVideo() {
-    setError('');
-    setLoading(true);
-    rememberCustomer();
-    try {
-      const res = await fetch('/api/heygen/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          businessName: biz,
-          promo,
-          audience: aud,
-          videoType: type,
-          platform,
-          style,
-          length,
-          voice,
-          accessCode: ownerMode ? accessCode : '',
-          customerEmail,
-          websiteSlug,
-          standalonePass: standaloneAccess
-        })
-      });
-      const data = await res.json().catch(() => ({ ok: false, error: 'Could not read server response.' }));
-      if (!res.ok || !data.ok) throw new Error(data.error || 'HeyGen request failed.');
-      rememberJob({ ...data, createdAt: new Date().toISOString(), businessName: biz || 'Your Business' });
-    } catch (err) {
-      setError(err.message || 'Something went wrong creating the video.');
-    }
-    setLoading(false);
+  function downloadKit() {
+    const blob = new Blob([kitText], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${clean(biz) || 'ai-video'}-studio-kit.txt`;
+    a.click();
   }
 
-  async function checkStatus() {
-    if (!jobSessionId(job) && !jobVideoId(job) && !job?.jobId) {
-      setError('No HeyGen job found yet. Generate a real video first.');
-      return;
-    }
-    setError('');
-    setStatusLoading(true);
-    try {
-      const res = await fetch('/api/heygen/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: jobSessionId(job), videoId: jobVideoId(job), jobId: job.jobId || job.id })
-      });
-      const data = await res.json().catch(() => ({ ok: false, error: 'Could not read status response.' }));
-      if (!res.ok || !data.ok) throw new Error(data.error || 'Could not check HeyGen status.');
-      rememberJob({
-        ...job,
-        ...data,
-        status: data.videoUrl ? 'completed' : (data.status || job.status || 'generating'),
-        videoUrl: data.videoUrl || jobVideoUrl(job),
-        video_url: data.videoUrl || jobVideoUrl(job),
-        thumbnailUrl: data.thumbnailUrl || jobThumbnailUrl(job),
-        thumbnail_url: data.thumbnailUrl || jobThumbnailUrl(job),
-        videoId: data.videoId || jobVideoId(job),
-        checkedAt: new Date().toISOString()
-      });
-    } catch (err) {
-      setError(err.message || 'Something went wrong checking the video.');
-    }
-    setStatusLoading(false);
-  }
+  return (
+    <>
+      <Nav />
+      <main className="wrap aiKit">
+        <section className="dashboard">
+          <span className="kicker">AI Video Studio</span>
+          <h1>Cookie&apos;s AI Video Studio</h1>
+          <p>
+            Create video ideas, hooks, captions, scripts, shot lists, voiceover wording,
+            and video prompts for your business or product.
+          </p>
 
-  const videoUrl = jobVideoUrl(job);
-  const thumbUrl = jobThumbnailUrl(job);
-  const draftPlan = String(draft?.plan || savedCustomer?.plan || '').toLowerCase();
-  const standaloneAccess = initial.mode === 'standalone' || (typeof window !== 'undefined' && localStorage.getItem('cookieAiVideoStandalonePass') === 'true');
-  const planHasVideoAccess = ['business', 'premium'].includes(draftPlan);
-  const canCreateRealVideo = planHasVideoAccess || ownerMode;
-  const canOpenStudio = planHasVideoAccess || standaloneAccess || ownerMode;
+          <div className="notice success">
+            <strong>Studio is open.</strong><br />
+            Use this page to create your content plan. Business/Premium website plans may also
+            use real HeyGen generation from the full website workflow when credits are available.
+          </div>
 
-  if (!canOpenStudio) {
-    return <><Nav /><main className="wrap aiKit">
-      <section className="dashboard">
-        <span className="kicker">AI Video Studio Upgrade</span>
-        <h1>AI Video Studio opens on Business and Premium.</h1>
-        <p>Free Launch Page and Starter Pro customers can see this upgrade offer. Website plan customers need Business or Premium for real HeyGen video generation. The separate $5 AI Video Studio opens the creative script and planning studio.</p>
-        <div className="notice success"><strong>Current AI Video access:</strong><br />Business: 1 real HeyGen video/month. Premium: 3 real HeyGen videos/month. $5 AI Video Studio: creative video planning studio only.</div>
-        <div className="navRow"><a className="btn" href="/pricing?upgrade=ai-video">View Upgrade Plans</a><a className="btn dark" href={websiteSlug ? `/builder?draft=${encodeURIComponent(websiteSlug)}` : '/builder?restore=1'}>Back to Builder</a><a className="btn light" href="/customer">My Website</a></div>
-        <div className="notice ownerTestPanel" style={{ marginTop: 14 }}>
-          <strong>Owner/admin testing only</strong>
-          <p>This is only for the site owner testing HeyGen. Customers do not need this.</p>
-          <label className="checkLine"><input type="checkbox" checked={ownerMode} onChange={e => setOwnerMode(e.target.checked)} /> Use owner test mode</label>
-          {ownerMode && <div className="field"><label>Owner AI Video Access Code</label><input value={accessCode} onChange={e => setAccessCode(e.target.value)} placeholder="Owner testing code" type="password" autoComplete="new-password" /></div>}
-        </div>
-      </section>
-    </main></>;
-  }
+          <div className="row">
+            <div className="field">
+              <label>Business name</label>
+              <input value={biz} onChange={e => setBiz(e.target.value)} placeholder="Example: Cookie's Kitchen" />
+            </div>
+            <div className="field">
+              <label>What are you promoting?</label>
+              <input value={promo} onChange={e => setPromo(e.target.value)} placeholder="Example: mini websites, seafood trays, hair services" />
+            </div>
+          </div>
 
-  return <><Nav /><main className="wrap aiKit">
-    <section className="dashboard">
-      <span className="kicker">AI Video Studio</span>
-      <h1>Create a Video Kit</h1>
-      <p>Create scripts, hooks, captions, shot lists, voiceover text, and video prompts. Business and Premium website plans can also create real HeyGen videos based on monthly plan limits.</p>
-      {initial.shouldReturn && <div className="notice"><strong>Your website draft was saved before opening AI Video Studio.</strong><br />Use the button below to return to the builder without losing your work.</div>}
-      <div className="notice success"><strong>Access:</strong><br />$5 AI Video Studio opens the creative planning studio. Business includes 1 real HeyGen video/month. Premium includes 3 real HeyGen videos/month.</div>
-      <div className="navRow">
-        <button className="btn dark" onClick={goBack}>Back to Website Builder</button>
-        <a className="btn light" href="/customer">Open My Website</a>
-        <a className="btn light" href="/video-studio/results">Video Results</a>
-      </div>
-      <div className="row">
-        <div className="field"><label>Customer email for plan check</label><input value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="customer@email.com" /></div>
-        <div className="field"><label>Website name / short subdomain</label><input value={websiteSlug} onChange={e => setWebsiteSlug(e.target.value)} placeholder="my-business-name" /></div>
-      </div>
-      {[['Business name', biz, setBiz], ['What are they promoting?', promo, setPromo], ['Target customer', aud, setAud]].map(([label, value, setter]) => <div className="field" key={label}><label>{label}</label><textarea value={value} onChange={e => setter(e.target.value)} placeholder={label === 'What are they promoting?' ? 'Example: seafood boil trays, cleaning services, digital cookbook, hair bundles...' : label} /></div>)}
-      <div className="row">
-        <div className="field"><label>Video type</label><select value={type} onChange={e => setType(e.target.value)}>{['Business Promo', 'Product Ad', 'Restaurant Promo', 'Real Estate Intro', 'Beauty Promo', 'Website Hero Video', 'Grand Opening Promo', 'Sale Announcement'].map(x => <option key={x}>{x}</option>)}</select></div>
-        <div className="field"><label>Platform</label><select value={platform} onChange={e => setPlatform(e.target.value)}>{['TikTok / Reels', 'YouTube Short', 'Facebook Ad', 'Website Hero Video', 'Instagram Story'].map(x => <option key={x}>{x}</option>)}</select></div>
-      </div>
-      <div className="row">
-        <div className="field"><label>Style</label><select value={style} onChange={e => setStyle(e.target.value)}>{['Professional', 'Funny', 'Luxury', '3D Modern', 'Cartoon Fun', 'Cinematic', 'Warm & Friendly', 'Bold Sales Ad'].map(x => <option key={x}>{x}</option>)}</select></div>
-        <div className="field"><label>Length</label><select value={length} onChange={e => setLength(e.target.value)}>{['15 seconds', '30 seconds', '45 seconds'].map(x => <option key={x}>{x}</option>)}</select></div>
-      </div>
-      <div className="field"><label>Voice style</label><select value={voice} onChange={e => setVoice(e.target.value)}>{['Warm female voice', 'Sassy female voice', 'Professional narrator', 'Friendly upbeat voice', 'Luxury commercial voice'].map(x => <option key={x}>{x}</option>)}</select></div>
-      {canCreateRealVideo ? <label className="checkLine"><input type="checkbox" checked={generateReal} onChange={e => setGenerateReal(e.target.checked)} /> I understand real video generation uses monthly AI video credits.</label> : <div className="notice"><strong>Creative planning mode:</strong> This access creates scripts, captions, shot lists, voiceover text, and video prompts. Real HeyGen video generation is included with Business/Premium website plans or owner testing only.</div>}
-      <div className="notice ownerTestPanel" style={{ marginTop: 14 }}>
-        <strong>Owner testing mode</strong>
-        <p>Use this when you are testing and do not want to use a customer&apos;s monthly Business/Premium video credit.</p>
-        <label className="checkLine"><input type="checkbox" checked={ownerMode} onChange={e => setOwnerMode(e.target.checked)} /> Use owner test mode for this video</label>
-        {ownerMode && <div className="field"><label>Owner AI Video Access Code</label><input value={accessCode} onChange={e => setAccessCode(e.target.value)} placeholder="Owner testing code" type="password" autoComplete="new-password" /></div>}
-      </div>
-      {canCreateRealVideo ? <button className="btn" disabled={!generateReal || loading} onClick={createRealVideo}>{loading ? 'Checking plan and sending to HeyGen...' : 'Generate Real Video with HeyGen'}</button> : <a className="btn dark" href="/pricing?upgrade=ai-video#ai-video">Upgrade for Real HeyGen Video</a>}
-      {error && <div className="notice danger"><strong>Error:</strong> {error}
-        {String(error).toLowerCase().includes('used all real ai video credits') && <div style={{ marginTop: 10 }}>
-          <strong>Testing note:</strong> Turn on Owner testing mode above and enter your owner access code to test HeyGen without using the customer&apos;s monthly credit.
-        </div>}
-      </div>}
-    </section>
+          <div className="field">
+            <label>Target customer</label>
+            <input value={audience} onChange={e => setAudience(e.target.value)} placeholder="Example: small business owners" />
+          </div>
 
-    <section className="dashboard">
-      <span className="kicker">Generated Video Kit</span>
-      <h1>{biz || 'Your Business'} Promo Kit</h1>
-      <div className="pillTabs">{tabNames.map(t => <button className={tab === t ? 'active' : ''} onClick={() => setTab(t)} key={t}>{t}</button>)}</div>
-      <pre style={{ whiteSpace: 'pre-wrap', background: '#160c22', color: 'white', padding: 20, borderRadius: 18 }}>{kit[tab]}</pre>
-      <p><button className="btn" onClick={() => navigator.clipboard.writeText(kit[tab])}>Copy {tab}</button> <button className="btn dark" onClick={() => download(`${biz || 'video'}-kit.txt`, kitText)}>Download Text Kit</button> <button className="btn dark" onClick={() => download(`${biz || 'video'}-kit.html`, `<html><body><h1>${biz || 'Video'} Kit</h1><pre>${kitText.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</pre></body></html>`, 'text/html')}>Download Full Kit</button></p>
-      <button className="btn" onClick={goBack}>Return to Builder</button>
-      <div className="notice"><strong>Creative kit mode is available inside AI Video Studio.</strong> Download the kit and use it with CapCut, Canva, HeyGen, TikTok, Instagram, Facebook, YouTube, or any video editor.</div>
-    </section>
+          <div className="row">
+            <div className="field">
+              <label>Video type</label>
+              <select value={videoType} onChange={e => setVideoType(e.target.value)}>
+                {['Business Promo','Product Ad','Restaurant Promo','Beauty Promo','Real Estate Intro','Grand Opening Promo','Sale Announcement','Website Hero Video'].map(item => <option key={item}>{item}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Platform</label>
+              <select value={platform} onChange={e => setPlatform(e.target.value)}>
+                {['TikTok / Reels','YouTube Short','Facebook Ad','Instagram Story','Website Hero Video'].map(item => <option key={item}>{item}</option>)}
+              </select>
+            </div>
+          </div>
 
-    <section className="dashboard">
-      <span className="kicker">HeyGen Video Job</span>
-      <h1>Real Video Status</h1>
-      <p><a className="btn light" href="/video-studio/results">Open Video Results Dashboard</a></p>
-      {!job && <p>No real HeyGen video has been started in this browser yet.</p>}
-      {job && <div>
-        <p><strong>Status:</strong> {videoUrl ? 'completed' : (job.status || 'generating')}</p>
-        {job.plan && <p><strong>Plan checked:</strong> {job.ownerOverride ? 'Owner override' : job.plan}</p>}
-        {job.videoUsage && !job.ownerOverride && <p><strong>Monthly usage:</strong> {job.videoUsage.used} of {job.videoUsage.limit} used. {job.videoUsage.remaining} remaining.</p>}
-        {job.usageWarning && <div className="notice danger">{job.usageWarning}</div>}
-        {jobSessionId(job) && <p><strong>Session:</strong> {jobSessionId(job)}</p>}
-        {jobVideoId(job) && <p><strong>Video ID:</strong> {jobVideoId(job)}</p>}
-        <button className="btn" onClick={checkStatus} disabled={statusLoading}>{statusLoading ? 'Refreshing...' : 'Refresh Video Status'}</button>
-        {ownerMode && job.heygenSessionUrl && <p className="notice"><strong>Owner troubleshooting:</strong><br /><a className="btn light" href={job.heygenSessionUrl} target="_blank" rel="noreferrer">Open in HeyGen</a></p>}
-        {videoUrl && <div className="notice success"><strong>Video ready!</strong><br /><a className="btn" href={videoUrl} target="_blank" rel="noreferrer">Download MP4</a>{thumbUrl && <img src={thumbUrl} alt="Video thumbnail" style={{ width: '100%', marginTop: 14, borderRadius: 18 }} />}<video src={videoUrl} controls style={{ width: '100%', marginTop: 14, borderRadius: 18 }} /></div>}
-        {!videoUrl && <div className="notice">Video is processing. Click <strong>Refresh Video Status</strong> until it is ready, or open the Video Results Dashboard later.</div>}
-        {job.failureMessage && <div className="notice danger"><strong>HeyGen failed:</strong> {job.failureMessage}</div>}
-      </div>}
-    </section>
-  </main></>;
-}
+          <div className="row">
+            <div className="field">
+              <label>Style</label>
+              <select value={style} onChange={e => setStyle(e.target.value)}>
+                {['Professional','Funny','Luxury','3D Modern','Cartoon Fun','Cinematic','Warm & Friendly','Bold Sales Ad'].map(item => <option key={item}>{item}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>Length</label>
+              <select value={length} onChange={e => setLength(e.target.value)}>
+                {['15 seconds','30 seconds','45 seconds','60 seconds'].map(item => <option key={item}>{item}</option>)}
+              </select>
+            </div>
+          </div>
 
-function makeKit({ biz, promo, aud, type, platform, style, length, voice }) {
-  const b = biz || 'your business';
-  const p = promo || 'your offer';
-  return {
-    Script: `HOOK: Looking for ${p}?\nSCENE 1: Show ${b} with bold text and ${style} visuals.\nSCENE 2: Explain the main benefit for ${aud}.\nSCENE 3: Show proof, services, products, or results.\nCTA: Visit our website today.`,
-    Captions: `${b} is here to help with ${p}.\nClear. Simple. Professional.\nVisit our website today.`,
-    'Shot List': `1. Opening logo/title card\n2. Product/service close-up\n3. Three benefit text overlays\n4. Customer trust/review moment\n5. Call-to-action screen`,
-    'Video Prompt': `Create a ${length} vertical 9:16 ${type} for ${b}. Promote: ${p}. Style: ${style}. Platform: ${platform}. Use clean motion graphics, bold captions, smooth transitions, and a strong call to action. No copyrighted logos or celebrity likenesses.`,
-    Voiceover: `Use a ${voice}. Say: Need ${p}? ${b} makes it simple. We help ${aud} get what they need with a clear, professional experience. Visit our website today.`,
-    'Next Steps': `Copy the script, captions, and prompt, or use the protected HeyGen button to create a real video. Business includes 1 real video per month. Premium includes 3 real videos per month. Owner testing is hidden inside Owner/Admin testing only.`
-  };
+          <div className="field">
+            <label>Voice style</label>
+            <select value={voice} onChange={e => setVoice(e.target.value)}>
+              {['Warm female voice','Sassy female voice','Professional narrator','Friendly upbeat voice','Luxury commercial voice'].map(item => <option key={item}>{item}</option>)}
+            </select>
+          </div>
+        </section>
+
+        <section className="dashboard">
+          <span className="kicker">Generated Video Kit</span>
+          <h1>{clean(biz) || 'Your Business'} Promo Kit</h1>
+
+          <div className="pillTabs">
+            {tabNames.map(name => (
+              <button className={tab === name ? 'active' : ''} onClick={() => setTab(name)} key={name}>
+                {name}
+              </button>
+            ))}
+          </div>
+
+          <pre style={{ whiteSpace: 'pre-wrap', background: '#160c22', color: 'white', padding: 20, borderRadius: 18 }}>
+            {kit[tab]}
+          </pre>
+
+          {copied && <div className="notice success">{copied}</div>}
+
+          <div className="navRow">
+            <button className="btn" onClick={() => copyText(kit[tab], tab)}>Copy {tab}</button>
+            <button className="btn dark" onClick={() => copyText(kitText, 'Full kit')}>Copy Full Kit</button>
+            <button className="btn light" onClick={downloadKit}>Download Kit</button>
+            <a className="btn light" href="/builder">Build a Website</a>
+          </div>
+        </section>
+      </main>
+    </>
+  );
 }
