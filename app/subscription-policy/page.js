@@ -1,1 +1,1 @@
-export { default, metadata } from '../../legal/subscription/page';
+export { default, metadata } from '../legal/subscription/page';
