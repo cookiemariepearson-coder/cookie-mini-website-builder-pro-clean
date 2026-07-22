@@ -164,3 +164,135 @@
   .siteSection{margin:14px;padding:18px;border-radius:24px;}
   .siteMediaGrid{grid-template-columns:1fr;}
 }
+
+
+/* Action selector fix: make Order / Book / Buy and quick buttons truly selectable */
+.actionSelectorPanel{
+  background:
+    radial-gradient(circle at 95% 10%, rgba(255,189,73,.22), transparent 28%),
+    linear-gradient(135deg,#2a103b,#12071d)!important;
+  border:2px solid rgba(255,189,73,.42)!important;
+}
+
+.actionSelectorButtons{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(165px,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+
+.orderBookBuyPick{
+  border:2px solid #ffbd49!important;
+  background:linear-gradient(135deg,#fff8ef,#fff)!important;
+}
+
+.orderBookBuyPick.active{
+  background:linear-gradient(135deg,#ffbd49,#f28a1e)!important;
+  color:#20172f!important;
+}
+
+.quickActionPresetGrid{
+  display:grid!important;
+  grid-template-columns:repeat(auto-fit,minmax(155px,1fr));
+  gap:10px;
+  margin:12px 0 16px;
+}
+
+/* Make Bold font/look impossible to miss */
+.cookieCustomerSite.font-bold .siteHero{
+  background:
+    linear-gradient(120deg,rgba(255,189,73,.30) 0 20%,transparent 20% 100%),
+    radial-gradient(circle at 90% 12%, rgba(255,189,73,.35), transparent 28%),
+    linear-gradient(135deg,#fff,#fff1dd)!important;
+}
+
+.cookieCustomerSite.font-bold .siteHero h1{
+  font-weight:1000!important;
+  text-transform:uppercase;
+  letter-spacing:-.07em!important;
+  text-shadow:0 8px 0 rgba(255,189,73,.18);
+}
+
+.cookieCustomerSite.font-bold .siteSection h2{
+  font-weight:1000!important;
+  text-transform:uppercase;
+  letter-spacing:-.05em!important;
+}
+
+.cookieCustomerSite.font-bold .siteActionBtn{
+  transform:translateY(-2px) scale(1.03);
+  box-shadow:0 20px 44px rgba(242,138,30,.34)!important;
+}
+
+.cookieCustomerSite.tone-bold .siteHeroArt,
+.cookieCustomerSite.look-bold-sales .siteHeroArt{
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255,189,73,.42), transparent 25%),
+    conic-gradient(from 220deg at 70% 45%, #ffbd49, #7b35f3, #2a103b, #12071d, #ffbd49)!important;
+  border:3px solid rgba(255,189,73,.52)!important;
+  box-shadow:16px 16px 0 rgba(255,189,73,.20), 0 34px 88px rgba(18,7,29,.38)!important;
+}
+
+.cookieCustomerSite.tone-bold .siteOfferCard:first-child,
+.cookieCustomerSite.look-bold-sales .siteOfferCard:first-child{
+  border:3px solid #ffbd49!important;
+  transform:translateY(-4px);
+}
+
+.cookieCustomerSite.tone-bold .styleBadge,
+.cookieCustomerSite.look-bold-sales .styleBadge{
+  background:linear-gradient(135deg,#ffbd49,#f28a1e)!important;
+  color:#20172f!important;
+  border:0!important;
+}
+
+/* Individual look nudges so both template look cards visibly switch */
+.cookieCustomerSite.look-creator-tool .siteHeroArt,
+.cookieCustomerSite.look-service-3d .siteHeroArt,
+.cookieCustomerSite.look-modern-property .siteHeroArt{
+  transform:perspective(800px) rotateY(-6deg);
+  box-shadow:22px 22px 0 rgba(123,53,243,.20), 0 34px 88px rgba(18,7,29,.35)!important;
+}
+
+.cookieCustomerSite.look-cartoon-food .siteHeroArt,
+.cookieCustomerSite.look-cartoon-sparkle .siteHeroArt,
+.cookieCustomerSite.look-cartoon-bright .siteHeroArt,
+.cookieCustomerSite.look-cartoon-creative .siteHeroArt{
+  transform:rotate(-1.3deg);
+  background:
+    radial-gradient(circle at 16% 20%, rgba(255,189,73,.38), transparent 22%),
+    radial-gradient(circle at 84% 20%, rgba(255,105,180,.28), transparent 24%),
+    linear-gradient(135deg,#7b35f3,#2a103b)!important;
+}
+
+.cookieCustomerSite.look-luxury-salon .siteHeroArt,
+.cookieCustomerSite.look-luxury-advisor .siteHeroArt,
+.cookieCustomerSite.look-luxury-product .siteHeroArt,
+.cookieCustomerSite.look-floral-glam .siteHeroArt{
+  background:linear-gradient(135deg,#12071d,#2a103b)!important;
+  border:3px solid rgba(255,189,73,.52)!important;
+}
+
+.cookieCustomerSite.look-clean-minimal .siteHeroArt,
+.cookieCustomerSite.look-expert-clean .siteHeroArt{
+  background:linear-gradient(135deg,#fff,#fff8ef)!important;
+  color:#20172f!important;
+  border:2px solid rgba(42,16,59,.14)!important;
+  box-shadow:none!important;
+}
+
+.cookieCustomerSite.look-clean-minimal .siteHeroArt small,
+.cookieCustomerSite.look-expert-clean .siteHeroArt small{
+  color:#5b4e68!important;
+}
+
+.cookieCustomerSite.look-cinematic .siteHeroArt{
+  background:linear-gradient(135deg,#040207,#2a103b)!important;
+  border:2px solid rgba(255,255,255,.20)!important;
+}
+
+@media(max-width:560px){
+  .actionSelectorButtons{
+    grid-template-columns:1fr;
+  }
+}

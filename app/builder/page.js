@@ -265,6 +265,89 @@ export default function Builder() {
     update({ pages: site.pages.filter(p => p !== page) });
   }
 
+  function addOrderBookBuySection() {
+    setSite(current => {
+      const sectionName = 'Order / Book / Buy';
+      let pages = normalizeSelectedPagesForPlan(current.pages || ['Home'], current.plan);
+      if (pages.includes(sectionName)) return current;
+
+      const limit = planSectionLimit(current.plan);
+      let nextPages = [...pages];
+      let removedPage = '';
+
+      if (limit < 99 && nextPages.length >= limit) {
+        for (let i = nextPages.length - 1; i >= 0; i -= 1) {
+          if (nextPages[i] !== 'Home') {
+            removedPage = nextPages[i];
+            nextPages.splice(i, 1);
+            break;
+          }
+        }
+      }
+
+      if (limit < 99 && nextPages.length >= limit) {
+        return current;
+      }
+
+      nextPages.push(sectionName);
+      const nextSections = {
+        ...(current.sections || {}),
+        [sectionName]: current.sections?.[sectionName] || 'Choose an option below to order, book, buy, request a quote, view a menu, or contact us.'
+      };
+
+      if (removedPage) {
+        setTimeout(() => setMessage(`${sectionName} was added. ${removedPage} was removed because this plan is already at its section limit. You can reselect it after upgrading or removing another section.`), 0);
+      } else {
+        setTimeout(() => setMessage(`${sectionName} was added. Now add a Book Now, Order Now, Buy Now, or Request Quote button.`), 0);
+      }
+
+      return {
+        ...current,
+        pages: normalizeSelectedPagesForPlan(nextPages, current.plan),
+        sections: nextSections
+      };
+    });
+  }
+
+  function applyActionPreset(label, type, note) {
+    setSite(current => {
+      const sectionName = 'Order / Book / Buy';
+      let pages = normalizeSelectedPagesForPlan(current.pages || ['Home'], current.plan);
+      const limit = planSectionLimit(current.plan);
+      let nextPages = [...pages];
+      let removedPage = '';
+
+      if (!nextPages.includes(sectionName)) {
+        if (limit < 99 && nextPages.length >= limit) {
+          for (let i = nextPages.length - 1; i >= 0; i -= 1) {
+            if (nextPages[i] !== 'Home') {
+              removedPage = nextPages[i];
+              nextPages.splice(i, 1);
+              break;
+            }
+          }
+        }
+        if (limit >= 99 || nextPages.length < limit) nextPages.push(sectionName);
+      }
+
+      const next = {
+        ...current,
+        pages: normalizeSelectedPagesForPlan(nextPages, current.plan),
+        sections: {
+          ...(current.sections || {}),
+          [sectionName]: current.sections?.[sectionName] || 'Choose an option below to order, book, buy, request a quote, view a menu, or contact us.'
+        },
+        customerActions: normalizeCustomerActions([{ label, type, value: '', note }], current.plan)
+      };
+
+      setTimeout(() => {
+        setMessage(`${label} was added to the ${sectionName} section. Add the customer phone number, email, booking link, checkout link, menu link, payment link, or form link next.${removedPage ? ` ${removedPage} was removed because this plan was at its section limit.` : ''}`);
+      }, 0);
+
+      return next;
+    });
+  }
+
   function startNewDraft() {
     const ok = window.confirm('Start a fresh website draft? Your current draft is already saved in this browser if autosave ran, but click Cancel if you want to manually Save Draft first.');
     if (!ok) return;
@@ -521,27 +604,35 @@ export default function Builder() {
                     <li>Order / Book / Buy buttons: Free 1, Starter 2, Business 4, Premium 8.</li>
                   </ul>
                 </div>
-                <div className="builderActionGuide">
+                <div className="builderActionGuide actionSelectorPanel">
                   <strong>Build the customer path:</strong>
                   <span>1. Pick your own sections.</span>
                   <span>2. Select <b>Order / Book / Buy</b>.</span>
                   <span>3. Add buttons like <b>Book Now</b>, <b>Order Now</b>, <b>Buy Now</b>, or <b>Request Quote</b>.</span>
+                  <div className="actionSelectorButtons">
+                    <button type="button" className="btn" onClick={addOrderBookBuySection}>Select Order / Book / Buy</button>
+                    <button type="button" className="btn light" onClick={() => applyActionPreset('Book Now', 'book', 'Add your booking calendar or appointment link.')}>Add Book Now</button>
+                    <button type="button" className="btn light" onClick={() => applyActionPreset('Order Now', 'order', 'Add your order form, menu, or checkout link.')}>Add Order Now</button>
+                    <button type="button" className="btn light" onClick={() => applyActionPreset('Buy Now', 'buy', 'Add your product checkout or Gumroad link.')}>Add Buy Now</button>
+                    <button type="button" className="btn light" onClick={() => applyActionPreset('Request Quote', 'quote', 'Add your quote form or contact link.')}>Add Request Quote</button>
+                  </div>
                 </div>
                 <div className="templateList pagePickList sectionPickList">
                   {pageOptions.map(page => {
                     const isSelected = selectedSections.includes(page);
                     const isHome = page === 'Home';
                     const isAtLimit = !isSelected && plans[site.plan]?.maxPages < 99 && selectedCount >= planLimit();
+                    const isActionPage = page === 'Order / Book / Buy';
                     return (
                       <button
-                        className={`pick ${isSelected ? 'active' : ''} ${isAtLimit ? 'lockedPick' : ''}`}
+                        className={`pick ${isSelected ? 'active' : ''} ${isAtLimit && !isActionPage ? 'lockedPick' : ''} ${isActionPage ? 'orderBookBuyPick' : ''}`}
                         key={page}
-                        disabled={isAtLimit || (isHome && isSelected)}
-                        onClick={() => isSelected ? removePage(page) : addPage(page)}
-                        title={isAtLimit ? 'Upgrade or remove another section first.' : ''}
+                        disabled={(isAtLimit && !isActionPage) || (isHome && isSelected)}
+                        onClick={() => isSelected ? removePage(page) : (isActionPage ? addOrderBookBuySection() : addPage(page))}
+                        title={isAtLimit && !isActionPage ? 'Upgrade or remove another section first.' : (isActionPage && isAtLimit ? 'This will swap out your last selected section so Order / Book / Buy can be added.' : '')}
                       >
                         {isSelected ? '✓ ' : ''}{page}{isHome ? ' (required)' : ''}<br />
-                        <small>{isAtLimit ? 'Plan limit reached. Upgrade or remove another selected section.' : sectionPrompts[page]}</small>
+                        <small>{isActionPage && isAtLimit && !isSelected ? 'Click to add this action section. It will swap out the last selected section because this plan is full.' : (isAtLimit ? 'Plan limit reached. Upgrade or remove another selected section.' : sectionPrompts[page])}</small>
                       </button>
                     );
                   })}
