@@ -1,42 +1,27 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import Nav from '../../../lib/Nav';
 
-function cleanUrl(value) {
-  return String(value || '').trim();
-}
+const checkoutUrl = process.env.NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL || '';
 
-function isValidCheckoutUrl(value) {
-  const url = cleanUrl(value);
-  return url.startsWith('https://') || url.startsWith('http://');
-}
-
-export default function AiVideoCheckout(){
-  const [checkoutUrl, setCheckoutUrl] = useState('');
-
-  useEffect(() => {
-    setCheckoutUrl(cleanUrl(process.env.NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL || ''));
-  }, []);
-
-  const validCheckoutUrl = useMemo(() => isValidCheckoutUrl(checkoutUrl), [checkoutUrl]);
+export default function AiVideoCheckoutPage() {
+  const hasCheckout = Boolean(String(checkoutUrl || '').trim());
 
   return (
     <>
       <Nav />
       <main className="wrap">
-        <section className="dashboard aiVideoCheckoutCard brandAiVideoCheckout">
+        <section className="dashboard aiVideoCheckoutPage">
           <span className="kicker">AI Video Studio</span>
           <h1>AI Video Studio — $5</h1>
           <p>
-            Get AI-powered help with video ideas, hooks, scripts, captions, scenes,
-            promo concepts, and social media content planning without purchasing a website plan.
+            Get AI-powered help with video ideas, hooks, scripts, captions, scenes, promo concepts,
+            and social media content planning without purchasing a website plan.
           </p>
 
-          <div className="notice success">
+          <div className="notice">
             <strong>What you get:</strong>
-            <ul style={{ marginTop: 10 }}>
+            <ul>
               <li>Video ideas for your brand, business, or product</li>
               <li>Hooks and opening lines</li>
               <li>Short-form video scripts</li>
@@ -45,28 +30,60 @@ export default function AiVideoCheckout(){
             </ul>
           </div>
 
-          {validCheckoutUrl ? (
-            <div className="navRow" style={{ marginTop: 18 }}>
-              <a className="btn" href={checkoutUrl}>Continue to Checkout</a>
-            </div>
-          ) : (
+          <div className="notice success">
+            <strong>Start here:</strong><br />
+            {hasCheckout ? (
+              <>
+                Click the checkout button below to purchase AI Video Studio for $5. After checkout,
+                you will be sent back to open the studio.
+              </>
+            ) : (
+              <>
+                The checkout link is not connected yet, but the studio route is available for owner
+                testing and soft-launch review.
+              </>
+            )}
+          </div>
+
+          <div className="navRow checkoutSuccessActions">
+            {hasCheckout ? (
+              <a className="btn aiStudioSuccessBtn" href={checkoutUrl}>
+                Start AI Video Studio — $5
+              </a>
+            ) : (
+              <a className="btn aiStudioSuccessBtn" href="/video-studio?mode=standalone">
+                Open AI Video Studio
+              </a>
+            )}
+
+            <a className="btn dark" href="/video-studio?mode=standalone">
+              Already Purchased / Open Studio
+            </a>
+
+            <a className="btn light" href="/pricing">
+              View Website Plans
+            </a>
+
+            <a className="btn light" href="/builder">
+              Build a Website Instead
+            </a>
+          </div>
+
+          {!hasCheckout && (
             <div className="notice">
-              <strong>Checkout is being prepared.</strong><br />
-              Please check back shortly or contact Cookie&apos;s Digital Creations for help getting access.
-              <div className="navRow" style={{ marginTop: 14 }}>
-                <Link className="btn" href="/contact">Contact Us</Link>
-              </div>
+              <strong>Owner note:</strong><br />
+              To turn on the real $5 checkout button later, add this Vercel Environment Variable:
+              <br />
+              <code>NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL</code>
+              <br />
+              Use the Gumroad AI Video Studio checkout link as the value, then redeploy.
             </div>
           )}
 
           <div className="notice">
             <strong>After purchase:</strong><br />
-            You will be sent back to Cookie&apos;s AI Video Studio so you can start creating your video content plan.
-          </div>
-
-          <div className="navRow">
-            <Link className="btn dark" href="/pricing">View Website Plans</Link>
-            <Link className="btn light" href="/builder">Build a Website Instead</Link>
+            You should be sent back to Cookie&apos;s AI Video Studio so you can start creating your
+            video content plan.
           </div>
         </section>
       </main>
