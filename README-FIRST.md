@@ -1,4 +1,4 @@
-# Cookie Mini Website Builder Pro - Clean Pricing + Standalone AI Video Button Fix
+# Cookie Mini Website Builder Pro - AI Video Checkout No Auto Redirect Fix
 
 Upload these inside files/folders to the clean GitHub repo only:
 
@@ -6,72 +6,38 @@ cookie-mini-website-builder-pro-clean
 
 ## What this fixes
 
-- Cleans the pricing page so the plan list is not duplicated.
-- Removes customer-facing wording about the internal fixes.
-- Organizes the pricing page into one clean plan grid.
-- Adds an AI Video Studio button on the landing/home page.
-- Adds a separate AI Video Studio checkout route at:
+The AI Video checkout page was opening and then jumping to a 404 page because the page was set to auto-redirect after loading.
 
-/checkout/ai-video
+This patch removes the automatic jump.
 
-- Adds AI Video Studio to the pricing page as a separate $5 option for customers who do not need a website.
-- Updates checkout success so:
+Now /checkout/ai-video:
 
-/checkout/success?paid=ai-video
+- Opens normally.
+- Shows the AI Video Studio $5 checkout page.
+- Shows a Continue to AI Video Checkout button only when the Gumroad link is connected.
+- Does not force customers away from the page automatically.
+- Prevents a wrong/missing checkout link from pushing users to a 404 page.
 
-does not look for a website draft and instead sends the customer to AI Video Studio.
-- Allows AI Video Studio to recognize a standalone AI video pass on the device after checkout.
-- Updates the AI Video policy to mention the standalone AI Video option.
+## No SQL needed
 
-## Important Gumroad setup needed
+This is only a checkout page behavior fix.
 
-Create a new Gumroad product:
+## Vercel Environment Variable
 
-Product name:
-AI Video Studio
-
-Price:
-$5
-
-Recommended return URL:
-https://www.cookiesdigitalcreations.com/checkout/success?paid=ai-video
-
-After creating the Gumroad product, copy its checkout link and add it to Vercel Environment Variables:
+Make sure this variable is set after the Gumroad AI Video Studio product is ready:
 
 NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL
 
-Then redeploy.
+Value should be your Gumroad AI Video Studio product or checkout URL.
+It should begin with https://
 
-## How it affects Free and Starter
+## Test after Vercel says Ready
 
-It does not change the Free Launch Page or Starter Pro pricing.
-
-Free Launch Page stays:
-$0
-
-Starter Pro stays:
-$19/month
-
-Business stays:
-$30/month
-
-Premium stays:
-$50/month
-
-Extra Page Add-On stays:
-$10/month per page
-
-The $5 AI Video Studio product is a separate optional purchase for people who want video help without buying a website plan.
-
-## No Supabase SQL needed
-
-This is a page, checkout route, AI Video Studio, and policy wording update.
-
-## Test after Vercel is Ready
-
-https://www.cookiesdigitalcreations.com/
-https://www.cookiesdigitalcreations.com/pricing
 https://www.cookiesdigitalcreations.com/checkout/ai-video
+
+The page should stay open and should not jump to 404.
+
+Then test:
+
 https://www.cookiesdigitalcreations.com/checkout/success?paid=ai-video
 https://www.cookiesdigitalcreations.com/video-studio?mode=standalone
-https://www.cookiesdigitalcreations.com/legal/ai-video
