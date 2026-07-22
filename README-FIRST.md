@@ -1,75 +1,75 @@
-# Cookie Mini Website Builder Pro - Customer Action + Order/Booking Section + Brand Refresh Upgrade
+# Cookie Mini Website Builder Pro - Customer Website Templates Rebuild + Action Ready Fix
 
 Upload these inside files/folders to the clean GitHub repo only:
 
 cookie-mini-website-builder-pro-clean
 
-## What this adds
+## What this fixes
 
-### Customer Action / Order-Booking-Buy section
+The last Customer Action upgrade made the customer website templates too generic and changed how they were laid out.
 
-Adds a new selectable section in the builder:
+This pack rebuilds the customer website preview/templates with a cleaner, stronger design while keeping the new rich purple/gold color direction.
 
-Order / Book / Buy
+## What this includes
 
-Website owners can add customer action buttons for:
+- A rebuilt SitePreview component.
+- Better customer website template layouts.
+- Template personality by website type:
+  - Food
+  - Beauty
+  - Real Estate
+  - Wellness
+  - Local Services
+  - Digital Products
+  - Nonprofit
+  - Creator / Portfolio
+  - Cleaning
+  - Coaching
+  - Party / Events
+  - Shop / Boutique
+- The new Order / Book / Buy action buttons still work.
+- Buttons support:
+  - Call
+  - Text
+  - Email
+  - Book
+  - Order
+  - Buy
+  - Quote
+  - Menu
+  - Payment
+  - Custom Link
+- Media/gallery sections still support uploaded images and links.
+- Plan section limits are not changed.
+- Landing/pricing/admin brand colors are not removed.
 
-- Call Now
-- Text Us
-- Email Us
-- Book Appointment
-- Order Now
-- Buy Now
-- Request Quote
-- View Menu
-- Make a Payment
-- Custom Link
+## What this does NOT do
 
-They can paste outside links such as Gumroad, Square, Stripe, Calendly, Google Forms, Jotform, Cash App, menu links, booking links, payment links, phone numbers, email addresses, or other checkout links.
-
-## Plan limits
-
-- Free Launch Page: up to 3 selected sections and 1 customer action button
-- Starter Pro: up to 4 selected sections, media uploads, and 2 customer action buttons
-- Business: up to 6 selected sections, media uploads, AI Video Studio, and 4 customer action buttons
-- Premium: all built-in sections, media uploads, AI Video Studio, and 8 customer action buttons
-- Extra Page Add-On: extra page/section space as needed
-
-## Visual refresh
-
-This also gives the landing page and pricing page a richer purple/gold look closer to the paid plan images.
-
-It does not intentionally redesign the customer website templates.
-
-## Legal wording
-
-Terms and Customer Content & Media Policy now mention third-party order, booking, payment, menu, form, and custom links.
+- Does not change Gumroad.
+- Does not change Supabase.
+- Does not change checkout.
+- Does not change plan pricing.
+- Does not remove the new purple/gold brand style.
 
 ## No SQL needed
 
-This uses the existing saved site JSON structure. No Supabase SQL is needed.
+This is only a customer template design and preview fix.
 
-## Test after Vercel says Ready
+## Test after Vercel is Ready
 
 Test:
 
-https://www.cookiesdigitalcreations.com/
-https://www.cookiesdigitalcreations.com/pricing
 https://www.cookiesdigitalcreations.com/builder
-https://www.cookiesdigitalcreations.com/checkout/ai-video
-https://www.cookiesdigitalcreations.com/legal/terms
-https://www.cookiesdigitalcreations.com/legal/customer-content-media
 
-Builder test:
+In the builder:
 
-1. Open Builder.
-2. Choose a plan.
-3. Go to Sections & Wording.
-4. Select Order / Book / Buy.
-5. Add one or more action buttons based on the plan.
-6. Add a phone number, email, or link.
-7. Open Live Preview.
-8. Confirm the buttons appear and click correctly.
-9. Save Draft.
-10. Publish.
-11. Open the published website and confirm the action buttons still appear.
+1. Choose a few different business types.
+2. Choose different template styles.
+3. Select Order / Book / Buy.
+4. Add a button like Book Now, Order Now, or Request Quote.
+5. Open Live Preview.
+6. Confirm the template layout looks clean.
+7. Save Draft.
+8. Publish.
+9. Open the published website.
+10. Confirm the published template looks the same and the action buttons work.

@@ -7,6 +7,7 @@ import './pricing-cleanup-fix.css';
 import './plan-accuracy-fix.css';
 import './clean-pricing-ai-video-fix.css';
 import './customer-action-brand-refresh.css';
+import './customer-site-templates-rebuild.css';
 
 export const metadata = {
   title: 'Cookie Mini Website Builder Pro',
