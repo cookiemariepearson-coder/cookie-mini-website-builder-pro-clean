@@ -221,14 +221,14 @@ export default function Builder() {
       ...preset,
       primaryColor: palette.primary || current.primaryColor,
       accentColor: palette.accent || current.accentColor,
-      pages: normalizeSelectedPagesForPlan(ns.pages, current.plan),
+      pages: normalizeSelectedPagesForPlan(current.pages || ['Home'], current.plan),
       desiredPages: type.pages,
       offerTitle: ns.offerTitle,
       offers: ns.offers,
       sections: ns.sections,
       designUpdatedAt: Date.now()
     }));
-    setMessage('Website type changed and starter wording/sections were refreshed for that type.');
+    setMessage('Website type changed. Your selected sections were kept so you can choose the pages you want.');
   }
 
   function selectStyle(key) {
@@ -339,7 +339,7 @@ export default function Builder() {
     if (!planAllowsAiVideo(site.plan)) {
       persistLocal('Draft saved before viewing AI Video upgrade options.');
       setMessage('AI Video Studio is available on Business and Premium. Upgrade to unlock real AI video creation.');
-      setTimeout(() => { window.location.href = '/pricing?upgrade=ai-video'; }, 650);
+      setTimeout(() => { window.location.href = '/pricing?upgrade=ai-video#ai-video'; }, 650);
       return;
     }
     const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
@@ -411,7 +411,7 @@ export default function Builder() {
         <div className="notice">Any issues, click the Contact Us button for help.</div>
         <button className="btn light" onClick={saveDraft} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Draft'}</button>
         {isSmallBuilderScreen && <button className="btn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button>}
-        {planAllowsAiVideo(site.plan) ? <button className="btn light" onClick={goVideo}>AI Video Studio</button> : <button className="btn light lockedBtn" onClick={goVideo}>AI Video Upgrade</button>}
+        {planAllowsAiVideo(site.plan) ? <button className="btn light aiStudioBuilderBtn" onClick={goVideo}>AI Video Studio</button> : <button className="btn light lockedBtn aiStudioBuilderBtn" onClick={goVideo}>AI Video Upgrade</button>}
         <a className="btn light" href="/customer">Open My Drafts</a>
         <button className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
         <div className="notice smallNotice"><strong>Current draft:</strong><br />{draftSlugFor(site)}.cookiesdigitalcreations.com</div>
@@ -477,7 +477,10 @@ export default function Builder() {
               <>
                 <h2>Design</h2>
                 <p className="mutedText">Change the website type, template look, colors, layout, hero image, and media. Template changes apply immediately to the preview.</p>
-                <Field label="Plan"><select value={site.plan} onChange={e => update({ plan: e.target.value, pages: e.target.value === 'free' ? ['Home'] : site.pages })}>{Object.entries(plans).map(([k, v]) => <option value={k} key={k}>{v.label} - {v.price}</option>)}</select></Field>
+                <Field label="Plan"><select value={site.plan} onChange={e => {
+                  const nextPlan = e.target.value;
+                  update({ plan: nextPlan, pages: normalizeSelectedPagesForPlan(site.pages || ['Home'], nextPlan), customerActions: normalizeCustomerActions(site.customerActions, nextPlan) });
+                }}>{Object.entries(plans).map(([k, v]) => <option value={k} key={k}>{v.label} - {v.price}</option>)}</select></Field>
                 <Field label="Website type"><select value={site.typeKey} onChange={e => chooseType(e.target.value)}>{templateLibrary.map(t => <option value={t.key} key={t.key}>{t.type}</option>)}</select></Field>
                 <h3>Template look</h3>
                 <StylePicker typeKey={site.typeKey} styleKey={site.styleKey} selectStyle={selectStyle} />

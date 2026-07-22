@@ -150,7 +150,7 @@ export default function CheckoutSuccess() {
         </div>
 
         <div className="navRow checkoutSuccessActions">
-          <a className="btn" href="/video-studio?mode=standalone">Open AI Video Studio</a>
+          <a className="btn aiStudioSuccessBtn" href="/video-studio?mode=standalone">Open AI Video Studio</a>
           <a className="btn dark" href="/video-studio/results">Open Video Results</a>
           <a className="btn light" href="/pricing">View Website Plans</a>
           <a className="btn light" href="/builder">Build a Website</a>
@@ -188,6 +188,7 @@ export default function CheckoutSuccess() {
         {siteUrl && <a className="btn" href={siteUrl} target="_blank" rel="noreferrer">Open Published Website</a>}
         {publishedSlug && <a className="btn dark" href={`/site/${publishedSlug}`} target="_blank" rel="noreferrer">Open Backup Preview</a>}
         <a className="btn light" href="/customer">Find My Drafts / Website</a>
+        {['business','premium'].includes(displayedPlan) && <a className="btn aiStudioSuccessBtn" href={`/video-studio?return=builder&draft=${encodeURIComponent(publishedSlug || '')}`}>Open AI Video Studio</a>}
         <a className="btn light" href="/builder">Back to Builder</a>
         <button className="btn dark" onClick={startFreshDraft}>Start Fresh Draft</button>
       </div>
