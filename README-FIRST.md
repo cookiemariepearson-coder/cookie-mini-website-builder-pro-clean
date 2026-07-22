@@ -1,4 +1,4 @@
-# Cookie Mini Website Builder Pro - AI Video Checkout No Auto Redirect Fix
+# Cookie Mini Website Builder Pro - AI Video Checkout Customer Clean Fix
 
 Upload these inside files/folders to the clean GitHub repo only:
 
@@ -6,38 +6,24 @@ cookie-mini-website-builder-pro-clean
 
 ## What this fixes
 
-The AI Video checkout page was opening and then jumping to a 404 page because the page was set to auto-redirect after loading.
+This removes the customer-facing setup/instruction wording from:
 
-This patch removes the automatic jump.
+app/checkout/ai-video/page.js
 
-Now /checkout/ai-video:
+The AI Video checkout page now shows only customer-friendly wording.
 
-- Opens normally.
-- Shows the AI Video Studio $5 checkout page.
-- Shows a Continue to AI Video Checkout button only when the Gumroad link is connected.
-- Does not force customers away from the page automatically.
-- Prevents a wrong/missing checkout link from pushing users to a 404 page.
+If the Gumroad checkout link is connected, customers see:
+
+Continue to Checkout
+
+If the checkout link is not connected yet, customers see a simple customer-friendly message and Contact Us button.
 
 ## No SQL needed
 
-This is only a checkout page behavior fix.
-
-## Vercel Environment Variable
-
-Make sure this variable is set after the Gumroad AI Video Studio product is ready:
-
-NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL
-
-Value should be your Gumroad AI Video Studio product or checkout URL.
-It should begin with https://
+This is only a checkout page wording cleanup.
 
 ## Test after Vercel says Ready
 
 https://www.cookiesdigitalcreations.com/checkout/ai-video
 
-The page should stay open and should not jump to 404.
-
-Then test:
-
-https://www.cookiesdigitalcreations.com/checkout/success?paid=ai-video
-https://www.cookiesdigitalcreations.com/video-studio?mode=standalone
+Confirm the page does not show any Vercel, environment variable, or setup instruction wording.
