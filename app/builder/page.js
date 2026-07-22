@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useDeferredValue } from 'react';
 import SitePreview from '../../lib/SitePreview';
-import { createDefaultSite, templateLibrary, getTemplate, pageOptions, plans, slugify, sectionPrompts, normalizeSelectedPagesForPlan, planAllowsMedia, planAllowsAiVideo, planSectionLimit } from '../../lib/siteDefaults';
+import { createDefaultSite, templateLibrary, getTemplate, pageOptions, plans, slugify, sectionPrompts, normalizeSelectedPagesForPlan, planAllowsMedia, planAllowsAiVideo, planSectionLimit, customerActionLimit, customerActionTypes, normalizeCustomerActions } from '../../lib/siteDefaults';
 
 const checkout = {
   starter: '/checkout/starter',
@@ -77,6 +77,7 @@ function mergeDefaults(saved) {
     sections: { ...base.sections, ...(saved?.sections || {}) },
     offers: Array.isArray(saved?.offers) && saved.offers.length ? saved.offers : base.offers,
     media: Array.isArray(saved?.media) ? saved.media : [],
+    customerActions: Array.isArray(saved?.customerActions) && saved.customerActions.length ? normalizeCustomerActions(saved.customerActions, saved?.plan || base.plan) : base.customerActions,
     pages: normalizeSelectedPagesForPlan(Array.isArray(saved?.pages) && saved.pages.length ? saved.pages : base.pages, saved?.plan || base.plan),
     desiredPages: Array.isArray(saved?.desiredPages) && saved.desiredPages.length ? saved.desiredPages : base.desiredPages
   };
@@ -191,6 +192,10 @@ export default function Builder() {
     setSite(current => ({ ...current, sections: { ...(current.sections || {}), [name]: value } }));
   }
 
+  function updateCustomerActions(actions) {
+    setSite(current => ({ ...current, customerActions: normalizeCustomerActions(actions, current.plan) }));
+  }
+
   function updateDesign(patch) {
     setSite(current => ({ ...current, ...patch, designUpdatedAt: Date.now() }));
   }
@@ -212,6 +217,7 @@ export default function Builder() {
       heroImage: current.heroImage,
       heroMediaLink: current.heroMediaLink,
       media: current.media || [],
+      customerActions: current.customerActions || ns.customerActions,
       ...preset,
       primaryColor: palette.primary || current.primaryColor,
       accentColor: palette.accent || current.accentColor,
@@ -393,7 +399,7 @@ export default function Builder() {
   const canUseAiVideo = planAllowsAiVideo(site.plan);
   const previewSite = { ...deferredSite, pages: normalizeSelectedPagesForPlan(deferredSite.pages, deferredSite.plan) };
 
-  const previewKey = `${site.typeKey}-${site.styleKey}-${site.primaryColor}-${site.accentColor}-${site.fontStyle}-${site.layoutStyle}-${site.backgroundStyle}-${site.sectionShape}-${site.templateAppliedAt || ''}-${site.designUpdatedAt || ''}`;
+  const previewKey = `${site.typeKey}-${site.styleKey}-${site.primaryColor}-${site.accentColor}-${site.fontStyle}-${site.layoutStyle}-${site.backgroundStyle}-${site.sectionShape}-${site.templateAppliedAt || ''}-${site.designUpdatedAt || ''}-${JSON.stringify(site.customerActions || [])}`;
 
   return (
     <main className="builderShell">
@@ -508,6 +514,7 @@ export default function Builder() {
                     <li>Starter Pro: 4 selected sections plus image/video upload options.</li>
                     <li>Business: 6 selected sections plus image/video upload options and AI Video Studio.</li>
                     <li>Premium: all built-in sections plus image/video upload options and AI Video Studio.</li>
+                    <li>Order / Book / Buy buttons: Free 1, Starter 2, Business 4, Premium 8.</li>
                   </ul>
                 </div>
                 <div className="templateList pagePickList sectionPickList">
@@ -532,9 +539,18 @@ export default function Builder() {
                 <h3>Write wording for selected sections only</h3>
                 <p className="mutedText">These are the only sections that will appear in the live preview and on the published website for this plan.</p>
                 {selectedSections.map(page => (
-                  <Field label={`${page} wording`} help={sectionPrompts[page]} key={page}>
-                    <textarea value={site.sections?.[page] || ''} onChange={e => updateSection(page, e.target.value)} />
-                  </Field>
+                  page === 'Order / Book / Buy' || page === 'Customer Action' ? (
+                    <CustomerActionEditor
+                      key={page}
+                      site={site}
+                      updateSection={updateSection}
+                      updateCustomerActions={updateCustomerActions}
+                    />
+                  ) : (
+                    <Field label={`${page} wording`} help={sectionPrompts[page]} key={page}>
+                      <textarea value={site.sections?.[page] || ''} onChange={e => updateSection(page, e.target.value)} />
+                    </Field>
+                  )
                 ))}
                 <h3>Gallery / media items</h3>
                 {canUseMedia ? <>
@@ -603,6 +619,103 @@ function StylePicker({ typeKey, styleKey, selectStyle }) {
     </button>
   ))}</div>;
 }
+
+
+function CustomerActionEditor({ site, updateSection, updateCustomerActions }) {
+  const actions = normalizeCustomerActions(site.customerActions, site.plan);
+  const limit = customerActionLimit(site.plan);
+  const canAddMore = actions.length < limit;
+  const sectionName = 'Order / Book / Buy';
+
+  function updateAction(index, patch) {
+    const next = [...actions];
+    next[index] = { ...next[index], ...patch };
+    updateCustomerActions(next);
+  }
+
+  function addAction() {
+    if (!canAddMore) return;
+    updateCustomerActions([...actions, { label: 'Book Now', type: 'book', value: '', note: '' }]);
+  }
+
+  function removeAction(index) {
+    updateCustomerActions(actions.filter((_, i) => i !== index));
+  }
+
+  return (
+    <div className="customerActionEditor">
+      <h3>Order / Book / Buy section</h3>
+      <p className="mutedText">
+        Add the buttons visitors need to contact, order, book, buy, request a quote, view a menu, or make a payment.
+        Use outside links like Gumroad, Square, Stripe, Calendly, Google Forms, Jotform, Cash App, phone, text, email, or any custom checkout link.
+      </p>
+
+      <Field label="Section wording" help={sectionPrompts[sectionName]}>
+        <textarea
+          value={site.sections?.[sectionName] || ''}
+          onChange={e => updateSection(sectionName, e.target.value)}
+          placeholder="Ready to order, book, buy, or request a quote? Choose an option below."
+        />
+      </Field>
+
+      <div className="notice">
+        <strong>{plans[site.plan]?.label}</strong> includes up to {limit} customer action button{limit === 1 ? '' : 's'}.
+      </div>
+
+      <div className="customerActionList">
+        {actions.map((action, index) => {
+          const actionMeta = customerActionTypes.find(item => item.key === action.type) || customerActionTypes[customerActionTypes.length - 1];
+          return (
+            <div className="customerActionCard" key={index}>
+              <div className="customerActionCardHeader">
+                <strong>Action button {index + 1}</strong>
+                {actions.length > 1 && <button className="btn light" type="button" onClick={() => removeAction(index)}>Remove</button>}
+              </div>
+
+              <div className="grid2">
+                <Field label="Button text">
+                  <input
+                    value={action.label || ''}
+                    onChange={e => updateAction(index, { label: e.target.value })}
+                    placeholder={actionMeta.label}
+                  />
+                </Field>
+                <Field label="Action type">
+                  <select value={action.type || 'custom'} onChange={e => updateAction(index, { type: e.target.value })}>
+                    {customerActionTypes.map(item => <option key={item.key} value={item.key}>{item.label}</option>)}
+                  </select>
+                </Field>
+              </div>
+
+              <Field label="Phone, email, checkout, booking, menu, payment, or custom link">
+                <input
+                  value={action.value || ''}
+                  onChange={e => updateAction(index, { value: e.target.value })}
+                  placeholder={actionMeta.placeholder}
+                />
+              </Field>
+
+              <Field label="Optional note under button">
+                <input
+                  value={action.note || ''}
+                  onChange={e => updateAction(index, { note: e.target.value })}
+                  placeholder="Example: Orders accepted Monday through Saturday."
+                />
+              </Field>
+            </div>
+          );
+        })}
+      </div>
+
+      {canAddMore ? (
+        <button className="btn" type="button" onClick={addAction}>Add another action button</button>
+      ) : (
+        <div className="notice">You reached the action button limit for this plan. Upgrade to add more action buttons.</div>
+      )}
+    </div>
+  );
+}
+
 
 function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
   const media = site.media || [];

@@ -26,7 +26,7 @@ export default function AiVideoCheckout(){
     <>
       <Nav />
       <main className="wrap">
-        <section className="dashboard aiVideoCheckoutCard">
+        <section className="dashboard aiVideoCheckoutCard brandAiVideoCheckout">
           <span className="kicker">AI Video Studio</span>
           <h1>AI Video Studio — $5</h1>
           <p>

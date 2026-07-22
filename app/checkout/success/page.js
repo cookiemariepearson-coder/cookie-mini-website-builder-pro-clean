@@ -10,10 +10,10 @@ const CURRENT_DRAFT_SLUG_KEY = 'cookieBuilderCurrentSlug';
 const DRAFTS_INDEX_KEY = 'cookieDraftSitesIndex';
 
 const planSummary = {
-  free: 'Free Launch Page — includes up to 3 selected sections.',
-  starter: 'Starter Pro — includes up to 4 selected sections plus image/video upload options.',
-  business: 'Business — includes up to 6 selected sections, image/video upload options, and AI Video Studio access.',
-  premium: 'Premium — includes access to all built-in sections, image/video upload options, and AI Video Studio access.',
+  free: 'Free Launch Page — includes up to 3 selected sections and 1 customer action button.',
+  starter: 'Starter Pro — includes up to 4 selected sections, 2 customer action buttons, plus image/video upload options.',
+  business: 'Business — includes up to 6 selected sections, 4 customer action buttons, image/video upload options, and AI Video Studio access.',
+  premium: 'Premium — includes access to all built-in sections, 8 customer action buttons, image/video upload options, and AI Video Studio access.',
   extra: 'Extra Page Add-On — adds extra section/page space to an existing paid website.',
   'ai-video': 'AI Video Studio — one standalone AI video access purchase.'
 };
