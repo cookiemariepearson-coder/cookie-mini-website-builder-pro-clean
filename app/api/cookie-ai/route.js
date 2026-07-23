@@ -1,130 +1,167 @@
 import { NextResponse } from 'next/server';
+import {
+  classifyIntent,
+  getPageHelper,
+  getRelevantKnowledge,
+  isVaguePlanFitQuestion,
+  makeFallbackAnswer,
+  makePlanDiscoveryAnswer
+} from '../../../lib/cookieAiKnowledge';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const SITE_KNOWLEDGE = `
-Cookie Mini Website Builder Pro helps customers build mini websites.
-Plans:
-Free Launch Page: $0, up to 3 selected sections, 1 customer action button, no media upload, no included AI Video Studio.
-Starter Pro: $19/month, up to 4 selected sections, media upload options, 2 customer action buttons, no included AI Video Studio.
-Business: $30/month, up to 6 selected sections, media upload options, 4 customer action buttons, AI Video Studio access based on plan limits.
-Premium: $50/month, all built-in sections, media upload options, 8 customer action buttons, strongest AI Video Studio access based on plan limits.
-Extra Page Add-On: $10/month per extra page/section space.
-Cookie's AI Video Studio: $5 standalone creative planning option for video ideas, hooks, scripts, captions, scenes, prompts, and content planning.
-
-Builder:
-Customers can choose a business type, template look, colors, layout, font feel, background feel, section style, selected sections, wording, media if allowed, customer action buttons, preview, save, and publish.
-Sections include Home, About, Services, Menu, Products, Gallery, Portfolio, Projects, Before & After, Testimonials, FAQ, Order / Book / Buy, and Contact.
-Order / Book / Buy can add Book Now, Order Now, Buy Now, Request Quote, Call Now, Text Us, Email Us, View Menu, Make a Payment, or Custom Link.
-Customers paste their own links like Gumroad, Square, Stripe, Calendly, Google Forms, Jotform, Cash App, menu, booking, payment, phone, email, or social links.
-
-Pages:
-Builder: /builder
-Pricing: /pricing
-My Website: /customer
-AI Video Studio checkout: /checkout/ai-video
-AI Video Studio: /ai-video-studio
-Backup AI route: /video-studio
-Contact: /contact
-Terms: /legal/terms
-Privacy: /legal/privacy
-
-Rules:
-Be warm, clear, lightly sassy, and professional.
-Never promise guaranteed sales, traffic, followers, rankings, income, business success, or viral results.
-Never ask for admin PINs, API keys, owner codes, passwords, payment card numbers, or private credentials.
-Do not claim you can edit, publish, or delete websites. You can guide users where to click.
-For billing, refunds, subscriptions, account access, or technical issues, send the user to Contact Us.
-`;
-
-function clean(value = '', max = 1500) {
+function clean(value = '', max = 2000) {
   return String(value || '').replace(/[<>]/g, '').trim().slice(0, max);
 }
 
-function fallbackAnswer(question = '') {
-  const q = question.toLowerCase();
-  if (q.includes('plan') || q.includes('price') || q.includes('pricing')) {
-    return `Plan guide:
+async function logChat({ message, answer, pagePath, intent, businessName, email, needsHumanHelp }) {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-Free Launch Page: $0, up to 3 sections and 1 customer action button.
-Starter Pro: $19/month, up to 4 sections, media uploads, and 2 action buttons.
-Business: $30/month, up to 6 sections, media uploads, 4 action buttons, and AI Video Studio access.
-Premium: $50/month, all built-in sections, media uploads, 8 action buttons, and strongest AI Video Studio access.
+    if (!supabaseUrl || !serviceKey) return;
 
-Start here: /pricing`;
-  }
-  if (q.includes('order') || q.includes('book') || q.includes('buy') || q.includes('quote')) {
-    return `To add customer buttons:
+    await fetch(`${supabaseUrl}/rest/v1/cookie_ai_chat_logs`, {
+      method: 'POST',
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal'
+      },
+      body: JSON.stringify({
+        message,
+        answer,
+        page_path: pagePath || null,
+        intent: intent || null,
+        business_name: businessName || null,
+        email: email || null,
+        needs_human_help: Boolean(needsHumanHelp)
+      })
+    }).catch(() => null);
+  } catch {}
+}
 
-1. Open the Builder.
-2. Go to Sections & Wording.
-3. Select Order / Book / Buy.
-4. Add Book Now, Order Now, Buy Now, Request Quote, Call Now, Text Us, Email Us, View Menu, Make a Payment, or Custom Link.
-5. Paste your booking, checkout, menu, payment, form, phone, or email link.
+function buildSystemPrompt({ pagePath, relevantKnowledge }) {
+  return `
+You are Cookie AI Assistant, the support and website-writing chatbot for Cookie Mini Website Builder Pro by Cookie Digital Creations.
 
-Start here: /builder`;
-  }
-  if (q.includes('ai video') || q.includes('video studio') || q.includes('heygen')) {
-    return `Cookie's AI Video Studio has two uses:
+Personality:
+- Warm, clear, lightly sassy, helpful, and professional.
+- Use simple steps.
+- Keep answers short unless the customer asks for detail.
+- Encourage without overpromising.
 
-The $5 standalone option helps with video ideas, hooks, scripts, captions, scenes, prompts, and content planning.
-Business and Premium website plans may include real HeyGen video access based on plan limits.
+Current page context:
+${getPageHelper(pagePath)}
 
-Open AI Video Studio: /ai-video-studio`;
-  }
-  if (q.includes('publish') || q.includes('website') || q.includes('live')) {
-    return `To publish:
+Approved knowledge:
+${relevantKnowledge}
 
-1. Open the Builder.
-2. Complete business info, design, sections, and wording.
-3. Check the live preview.
-4. Click Save Draft.
-5. Go to Preview & Publish.
-6. Publish the Free Launch Page or continue to checkout for paid plans.
-7. After checkout, use Open Published Website or Open Backup Preview.
+Plan matching rule:
+- If the user asks what plan fits them, which plan to choose, best plan, or help picking a plan, and they have not described their business needs, ask discovery questions first.
+- Do not list every plan first for vague plan-fit questions.
+- Ask what type of business they have, whether they need Book/Order/Buy/Quote buttons, whether they need photos/videos, whether they need AI Video Studio, and whether they want a small launch page or full site.
+- After the customer answers, recommend one best plan and explain why.
 
-Start here: /builder`;
-  }
-  return `I can help with plans, building your mini website, Order / Book / Buy buttons, AI Video Studio, saving drafts, or publishing. For billing, refunds, or account access, please use Contact Us.`;
+Hard rules:
+- Never promise guaranteed sales, traffic, followers, views, ranking, viral results, income, or business success.
+- Never ask for or reveal admin PINs, owner testing codes, passwords, API keys, secret keys, tokens, Supabase keys, HeyGen keys, OpenAI keys, Gumroad tokens, or payment card numbers.
+- Do not claim you can directly edit, publish, delete, refund, cancel, or access accounts. Guide users where to click.
+- For billing, refunds, subscriptions, account access, payment disputes, legal questions, or private technical account issues, tell the user to use Contact Us.
+- Do not provide legal, tax, medical, financial, or professional advice.
+- Do not say custom domains are included in current plans.
+- Mention third-party link limits when relevant: Cookie Mini Website Builder Pro does not control third-party checkout, appointments, payment, delivery, refunds, disputes, or services.
+- Standalone AI Video Studio is creative planning unless the current app flow specifically gives plan-based real HeyGen generation.
+`;
 }
 
 export async function POST(req) {
   try {
     const body = await req.json().catch(() => ({}));
     const userMessage = clean(body.message || body.question || '');
+    const pagePath = clean(body.pagePath || body.pathname || '', 300);
+    const businessName = clean(body.businessName || '', 200);
+    const email = clean(body.email || '', 250);
     const history = Array.isArray(body.history) ? body.history.slice(-8) : [];
+
     if (!userMessage) {
-      return NextResponse.json({ ok: true, answer: 'Ask me about plans, pricing, the builder, Order / Book / Buy, AI Video Studio, or publishing.' });
+      return NextResponse.json({
+        ok: true,
+        answer: makeFallbackAnswer('', pagePath),
+        intent: 'general'
+      });
     }
+
+    const intent = classifyIntent(userMessage, pagePath);
+    const needsHumanHelp = intent === 'human_support';
+
+    // Hard stop for vague plan-fit questions so it asks about the business first.
+    if (intent === 'plan_help' && isVaguePlanFitQuestion(userMessage, pagePath)) {
+      const answer = makePlanDiscoveryAnswer();
+      await logChat({ message: userMessage, answer, pagePath, intent, businessName, email, needsHumanHelp: false });
+      return NextResponse.json({ ok: true, answer, intent, needsHumanHelp: false, discovery: true });
+    }
+
+    const relevantKnowledge = getRelevantKnowledge(userMessage, pagePath, 5);
+    const fallback = makeFallbackAnswer(userMessage, pagePath);
 
     const apiKey = process.env.OPENAI_API_KEY;
     const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
-    if (!apiKey) {
-      return NextResponse.json({ ok: true, fallback: true, answer: fallbackAnswer(userMessage) });
+    if (!apiKey || needsHumanHelp) {
+      await logChat({ message: userMessage, answer: fallback, pagePath, intent, businessName, email, needsHumanHelp });
+      return NextResponse.json({ ok: true, fallback: true, answer: fallback, intent, needsHumanHelp });
     }
 
     const messages = [
-      { role: 'system', content: `You are Cookie AI Assistant for Cookie Mini Website Builder Pro.\n\n${SITE_KNOWLEDGE}` },
-      ...history.map(item => ({ role: item.role === 'assistant' ? 'assistant' : 'user', content: clean(item.content || item.text || '', 900) })),
-      { role: 'user', content: userMessage }
+      {
+        role: 'system',
+        content: buildSystemPrompt({ pagePath, relevantKnowledge })
+      },
+      ...history.map(item => ({
+        role: item.role === 'assistant' ? 'assistant' : 'user',
+        content: clean(item.content || item.text || '', 900)
+      })),
+      {
+        role: 'user',
+        content: userMessage
+      }
     ];
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, messages, temperature: 0.35, max_tokens: 450 })
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.3,
+        max_tokens: 650
+      })
     });
 
     const data = await response.json().catch(() => ({}));
+
     if (!response.ok) {
-      return NextResponse.json({ ok: true, fallback: true, answer: fallbackAnswer(userMessage) });
+      await logChat({ message: userMessage, answer: fallback, pagePath, intent, businessName, email, needsHumanHelp });
+      return NextResponse.json({ ok: true, fallback: true, answer: fallback, intent, needsHumanHelp });
     }
 
-    const answer = clean(data?.choices?.[0]?.message?.content || fallbackAnswer(userMessage), 2200);
-    return NextResponse.json({ ok: true, answer });
+    const answer = clean(data?.choices?.[0]?.message?.content || fallback, 2800) || fallback;
+
+    await logChat({ message: userMessage, answer, pagePath, intent, businessName, email, needsHumanHelp });
+
+    return NextResponse.json({ ok: true, answer, intent, needsHumanHelp });
   } catch {
-    return NextResponse.json({ ok: true, fallback: true, answer: 'I had trouble connecting, but I can still help with plans, the builder, Order / Book / Buy, AI Video Studio, or publishing. For billing or account access, please use Contact Us.' });
+    return NextResponse.json({
+      ok: true,
+      fallback: true,
+      answer: 'I had trouble connecting, but I can still help with plans, website wording, Order / Book / Buy, AI Video Studio, publishing, or troubleshooting. For billing, refunds, or account access, please use Contact Us.',
+      intent: 'troubleshooting'
+    });
   }
 }
