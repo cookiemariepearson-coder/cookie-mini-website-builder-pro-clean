@@ -1,4 +1,6 @@
-# Cookie AI Assistant v3 - GPT Smart Advisor
+# Cookie AI Assistant V4 - GPT Smart Advisor
+This V4 correction improves conversation memory, short-answer handling, one-question-at-a-time plan guidance, and model compatibility.
+
 
 Upload these inside files/folders to the clean GitHub repo only:
 
