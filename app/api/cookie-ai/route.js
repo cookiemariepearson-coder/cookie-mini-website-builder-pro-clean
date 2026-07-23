@@ -3,8 +3,10 @@ import {
   classifyIntent,
   getPageHelper,
   getRelevantKnowledge,
+  isActivePlanConsultation,
   isVaguePlanFitQuestion,
   makeFallbackAnswer,
+  makePlanConsultationAnswer,
   makePlanDiscoveryAnswer
 } from '../../../lib/cookieAiKnowledge';
 
@@ -59,11 +61,15 @@ ${getPageHelper(pagePath)}
 Approved knowledge:
 ${relevantKnowledge}
 
+Conversation rule:
+- Pay attention to previous messages. If you asked discovery questions and the customer replies with short words like "cooking" or "a cookbook", continue that same plan-picking conversation.
+- Do not reset back to a generic intro.
+- Do not jump to Order / Book / Buy instructions unless the customer is specifically asking how to add buttons.
+
 Plan matching rule:
-- If the user asks what plan fits them, which plan to choose, best plan, or help picking a plan, and they have not described their business needs, ask discovery questions first.
-- Do not list every plan first for vague plan-fit questions.
-- Ask what type of business they have, whether they need Book/Order/Buy/Quote buttons, whether they need photos/videos, whether they need AI Video Studio, and whether they want a small launch page or full site.
+- If the user asks what plan fits them and they have not described their business needs, ask discovery questions first.
 - After the customer answers, recommend one best plan and explain why.
+- Mention a backup plan only when useful.
 
 Hard rules:
 - Never promise guaranteed sales, traffic, followers, views, ranking, viral results, income, or business success.
@@ -84,7 +90,7 @@ export async function POST(req) {
     const pagePath = clean(body.pagePath || body.pathname || '', 300);
     const businessName = clean(body.businessName || '', 200);
     const email = clean(body.email || '', 250);
-    const history = Array.isArray(body.history) ? body.history.slice(-8) : [];
+    const history = Array.isArray(body.history) ? body.history.slice(-10) : [];
 
     if (!userMessage) {
       return NextResponse.json({
@@ -97,7 +103,14 @@ export async function POST(req) {
     const intent = classifyIntent(userMessage, pagePath);
     const needsHumanHelp = intent === 'human_support';
 
-    // Hard stop for vague plan-fit questions so it asks about the business first.
+    // Strong deterministic plan-conversation memory.
+    // This prevents short replies like "cooking" or "a cookbook" from resetting the chatbot.
+    if (!needsHumanHelp && isActivePlanConsultation(userMessage, history)) {
+      const answer = makePlanConsultationAnswer(userMessage, history);
+      await logChat({ message: userMessage, answer, pagePath, intent: 'plan_help', businessName, email, needsHumanHelp: false });
+      return NextResponse.json({ ok: true, answer, intent: 'plan_help', needsHumanHelp: false, planConsultation: true });
+    }
+
     if (intent === 'plan_help' && isVaguePlanFitQuestion(userMessage, pagePath)) {
       const answer = makePlanDiscoveryAnswer();
       await logChat({ message: userMessage, answer, pagePath, intent, businessName, email, needsHumanHelp: false });
