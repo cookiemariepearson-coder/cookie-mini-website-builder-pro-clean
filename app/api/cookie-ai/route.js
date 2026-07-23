@@ -62,8 +62,9 @@ Approved knowledge:
 ${relevantKnowledge}
 
 Conversation rule:
-- Pay attention to previous messages. If you asked discovery questions and the customer replies with short words like "cooking" or "a cookbook", continue that same plan-picking conversation.
+- Pay attention to previous messages. If you asked discovery questions and the customer replies with short words like "cooking", "a cookbook", "yes", or "no", continue that same plan-picking conversation.
 - Do not reset back to a generic intro.
+- Do not repeat the same discovery question after the customer answered it.
 - Do not jump to Order / Book / Buy instructions unless the customer is specifically asking how to add buttons.
 
 Plan matching rule:
@@ -104,7 +105,6 @@ export async function POST(req) {
     const needsHumanHelp = intent === 'human_support';
 
     // Strong deterministic plan-conversation memory.
-    // This prevents short replies like "cooking" or "a cookbook" from resetting the chatbot.
     if (!needsHumanHelp && isActivePlanConsultation(userMessage, history)) {
       const answer = makePlanConsultationAnswer(userMessage, history);
       await logChat({ message: userMessage, answer, pagePath, intent: 'plan_help', businessName, email, needsHumanHelp: false });
@@ -152,7 +152,7 @@ export async function POST(req) {
       body: JSON.stringify({
         model,
         messages,
-        temperature: 0.3,
+        temperature: 0.25,
         max_tokens: 650
       })
     });
