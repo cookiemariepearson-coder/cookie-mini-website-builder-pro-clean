@@ -119,7 +119,7 @@ export async function POST(req) {
     const pagePath = clean(body.pagePath || body.pathname || '', 300);
     const businessName = clean(body.businessName || '', 200);
     const email = clean(body.email || '', 250);
-    const history = Array.isArray(body.history) ? body.history.slice(-12) : [];
+    const history = Array.isArray(body.history) ? body.history.slice(-20) : [];
 
     if (!userMessage) {
       return NextResponse.json({
@@ -152,7 +152,7 @@ export async function POST(req) {
       { role: 'system', content: buildSystemPrompt(pagePath) },
       ...history.map(item => ({
         role: item.role === 'assistant' ? 'assistant' : 'user',
-        content: clean(item.content || item.text || '', 1200)
+        content: clean(item.content || item.text || item.message || item.answer || '', 1200)
       })),
       { role: 'user', content: userMessage }
     ];
