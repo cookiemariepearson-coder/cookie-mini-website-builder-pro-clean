@@ -1,51 +1,74 @@
-# Cookie AI Assistant v2 - One Page Syntax Fix
+# Cookie AI Assistant v3 - GPT Smart Advisor
 
 Upload these inside files/folders to the clean GitHub repo only:
 
 cookie-mini-website-builder-pro-clean
 
-## What this fixes
+## Why this version is different
 
-The previous One Page Refinement Fix had a JavaScript syntax error in:
+The previous chatbot used a hard-coded step-by-step plan wizard. That made it repeat questions and misunderstand short answers.
 
-lib/cookieAiKnowledge.js
+This version removes the rigid plan wizard.
 
-Vercel showed:
+Cookie AI now uses the OpenAI model as the smart advisor and uses the full conversation to decide what to ask or recommend.
 
-Expected ',', got ';'
+## Recommended model
 
-This pack fixes the syntax issue that stopped the deployment.
+In Vercel, set:
+
+OPENAI_MODEL = gpt-5.1
+
+If your OpenAI API account does not have access to gpt-5.1 yet, the API route will try backups:
+
+- gpt-4.1
+- gpt-4o
 
 ## Files included
 
-- lib/cookieAiKnowledge.js
 - app/api/cookie-ai/route.js
-- docs/COOKIE_AI_ASSISTANT_V2_ONE_PAGE_SYNTAX_FIX.md
+- lib/cookieAiKnowledge.js
+- docs/COOKIE_AI_ASSISTANT_V3_GPT_SMART_ADVISOR.md
 
 ## No SQL needed
 
-This is only a syntax/build fix.
+This is only a chatbot intelligence/behavior upgrade.
+
+## Keep this Vercel variable
+
+OPENAI_API_KEY
+
+## Add or update this Vercel variable
+
+OPENAI_MODEL = gpt-5.1
+
+Then redeploy.
 
 ## Test after Vercel says Ready
 
-1. Open Cookie AI.
-2. Click Clear.
-3. Refresh the website page.
-4. Test:
+Click Clear inside Cookie AI first.
 
-What plan fits me?
-cookbook or digital recipes
-yes
-yes
-yes ai video
-small launch
-I only want 1 page
+Test:
+
+Which plan should I choose?
+coaching or classes
+I need people to book classes
+yes photos
+no AI
+one page
 
 Expected:
-Cookie AI should explain that Business is only needed if AI Video Studio is bundled, and the cheaper one-page setup is Starter Pro + the $5 standalone AI Video Studio.
+It should recommend Starter Pro for a simple one-page coaching/classes site with media and booking.
 
-## Syntax check
+Test:
 
-Node syntax check result:
+Which plan should I choose?
+cookbook or digital recipes
+Buy Now
+yes images
+yes AI video
+one page
 
-Passed
+Expected:
+It should explain:
+- Business if AI Video Studio is bundled with the website plan
+- Starter Pro + $5 standalone AI Video Studio as the lower-cost one-page option
