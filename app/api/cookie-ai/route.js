@@ -4,6 +4,8 @@ import {
   continuePlanFlow,
   getPageHelper,
   getRelevantKnowledge,
+  handlePlanRefinement,
+  isOnePageRefinement,
   isPlanStartQuestion,
   makeFallbackAnswer,
   startPlanFlow
@@ -87,9 +89,15 @@ export async function POST(req) {
     const intent = classifyIntent(userMessage, pagePath);
     const needsHumanHelp = intent === 'human_support';
 
-    // Locked plan flow: use explicit saved state from the browser instead of guessing from chat history.
     if (!needsHumanHelp && isPlanStartQuestion(userMessage)) {
       const result = startPlanFlow();
+      await logChat({ message: userMessage, answer: result.answer, pagePath, intent: 'plan_help', businessName, email, needsHumanHelp: false });
+      return NextResponse.json({ ok: true, answer: result.answer, intent: 'plan_help', needsHumanHelp: false, planState: result.planState });
+    }
+
+    // Allow one-page correction/refinement after a recommendation without asking "why" repeatedly.
+    if (!needsHumanHelp && planState && !planState.active && isOnePageRefinement(userMessage)) {
+      const result = handlePlanRefinement(userMessage, planState);
       await logChat({ message: userMessage, answer: result.answer, pagePath, intent: 'plan_help', businessName, email, needsHumanHelp: false });
       return NextResponse.json({ ok: true, answer: result.answer, intent: 'plan_help', needsHumanHelp: false, planState: result.planState });
     }
