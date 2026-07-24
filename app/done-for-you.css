@@ -1,0 +1,44 @@
+.doneForYouPage{padding-bottom:60px}
+.doneForYouHero{background:linear-gradient(135deg,#fff8ef,#fff,#f8efff)}
+.doneForYouHero h1{max-width:900px}
+.doneForYouHero p{max-width:850px}
+.dfyNotice{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:22px 0}
+.dfyNotice div{background:#fff;border:1px solid #eaddec;border-radius:22px;padding:20px;box-shadow:0 16px 34px #00000012}
+.dfyNotice strong,.dfyNotice span{display:block}
+.dfyNotice strong{font-size:18px;color:#20172f;margin-bottom:7px}
+.dfyNotice span{color:#655774;line-height:1.5}
+.dfyPlanGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:24px 0}
+.dfyPlanCard{position:relative;overflow:hidden;background:#fff;border:1px solid #eaddec;border-top:9px solid #c46a2d;border-radius:28px;padding:28px;box-shadow:0 26px 60px #00000018}
+.dfyPlanCard.sunset{border-top-color:#f08a35;background:linear-gradient(145deg,#fff,#fff5e8)}
+.dfyPlanCard.berry{border-top-color:#e65085;background:linear-gradient(145deg,#fff,#fff0f6)}
+.dfyPlanCard.gold{border-top-color:#f0a21f;background:linear-gradient(145deg,#fff,#fff8dc)}
+.dfyPlanCard.violet{border-top-color:#844cc1;background:linear-gradient(145deg,#fff,#f7efff)}
+.dfyPlanCard h2{font-size:30px;margin:8px 0}
+.dfyPlanCard h3{font-size:17px;margin:22px 0 8px}
+.dfyPlanCard p{color:#594a68;line-height:1.55}
+.dfyPlanCard ul{padding-left:22px;min-height:228px}
+.dfyPlanCard li{margin:9px 0;line-height:1.4}
+.dfyPlanLabel{display:inline-block;border-radius:999px;background:#20172f;color:#fff;padding:7px 12px;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.dfyPrice{font-size:40px;font-weight:900;color:#20172f}
+.dfyMonthly{font-weight:900;color:#8a3a00;margin:4px 0 14px}
+.dfyExtraPage{display:flex;align-items:center;justify-content:space-between;gap:24px;background:linear-gradient(135deg,#fff0dd,#f8edff);border:1px solid #eaddec;border-radius:28px;padding:28px;margin:26px 0;box-shadow:0 22px 48px #00000014}
+.dfyExtraPage h2{margin:7px 0}
+.dfyExtraPage p{max-width:760px;line-height:1.55}
+.dfyDetailsGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:26px 0}
+.dfyDetailsGrid .card{padding:20px;border-radius:22px}
+.dfyDetailsGrid h2{font-size:20px}
+.dfyDetailsGrid p{color:#655774;line-height:1.5}
+.dfyFinePrint{background:#21122d;color:#fff;border-radius:28px;padding:28px;margin-top:24px}
+.dfyFinePrint h2{margin-top:0}
+.dfyFinePrint p{color:#f3e9f7;line-height:1.65;margin-bottom:0}
+@media(max-width:900px){
+  .dfyNotice,.dfyPlanGrid{grid-template-columns:1fr}
+  .dfyDetailsGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dfyPlanCard ul{min-height:0}
+}
+@media(max-width:620px){
+  .dfyDetailsGrid{grid-template-columns:1fr}
+  .dfyExtraPage{display:block}
+  .dfyExtraPage .btn{margin-top:10px}
+  .dfyPrice{font-size:34px}
+}

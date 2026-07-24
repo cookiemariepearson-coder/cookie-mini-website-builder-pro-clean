@@ -9,6 +9,7 @@ import './clean-pricing-ai-video-fix.css';
 import './customer-action-brand-refresh.css';
 import './customer-site-templates-rebuild.css';
 import './cookie-ai-assistant.css';
+import './done-for-you.css';
 import CookieAiAssistant from '../components/CookieAiAssistant';
 
 export const metadata = {
