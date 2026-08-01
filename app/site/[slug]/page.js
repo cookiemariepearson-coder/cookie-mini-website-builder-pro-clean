@@ -68,7 +68,8 @@ async function fetchWebsite(slug = '') {
 }
 
 export default async function PublishedSitePage({ params }) {
-  const slug = params?.slug || '';
+  const resolvedParams = await params;
+  const slug = resolvedParams?.slug || '';
   const row = await fetchWebsite(slug);
 
   if (!row || isBlocked(row)) notFound();
