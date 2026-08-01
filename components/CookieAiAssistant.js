@@ -239,7 +239,7 @@ export default function CookieAiAssistant() {
 
       <button className="cookieAiLauncher" type="button" onClick={() => setOpen(value => !value)} aria-label="Open Cookie AI Assistant">
         <span>💬</span>
-        <strong>{pagePath === '/' ? 'Need help choosing?' : 'Ask Cookie AI'}</strong>
+        <strong>Ask Cookie AI</strong>
       </button>
     </div>
   );

@@ -41,7 +41,18 @@ export async function POST(req) {
       await addRows(supabase.from('websites').select('*').eq('customer_email', email).order('updated_at', { ascending: false }).limit(50));
     }
     if (slug && slug !== 'my-website') {
-      await addRows(supabase.from('websites').select('*').eq('slug', slug).limit(10));
+      const safeTerm = slug.replace(/[%_,()]/g, '');
+      if (safeTerm.length >= 2) {
+        const spacedTerm = safeTerm.replace(/-/g, ' ');
+        await addRows(
+          supabase
+            .from('websites')
+            .select('*')
+            .or(`slug.ilike.%${safeTerm}%,business_name.ilike.%${safeTerm}%,business_name.ilike.%${spacedTerm}%`)
+            .order('updated_at', { ascending: false })
+            .limit(25)
+        );
+      }
     }
     if (!email && !slug) {
       return NextResponse.json({ ok: false, error: 'Enter an email address or website name/subdomain.' }, { status: 400 });

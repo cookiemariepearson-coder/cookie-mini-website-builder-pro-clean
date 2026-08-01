@@ -157,10 +157,10 @@ export default function DoneForYouPricing() {
 
         <section className="customerQuickPanel">
           <div>
-            <h2>Not sure which service fits?</h2>
+            <h2>Need help choosing?</h2>
             <p>Tell me about your business and what customers need to do. I will help you choose the best option.</p>
           </div>
-          <button className="btn dark askCookieAiButton" type="button" data-cookie-ai-open="Which Done-for-You service fits my business?">Ask Cookie AI</button>
+          <button className="btn dark askCookieAiButton" type="button" data-cookie-ai-open="Which Done-for-You service fits my business?">Ask Cookie Assistant</button>
         </section>
 
         <section className="dfyFinePrint">

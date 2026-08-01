@@ -2,11 +2,7 @@
 
 import Nav from '../../../lib/Nav';
 
-const checkoutUrl = process.env.NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL || '';
-
 export default function AiVideoCheckoutPage() {
-  const hasCheckout = Boolean(String(checkoutUrl || '').trim());
-
   return (
     <>
       <Nav />
@@ -31,15 +27,9 @@ export default function AiVideoCheckoutPage() {
           </div>
 
           <div className="navRow checkoutSuccessActions">
-            {hasCheckout ? (
-              <a className="btn aiStudioSuccessBtn" href={checkoutUrl}>
-                Start AI Video Studio — $5
-              </a>
-            ) : (
-              <a className="btn aiStudioSuccessBtn" href="/video-studio">
-                Open AI Video Studio
-              </a>
-            )}
+            <a className="btn aiStudioSuccessBtn" href="/video-studio">
+              Start AI Video Studio — $5
+            </a>
 
             <a className="btn dark" href="/video-studio">
               Already Purchased / Open Studio
@@ -53,14 +43,6 @@ export default function AiVideoCheckoutPage() {
               Build a Website Instead
             </a>
           </div>
-
-          {!hasCheckout && (
-            <div className="notice">
-              <strong>Owner note:</strong><br />
-              The studio button is now using <code>/video-studio</code>. To connect a real $5 Gumroad checkout later,
-              add <code>NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL</code> in Vercel and redeploy.
-            </div>
-          )}
 
           <div className="notice">
             <strong>After purchase:</strong><br />

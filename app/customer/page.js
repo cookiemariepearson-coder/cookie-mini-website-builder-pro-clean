@@ -32,6 +32,8 @@ export default function Customer() {
   const [loading, setLoading] = useState(false);
   const [browserDraft, setBrowserDraft] = useState(null);
   const [browserDrafts, setBrowserDrafts] = useState([]);
+  const [savedOpen, setSavedOpen] = useState(false);
+  const [selectedSite, setSelectedSite] = useState('all');
 
   useEffect(() => {
     try {
@@ -43,7 +45,14 @@ export default function Customer() {
     } catch {}
   }, []);
 
-  async function findSites() {
+  useEffect(() => {
+    const shortSearch = normalizeSubdomain(query);
+    if (shortSearch.length < 2) return;
+    const timer = setTimeout(() => findSites(true), 450);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  async function findSites(liveSearch = false) {
     const cleanEmail = email.trim().toLowerCase();
     const cleanSlug = normalizeSubdomain(query);
     if (!cleanEmail && !cleanSlug) {
@@ -52,7 +61,7 @@ export default function Customer() {
       return;
     }
     setLoading(true);
-    setMsg('Searching for your websites and drafts...');
+    setMsg(liveSearch ? 'Filtering saved websites as you type...' : 'Searching for your websites and drafts...');
     try {
       const res = await fetch('/api/site/search', {
         method: 'POST',
@@ -68,6 +77,8 @@ export default function Customer() {
         setSites([]);
       } else {
         setSites(data.sites);
+        setSavedOpen(true);
+        setSelectedSite('all');
         setMsg(`${data.sites.length} saved website/draft record(s) found.`);
       }
     } catch (e) {
@@ -88,6 +99,7 @@ export default function Customer() {
   }
 
   const shownBrowserDrafts = browserDrafts.filter(item => !sites.some(site => site.slug === item.slug));
+  const visibleSites = selectedSite === 'all' ? sites : sites.filter(site => site.slug === selectedSite);
 
   return (
     <>
@@ -96,10 +108,10 @@ export default function Customer() {
         <section className="dashboard customerWelcome">
           <span className="kicker">My Website</span>
           <h1>Customer Dashboard</h1>
-          <p>Find your published websites and saved drafts in one place. You can search with only your email, only the short website name, or the full subdomain link.</p>
+          <p>Find your published websites and saved drafts in one place. Type only a few letters or words from the website name and matching results will appear as you type.</p>
           <div className="customerSearchTips">
             <div><strong>Email only</strong><span>Best option if you forgot the website name.</span></div>
-            <div><strong>Website name</strong><span>Use the short name, like cookies-kitchen.</span></div>
+            <div><strong>A few words</strong><span>Type any part you remember, like kitchen or tadda.</span></div>
             <div><strong>Full link</strong><span>Paste the whole subdomain if you have it.</span></div>
           </div>
           <div className="row">
@@ -108,8 +120,8 @@ export default function Customer() {
               <input placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} />
             </div>
             <div className="field">
-              <label>Website name or subdomain, optional</label>
-              <input placeholder="cookies-kitchen-digital-recipes or full website link" value={query} onChange={e => setQuery(e.target.value)} />
+              <label>Type a few letters, words, or the website link</label>
+              <input placeholder="Example: kitchen, tadda, or the full link" value={query} onChange={e => setQuery(e.target.value)} autoComplete="off" />
             </div>
           </div>
           {query && <div className="notice smallNotice">We will search for: <strong>{normalizeSubdomain(query) || 'enter a website name'}</strong></div>}
@@ -121,15 +133,22 @@ export default function Customer() {
           </div>
         </section>
 
-        <details className="savedDropdown" open={sites.length > 0 || shownBrowserDrafts.length > 0}>
+        <details className="savedDropdown" open={savedOpen} onToggle={event => setSavedOpen(event.currentTarget.open)}>
           <summary>Saved Websites &amp; Drafts</summary>
           <div className="savedDropdownContent">
           <p className="savedDropdownIntro">Published sites and saved drafts show here. Use Continue Draft to keep building, Open Website to view a live site, or Edit Published Site to update one that is already published.</p>
+          {sites.length > 0 && <div className="savedWebsitePicker field">
+            <label>Choose a saved website or draft</label>
+            <select value={selectedSite} onChange={event => setSelectedSite(event.target.value)}>
+              <option value="all">Show all saved websites and drafts</option>
+              {sites.map(site => <option value={site.slug} key={`select-${site.slug}`}>{site.business_name || site.site?.businessName || site.slug} — {statusLabel(site.status)}</option>)}
+            </select>
+          </div>}
           {sites.length === 0 ? (
             <div className="emptyState"><strong>No saved websites are showing yet.</strong><br/>Search by email first. If nothing appears, check the spelling or start a new website. Browser draft backups may appear below when available.</div>
           ) : (
             <div className="savedSiteList">
-              {sites.map(row => {
+              {visibleSites.map(row => {
                 const status = statusLabel(row.status);
                 const isPublished = String(row.status || '').toLowerCase() === 'published';
                 const liveUrl = `https://${row.slug}.${ROOT}`;
