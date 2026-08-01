@@ -33,6 +33,24 @@ function safeLoadPlanState() {
   return null;
 }
 
+function safeLoadBuilderContext() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('cookieDraftSite') || '{}');
+    return {
+      businessName: String(parsed.businessName || '').slice(0, 160),
+      businessType: String(parsed.typeKey || '').slice(0, 80),
+      headline: String(parsed.headline || '').slice(0, 300),
+      description: String(parsed.description || '').slice(0, 700),
+      sections: parsed.sections && typeof parsed.sections === 'object' ? parsed.sections : {},
+      customerActions: Array.isArray(parsed.customerActions) ? parsed.customerActions.slice(0, 8) : [],
+      pages: Array.isArray(parsed.pages) ? parsed.pages.slice(0, 20) : [],
+      plan: String(parsed.plan || '').slice(0, 40)
+    };
+  } catch {
+    return {};
+  }
+}
+
 function pageGreeting(pathname = '') {
   if (pathname.includes('/pricing')) return "Looks like you’re comparing plans. Tell me your business type and I’ll help you pick the best fit.";
   if (pathname.includes('/builder')) return "Looks like you’re building a website. I can help write your wording, choose sections, or explain the buttons.";
@@ -126,7 +144,15 @@ export default function CookieAiAssistant() {
       const res = await fetch('/api/cookie-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: question, history: lastMessages, pagePath, businessName, email, planState })
+        body: JSON.stringify({
+          message: question,
+          history: lastMessages,
+          pagePath,
+          businessName,
+          email,
+          planState,
+          siteContext: pagePath.includes('/builder') ? safeLoadBuilderContext() : null
+        })
       });
 
       const data = await res.json().catch(() => ({}));

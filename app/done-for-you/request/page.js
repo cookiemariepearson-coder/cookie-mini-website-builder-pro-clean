@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Nav from '../../../lib/Nav';
 
@@ -15,6 +15,8 @@ const turnaround = {
 export default function DoneForYouRequestPage() {
   const [plan, setPlan] = useState('Website Setup Consultation');
   const [form, setForm] = useState({ name: '', business: '', businessType: '', email: '', phone: '', customerAction: '', details: '', contact: 'Email' });
+  const [status, setStatus] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const selected = new URLSearchParams(window.location.search).get('plan');
@@ -22,30 +24,35 @@ export default function DoneForYouRequestPage() {
   }, []);
 
   const estimate = turnaround[plan] || 'Confirmed after your content is reviewed';
-  const message = useMemo(() => `Hello Cookie Digital Creations,
-
-I would like to request the ${plan} Done-for-You service.
-
-Name: ${form.name}
-Business name: ${form.business}
-Business type: ${form.businessType}
-Email: ${form.email}
-Phone: ${form.phone || 'Not provided'}
-Preferred contact: ${form.contact}
-What customers need to do: ${form.customerAction}
-
-Website details:
-${form.details}
-
-Please contact me with the next steps.`, [form, plan]);
-
   function update(key, value) {
     setForm(current => ({ ...current, [key]: value }));
   }
 
-  function submit(event) {
+  async function submit(event) {
     event.preventDefault();
-    window.location.href = `mailto:hello@cookiesdigitalcreations.com?subject=${encodeURIComponent(`Done-for-You Website Request — ${plan}`)}&body=${encodeURIComponent(message)}`;
+    setSubmitting(true);
+    setStatus('Sending your request and confirmation email...');
+    try {
+      const response = await fetch('/api/done-for-you/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, ...form })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) throw new Error(data.error || 'Request failed.');
+      if (data.checkoutRequired && data.checkoutConfigured && data.checkoutUrl) {
+        setStatus(`Request ${data.requestId} received. A confirmation email was sent. Opening secure checkout...`);
+        setTimeout(() => window.location.assign(data.checkoutUrl), 1400);
+      } else if (data.checkoutRequired) {
+        setStatus(`Request ${data.requestId} received and your confirmation email was sent. Your secure payment link is being prepared; no work begins until payment is completed.`);
+      } else {
+        setStatus(`Request ${data.requestId} received. A confirmation email with next steps was sent to ${form.email}.`);
+      }
+    } catch (error) {
+      setStatus(error.message || 'The request could not be sent. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return <>
@@ -54,7 +61,7 @@ Please contact me with the next steps.`, [form, plan]);
       <section className="dfyRequestIntro">
         <span className="kicker">Done-for-You request</span>
         <h1>Tell me what you need.</h1>
-        <p>Complete this short form. Your selected service and answers will be placed into an email addressed to Cookie Digital Creations.</p>
+        <p>Complete this short form. Cookie Digital Creations will receive your request, and you will receive an automatic confirmation with turnaround, preparation details, and the next payment step.</p>
         <div className="requestEstimate"><strong>Selected:</strong> {plan}<span><strong>Estimated turnaround:</strong> {estimate}</span></div>
       </section>
 
@@ -80,11 +87,12 @@ Please contact me with the next steps.`, [form, plan]);
         <div className="field"><label>What should customers do on your website?</label><input required placeholder="Book, order, buy, call, request a quote..." value={form.customerAction} onChange={e => update('customerAction', e.target.value)} /></div>
         <div className="field"><label>Tell me about the website you want</label><textarea required placeholder="Describe your services, products, pages, colors, photos, and anything important." value={form.details} onChange={e => update('details', e.target.value)} /></div>
         <div className="dfyRequestActions">
-          <button className="btn" type="submit">Send My Request</button>
+          <button className="btn" type="submit" disabled={submitting}>{submitting ? 'Sending Request...' : 'Submit Request & Continue'}</button>
           <Link className="btn light" href="/done-for-you">Back to Services</Link>
           <button className="btn dark" type="button" data-cookie-ai-open="Help me choose a Done-for-You website service.">Ask Cookie AI First</button>
         </div>
-        <p className="requestNote">Selecting “Send My Request” opens your email app with the completed request. Review it, then press Send.</p>
+        {status && <div className={`notice ${status.includes('could not') || status.includes('failed') ? 'error' : ''}`}>{status}</div>}
+        <p className="requestNote">Paid services continue to secure checkout after the request is received. Your build turnaround begins after payment and all required content are received.</p>
       </form>
     </main>
   </>;

@@ -41,7 +41,10 @@ async function logChat({ message, answer, pagePath, intent, businessName, email,
   } catch {}
 }
 
-function buildSystemPrompt(pagePath = '') {
+function buildSystemPrompt(pagePath = '', siteContext = null) {
+  const builderContext = siteContext && typeof siteContext === 'object'
+    ? `\nCurrent website draft (use these exact details when writing):\n${JSON.stringify(siteContext).slice(0, 5000)}\n`
+    : '';
   return `
 You are Cookie AI Assistant for Cookie Mini Website Builder Pro by Cookie Digital Creations.
 
@@ -53,12 +56,17 @@ Warm, simple, helpful, lightly sassy, and professional.
 
 Current page:
 ${getPageHelper(pagePath)}
+${builderContext}
 
 Approved business knowledge:
 ${getKnowledgeText()}
 
 Very important behavior:
 - Be a smart advisor, not a rigid form.
+- Answer the customer's actual request directly before offering another step.
+- When asked to write homepage wording, provide a ready-to-paste headline, short description, and call to action using the supplied business details. Do not answer with a feature list.
+- When business details are incomplete, make one clearly labeled draft using only known facts, then ask one short follow-up question.
+- Give complete copy in short labeled sections. Avoid robotic phrases such as "I can help with..." when the customer already asked for specific writing.
 - Use the whole conversation.
 - Do not repeat the same question if the customer already answered it.
 - If the customer gives a short answer like "yes", "no", "coaching", "cookbook", or "one page", infer what it answers based on the last question.
@@ -104,13 +112,15 @@ async function callOpenAI({ apiKey, model, messages }) {
     body: JSON.stringify({
       model,
       input: messages,
-      max_output_tokens: 900
+      reasoning: model.startsWith('gpt-5.6') ? { effort: 'low' } : undefined,
+      max_output_tokens: 1400
     })
   });
 
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    console.error('[cookie-ai] model request failed', { model, status: response.status, code: data?.error?.code || '', type: data?.error?.type || '' });
     return { ok: false, error: data };
   }
 
@@ -127,6 +137,7 @@ export async function POST(req) {
     const pagePath = clean(body.pagePath || body.pathname || '', 300);
     const businessName = clean(body.businessName || '', 200);
     const email = clean(body.email || '', 250);
+    const siteContext = body.siteContext && typeof body.siteContext === 'object' ? body.siteContext : null;
     const history = Array.isArray(body.history) ? body.history.slice(-20) : [];
 
     if (!userMessage) {
@@ -140,7 +151,7 @@ export async function POST(req) {
 
     const intent = classifyIntent(userMessage, pagePath);
     const needsHumanHelp = intent === 'human_support';
-    const fallback = fallbackAnswer(userMessage, pagePath);
+    const fallback = fallbackAnswer(userMessage, pagePath, siteContext);
 
     if (needsHumanHelp) {
       await logChat({ message: userMessage, answer: fallback, pagePath, intent, businessName, email, needsHumanHelp });
@@ -148,8 +159,8 @@ export async function POST(req) {
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
-    const requestedModel = process.env.OPENAI_MODEL || 'gpt-5.1';
-    const backupModels = ['gpt-5.1', 'gpt-4.1'];
+    const requestedModel = clean(process.env.OPENAI_MODEL || '', 100);
+    const backupModels = ['gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-4.1'];
 
     if (!apiKey) {
       await logChat({ message: userMessage, answer: fallback, pagePath, intent, businessName, email, needsHumanHelp: false });
@@ -157,7 +168,7 @@ export async function POST(req) {
     }
 
     const messages = [
-      { role: 'system', content: buildSystemPrompt(pagePath) },
+      { role: 'system', content: buildSystemPrompt(pagePath, siteContext) },
       ...history.map(item => ({
         role: item.role === 'assistant' ? 'assistant' : 'user',
         content: clean(item.content || item.text || item.message || item.answer || '', 1200)
@@ -165,7 +176,11 @@ export async function POST(req) {
       { role: 'user', content: userMessage }
     ];
 
-    const modelList = Array.from(new Set([requestedModel, ...backupModels].filter(Boolean)));
+    const modelList = Array.from(new Set([
+      'gpt-5.6-sol',
+      requestedModel.startsWith('gpt-5.6') ? requestedModel : '',
+      ...backupModels
+    ].filter(Boolean)));
 
     let answer = '';
     let modelUsed = '';

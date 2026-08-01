@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useDeferredValue } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import SitePreview from '../../lib/SitePreview';
 import { createDefaultSite, templateLibrary, getTemplate, pageOptions, plans, slugify, sectionPrompts, normalizeSelectedPagesForPlan, planAllowsMedia, planAllowsAiVideo, planSectionLimit, customerActionLimit, customerActionTypes, normalizeCustomerActions } from '../../lib/siteDefaults';
 
@@ -119,7 +119,6 @@ export default function Builder() {
   const [isSaving, setIsSaving] = useState(false);
   const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
   const [isSmallBuilderScreen, setIsSmallBuilderScreen] = useState(false);
-  const deferredSite = useDeferredValue(site);
   const tmpl = useMemo(() => getTemplate(site.typeKey, site.styleKey), [site.typeKey, site.styleKey]);
 
   useEffect(() => {
@@ -418,6 +417,14 @@ export default function Builder() {
     }
   }
 
+  function missingActionLinks(currentSite = site) {
+    const selected = normalizeSelectedPagesForPlan(currentSite.pages, currentSite.plan);
+    const usesActionSection = selected.includes('Order / Book / Buy') || selected.includes('Customer Action');
+    if (!usesActionSection) return [];
+    return normalizeCustomerActions(currentSite.customerActions, currentSite.plan)
+      .filter(action => !String(action.value || '').trim());
+  }
+
   async function goVideo() {
     if (!planAllowsAiVideo(site.plan)) {
       persistLocal('Draft saved before viewing AI Video upgrade options.');
@@ -434,6 +441,12 @@ export default function Builder() {
   }
 
   async function publishFree() {
+    const incompleteActions = missingActionLinks(site);
+    if (incompleteActions.length) {
+      setStep(3);
+      setMessage(`Add the email, phone number, booking link, order link, menu link, or checkout link for ${incompleteActions.map(action => action.label).join(', ')} before publishing. Buttons without a destination cannot be clicked.`);
+      return;
+    }
     const published = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, pages: normalizeSelectedPagesForPlan(site.pages, 'free'), plan: 'free', status: 'published' };
     try { const lightPublished = stripHeavyLocalData(published); localStorage.setItem(DRAFT_KEY, JSON.stringify(lightPublished)); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, published.slug); saveLocalDraftIndex(lightPublished); } catch {}
     setMessage('Publishing free launch page...');
@@ -452,6 +465,12 @@ export default function Builder() {
   }
 
   async function checkoutPlan() {
+    const incompleteActions = missingActionLinks(site);
+    if (incompleteActions.length) {
+      setStep(3);
+      setMessage(`Add the destination for ${incompleteActions.map(action => action.label).join(', ')} before checkout. Use an email, phone number, booking form, menu, product, payment, or order link.`);
+      return;
+    }
     const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     try { const lightDraft = stripHeavyLocalData(draft); localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft)); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draft.slug); saveLocalDraftIndex(lightDraft); } catch {}
     setMessage('Saving your draft before checkout. If checkout opens, your draft was saved.');
@@ -480,7 +499,9 @@ export default function Builder() {
   const limitText = plans[site.plan]?.maxPages >= 99 ? 'all built-in sections' : `${planLimit()} selected section(s)`;
   const canUseMedia = planAllowsMedia(site.plan);
   const canUseAiVideo = planAllowsAiVideo(site.plan);
-  const previewSite = { ...deferredSite, pages: normalizeSelectedPagesForPlan(deferredSite.pages, deferredSite.plan) };
+  // Keep the preview tied directly to the current form state so wording and
+  // customer-action links update immediately while the customer types.
+  const previewSite = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan) };
 
   const previewKey = `${site.typeKey}-${site.styleKey}-${site.primaryColor}-${site.accentColor}-${site.fontStyle}-${site.layoutStyle}-${site.backgroundStyle}-${site.sectionShape}-${site.templateAppliedAt || ''}-${site.designUpdatedAt || ''}-${JSON.stringify(site.customerActions || [])}`;
 
