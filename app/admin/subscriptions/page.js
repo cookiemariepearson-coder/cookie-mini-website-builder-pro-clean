@@ -269,10 +269,12 @@ export default function GumroadSubscriptionsAdmin() {
   return (
     <>
       <Nav />
-      <main className="wrap dashboard" style={{ maxWidth: 1260 }}>
-        <span className="kicker">Owner only</span>
-        <h1>Gumroad Subscription Status + Access Control</h1>
-        <p>This page tracks paid website access, subscription status, Gumroad events, and archived customer sites.</p>
+      <main className="wrap dashboard adminWarmPage adminSubscriptionsWarm" style={{ maxWidth: 1260 }}>
+        <section className="adminWarmHero">
+          <div><span className="kicker">Owner only</span><h1>Subscriptions &amp; Access</h1><p>Track paid website access, subscription status, Gumroad events, and archived customer sites.</p></div>
+          <div className="adminHeroBadge" aria-hidden="true"><span>✦</span><strong>Payments</strong><small>Access Organizer</small></div>
+        </section>
+        <nav className="adminQuickLinks" aria-label="Admin tools"><a href="/admin">Website Management</a><a className="active" href="/admin/subscriptions">Subscriptions &amp; Access</a><a href="/admin/video-credits">AI Video Credits</a></nav>
 
         {!ready && (
           <section className="card">

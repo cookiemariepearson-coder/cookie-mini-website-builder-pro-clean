@@ -182,14 +182,26 @@ export default function Admin() {
   return (
     <>
       <Nav />
-      <main className="wrap dashboard">
-        <span className="kicker">Owner dashboard</span>
-        <h1>Admin Plan Management v2</h1>
-        <p>This page is private. Enter your admin PIN before customer websites, plans, notes, and management tools are shown.</p>
+      <main className="wrap dashboard adminWarmPage">
+        <section className="adminWarmHero">
+          <div>
+            <span className="kicker">Owner dashboard</span>
+            <h1>Admin Plan Management</h1>
+            <p>This private workspace keeps customer websites, plans, notes, revenue estimates, and access controls organized in one place.</p>
+          </div>
+          <div className="adminHeroBadge" aria-hidden="true"><span>✦</span><strong>Cookie</strong><small>Owner Workspace</small></div>
+        </section>
+
+        <nav className="adminQuickLinks" aria-label="Admin tools">
+          <a href="/admin">Website Management</a>
+          <a href="/admin/subscriptions">Subscriptions &amp; Access</a>
+          <a href="/admin/video-credits">AI Video Credits</a>
+          <a href="/customer">Customer Dashboard</a>
+        </nav>
 
         {!unlocked && (
           <>
-            <section style={card}>
+            <section className="adminPanel adminPinPanel" style={card}>
               <form onSubmit={(e) => { e.preventDefault(); loadAdmin(pin); }}>
                 <input type="text" name="fake-user-field" autoComplete="username" style={{ display: 'none' }} tabIndex="-1" />
                 <input type="password" name="fake-password-field" autoComplete="current-password" style={{ display: 'none' }} tabIndex="-1" />
@@ -216,7 +228,7 @@ export default function Admin() {
               </form>
               {msg && pinMessage(msg)}
             </section>
-            <section style={{ ...card, background: '#fff8ef' }}>
+            <section className="adminPanel adminLockedPanel" style={{ ...card, background: '#fff8ef' }}>
               <h2 style={{ marginTop: 0 }}>Admin dashboard is locked</h2>
               <p>Customer website records, revenue totals, plan controls, private notes, and archived sites stay hidden until the correct PIN is entered.</p>
               <p><strong>Reminder:</strong> the PIN comes from your Vercel environment variable named <code>ADMIN_PIN</code>.</p>
@@ -226,7 +238,7 @@ export default function Admin() {
 
         {unlocked && (
           <>
-            <section style={card}>
+            <section className="adminPanel adminUnlockedPanel" style={card}>
               <div className="row" style={{ alignItems: 'center' }}>
                 <div>
                   <h2 style={{ marginTop: 0 }}>Admin dashboard unlocked</h2>
@@ -238,7 +250,7 @@ export default function Admin() {
               {msg && pinMessage(msg)}
             </section>
 
-            <section style={{ ...card, background: '#f7f1ff' }}>
+            <section className="adminPanel adminSectionsPanel" style={{ ...card, background: '#f7f1ff' }}>
               <h2 style={{ marginTop: 0 }}>Admin Sections</h2>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <button style={tabBtn(tab === 'websites')} onClick={() => setTab('websites')}>1. Websites</button>
@@ -249,7 +261,7 @@ export default function Admin() {
               </div>
             </section>
 
-            <div className="cardGrid">
+            <div className="cardGrid adminStatsGrid">
               <div className="card"><strong>Active Sites</strong><div className="price">{stats.total}</div></div>
               <div className="card"><strong>Published</strong><div className="price">{stats.published}</div></div>
               <div className="card"><strong>Paused</strong><div className="price">{stats.paused}</div></div>
@@ -258,7 +270,7 @@ export default function Admin() {
               <div className="card"><strong>Estimated Active MRR</strong><div className="price">${stats.mrr}/mo</div></div>
             </div>
 
-            <section style={card}>
+            <section className="adminPanel adminSearchPanel" style={card}>
               <div className="row">
                 <h2 style={{ margin: 0 }}>
                   {tab === 'websites' && 'Websites'}
@@ -272,7 +284,7 @@ export default function Admin() {
             </section>
 
             {tab === 'websites' && (
-              <section style={card}>
+              <section className="adminPanel adminDataPanel" style={card}>
                 <h2>Customer Websites</h2>
                 <p>Open, edit, pause, or reactivate customer websites. The backup link is admin-only for troubleshooting.</p>
                 <div className="tableWrap">
@@ -303,7 +315,7 @@ export default function Admin() {
             )}
 
             {tab === 'plans' && (
-              <section style={card}>
+              <section className="adminPanel adminDataPanel" style={card}>
                 <h2>Plans & Status Controls</h2>
                 <p>Use this when someone upgrades, cancels, buys an extra page, or needs their site paused/reactivated.</p>
                 <div className="tableWrap">
@@ -343,7 +355,7 @@ export default function Admin() {
             )}
 
             {tab === 'notes' && (
-              <section style={card}>
+              <section className="adminPanel adminDataPanel" style={card}>
                 <h2>Admin Notes</h2>
                 <p>Private notes only you see. Use this for payment issues, support notes, cancellation dates, or extra-page tracking.</p>
                 <div className="cardGrid oneCol">
@@ -360,7 +372,7 @@ export default function Admin() {
             )}
 
             {tab === 'archived' && (
-              <section style={card}>
+              <section className="adminPanel adminDataPanel" style={card}>
                 <h2>Archived Websites</h2>
                 <p>Archived sites are hidden from public use but kept in your records. Reactivate only when you are ready for the site to go live again.</p>
                 <div className="tableWrap">
@@ -383,7 +395,7 @@ export default function Admin() {
             )}
 
             {tab === 'help' && (
-              <section style={card}>
+              <section className="adminPanel adminHelpPanel" style={card}>
                 <h2>How to use this admin dashboard</h2>
                 <p><strong>Published</strong> websites open publicly. <strong>Paused</strong> websites stay in your active records but should not open publicly. Use Pause if someone cancels, payment fails, or support is needed.</p>
                 <p><strong>Archived</strong> hides a site from your active dashboard while keeping the record. This is safer than permanent deletion.</p>

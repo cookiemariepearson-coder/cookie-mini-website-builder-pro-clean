@@ -11,6 +11,7 @@ import './customer-site-templates-rebuild.css';
 import './cookie-ai-assistant.css';
 import './done-for-you.css';
 import './website-experience-refresh.css';
+import './admin-warm-refresh.css';
 import CookieAiAssistant from '../components/CookieAiAssistant';
 
 export const metadata = {
