@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { slugify } from '../../../../lib/siteDefaults';
+import { sendAdminNotification } from '../../../../lib/adminNotifications';
 
 function friendlyError(message='') {
   if (message.includes('site') && message.includes('schema cache')) {
@@ -28,6 +29,7 @@ export async function POST(req) {
     };
     const { error } = await supabase.from('websites').upsert(row, { onConflict: 'slug' });
     if (error) throw error;
+    await sendAdminNotification({ subject: `Draft saved: ${row.business_name || slug}`, event: 'Website draft saved', slug, businessName: row.business_name, customerEmail: row.customer_email, details: `Plan: ${row.plan}` });
     return NextResponse.json({ ok: true, slug });
   } catch (e) {
     return NextResponse.json({ ok: false, error: friendlyError(e.message) }, { status: 500 });

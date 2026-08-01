@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import SitePreview from '../../../lib/SitePreview';
+import { getSupabaseAdmin } from '../../../lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -50,23 +51,20 @@ function isBlocked(row = {}) {
 }
 
 async function fetchWebsite(slug = '') {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey || !slug) return null;
-
-  const url = `${supabaseUrl}/rest/v1/websites?slug=eq.${encodeURIComponent(slug)}&select=*&limit=1`;
-  const res = await fetch(url, {
-    headers: {
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-      'Content-Type': 'application/json'
-    },
-    cache: 'no-store'
-  });
-
-  if (!res.ok) return null;
-  const data = await res.json().catch(() => []);
-  return Array.isArray(data) && data[0] ? data[0] : null;
+  if (!slug) return null;
+  try {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from('websites')
+      .select('*')
+      .eq('slug', slug)
+      .maybeSingle();
+    if (error) throw error;
+    return data || null;
+  } catch (error) {
+    console.error('Unable to load published website', error);
+    return null;
+  }
 }
 
 export default async function PublishedSitePage({ params }) {

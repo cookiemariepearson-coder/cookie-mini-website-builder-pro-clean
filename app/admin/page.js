@@ -63,6 +63,7 @@ export default function Admin() {
   const [tab, setTab] = useState('websites');
   const [loading, setLoading] = useState(false);
   const [savingSlug, setSavingSlug] = useState('');
+  const [savedNoteSlug, setSavedNoteSlug] = useState('');
 
   useEffect(() => {
     const clearTimer = setTimeout(() => setPin(''), 250);
@@ -130,7 +131,10 @@ export default function Admin() {
       });
       const d = await r.json();
       if (d.ok) {
-        if (!quiet) setMsg('Saved admin change.');
+        if (!quiet) setMsg(updates?.admin_notes !== undefined
+          ? `Private note saved in this website's database record at ${new Date().toLocaleTimeString()}.`
+          : 'Saved admin change.');
+        if (updates?.admin_notes !== undefined) setSavedNoteSlug(slug);
         await loadAdmin(sessionPin);
       } else {
         setMsg(d.error || 'Unable to update website.');
@@ -257,7 +261,8 @@ export default function Admin() {
                 <button style={tabBtn(tab === 'plans')} onClick={() => setTab('plans')}>2. Plans & Status</button>
                 <button style={tabBtn(tab === 'notes')} onClick={() => setTab('notes')}>3. Admin Notes</button>
                 <button style={tabBtn(tab === 'archived')} onClick={() => setTab('archived')}>4. Archived</button>
-                <button style={tabBtn(tab === 'help')} onClick={() => setTab('help')}>5. How to Use</button>
+                <button style={tabBtn(tab === 'activity')} onClick={() => setTab('activity')}>5. Recent Activity</button>
+                <button style={tabBtn(tab === 'help')} onClick={() => setTab('help')}>6. How to Use</button>
               </div>
             </section>
 
@@ -277,6 +282,7 @@ export default function Admin() {
                   {tab === 'plans' && 'Plans & Status'}
                   {tab === 'notes' && 'Admin Notes'}
                   {tab === 'archived' && 'Archived Websites'}
+                  {tab === 'activity' && 'Recent Activity'}
                   {tab === 'help' && 'How to Use'}
                 </h2>
                 <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, slug, email, plan, status, or note" />
@@ -297,9 +303,8 @@ export default function Admin() {
                         <td>{planNames[s.plan] || s.plan || 'Free Launch Page'}</td>
                         <td>{s.status || 'published'}</td>
                         <td>
-                          <a className="btn dark" target="_blank" rel="noreferrer" href={siteUrl(s.slug)}>Open Site</a>{' '}
-                          <a className="btn dark" target="_blank" rel="noreferrer" href={directUrl(s.slug)}>Backup Link</a>{' '}
-                          <a className="btn" target="_blank" rel="noreferrer" href={`/customer/edit/${s.slug}`}>Edit</a>{' '}
+                          {(s.status || 'published') === 'published' && <><a className="btn dark" target="_blank" rel="noreferrer" href={siteUrl(s.slug)}>Open Live Site</a>{' '}<a className="btn dark" target="_blank" rel="noreferrer" href={directUrl(s.slug)}>Backup Link</a>{' '}</>}
+                          <a className="btn" target="_blank" rel="noreferrer" href={`/customer/edit/${s.slug}?email=${encodeURIComponent(s.customer_email || '')}`}>{(s.status || 'published') === 'draft' ? 'Edit Draft as Owner' : 'Edit as Owner'}</a>{' '}
                           {s.status === 'paused' ? (
                             <button className="btn" onClick={() => update(s.slug, { status: 'published' })}>Reactivate</button>
                           ) : (
@@ -357,7 +362,7 @@ export default function Admin() {
             {tab === 'notes' && (
               <section className="adminPanel adminDataPanel" style={card}>
                 <h2>Admin Notes</h2>
-                <p>Private notes only you see. Use this for payment issues, support notes, cancellation dates, or extra-page tracking.</p>
+                <p>Private notes only you see. Each note is stored in that website's <code>admin_notes</code> database record and appears here again whenever you open Admin Notes.</p>
                 <div className="cardGrid oneCol">
                   {filtered.map((s) => (
                     <div className="card" key={s.slug}>
@@ -365,6 +370,7 @@ export default function Admin() {
                       <small>{s.customer_email || 'No email saved'} • {planNames[s.plan] || s.plan || 'Free'} • {s.status || 'published'}</small>
                       <textarea value={s.admin_notes || ''} onChange={(e) => patchLocal(s.slug, { admin_notes: e.target.value })} placeholder="Private admin note..." />
                       <button className="btn" onClick={() => update(s.slug, { admin_notes: s.admin_notes || '' })}>{savingSlug === s.slug ? 'Saving...' : 'Save Note'}</button>
+                      {savedNoteSlug === s.slug && savingSlug !== s.slug && <p className="notice" role="status">✓ Saved privately with {s.business_name || s.slug}. It will remain in this Admin Notes section.</p>}
                     </div>
                   ))}
                 </div>
@@ -391,6 +397,28 @@ export default function Admin() {
                     ))}</tbody>
                   </table>
                 </div>
+              </section>
+            )}
+
+            {tab === 'activity' && (
+              <section className="adminPanel adminDataPanel" style={card}>
+                <h2>Recent Website Activity</h2>
+                <p>The newest saved drafts, publications, and owner changes appear first. Email alerts can also be enabled with the three notification settings shown below.</p>
+                <div className="tableWrap">
+                  <table className="table">
+                    <thead><tr><th>When</th><th>Website</th><th>Customer</th><th>Current event/status</th><th>Owner action</th></tr></thead>
+                    <tbody>{[...filtered].sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0)).map((s) => (
+                      <tr key={s.slug}>
+                        <td>{fmtDate(s.updated_at)}</td>
+                        <td><strong>{s.business_name || s.slug}</strong><br /><small>{s.slug}</small></td>
+                        <td>{s.customer_email || 'No email supplied'}</td>
+                        <td>{s.status === 'draft' ? 'Draft saved or updated' : s.status === 'published' ? 'Published or updated' : `Status: ${s.status}`}</td>
+                        <td><a className="btn" target="_blank" rel="noreferrer" href={`/customer/edit/${s.slug}?email=${encodeURIComponent(s.customer_email || '')}`}>Edit as Owner</a></td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+                <div className="notice"><strong>To turn on email alerts in Vercel, add:</strong><br /><code>RESEND_API_KEY</code><br /><code>ADMIN_NOTIFICATION_EMAIL</code><br /><code>ADMIN_NOTIFICATION_FROM_EMAIL</code></div>
               </section>
             )}
 

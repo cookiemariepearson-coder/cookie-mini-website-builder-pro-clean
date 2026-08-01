@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
+import { sendAdminNotification } from '../../../../lib/adminNotifications';
 
 export async function POST(req) {
   try {
@@ -20,6 +21,7 @@ export async function POST(req) {
     const supabase = getSupabaseAdmin();
     const { error } = await supabase.from('websites').update(safe).eq('slug', slug);
     if (error) throw error;
+    await sendAdminNotification({ subject: `Admin updated: ${slug}`, event: 'Owner/admin website update', slug, details: `Changed: ${Object.keys(updates || {}).join(', ')}` });
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
