@@ -31,3 +31,4 @@
 ## Small GitHub upload pack
 
 Upload the folders inside the small pack to the root of the GitHub repository. Keep their folder paths exactly as provided and allow matching files to be replaced.
+Git connection restored for production deployment.
