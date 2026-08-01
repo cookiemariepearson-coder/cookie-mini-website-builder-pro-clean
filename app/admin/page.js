@@ -156,6 +156,16 @@ export default function Admin() {
     if (ok) update(site.slug, { status: 'archived' });
   }
 
+  function openOwnerEditor(site) {
+    const name = site.business_name || site.slug;
+    const approved = window.confirm(
+      `Owner/Admin Access Notice\n\nYou are opening ${name} as the platform owner/admin. Access should only be used for authorized support, maintenance, security, policy enforcement, or changes requested by the customer. Administrative changes may be recorded.\n\nContinue to the editor?`
+    );
+    if (!approved) return;
+    const email = encodeURIComponent(site.customer_email || '');
+    window.open(`/customer/edit/${site.slug}?email=${email}`, '_blank', 'noopener,noreferrer');
+  }
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     const base = tab === 'archived' ? sites.filter((s) => s.status === 'archived') : sites.filter((s) => s.status !== 'archived');
@@ -304,7 +314,7 @@ export default function Admin() {
                         <td>{s.status || 'published'}</td>
                         <td>
                           {(s.status || 'published') === 'published' && <><a className="btn dark" target="_blank" rel="noreferrer" href={siteUrl(s.slug)}>Open Live Site</a>{' '}<a className="btn dark" target="_blank" rel="noreferrer" href={directUrl(s.slug)}>Backup Link</a>{' '}</>}
-                          <a className="btn" target="_blank" rel="noreferrer" href={`/customer/edit/${s.slug}?email=${encodeURIComponent(s.customer_email || '')}`}>{(s.status || 'published') === 'draft' ? 'Edit Draft as Owner' : 'Edit as Owner'}</a>{' '}
+                          <button className="btn" type="button" onClick={() => openOwnerEditor(s)}>{(s.status || 'published') === 'draft' ? 'Edit Draft as Owner' : 'Edit as Owner'}</button>{' '}
                           {s.status === 'paused' ? (
                             <button className="btn" onClick={() => update(s.slug, { status: 'published' })}>Reactivate</button>
                           ) : (
@@ -413,7 +423,7 @@ export default function Admin() {
                         <td><strong>{s.business_name || s.slug}</strong><br /><small>{s.slug}</small></td>
                         <td>{s.customer_email || 'No email supplied'}</td>
                         <td>{s.status === 'draft' ? 'Draft saved or updated' : s.status === 'published' ? 'Published or updated' : `Status: ${s.status}`}</td>
-                        <td><a className="btn" target="_blank" rel="noreferrer" href={`/customer/edit/${s.slug}?email=${encodeURIComponent(s.customer_email || '')}`}>Edit as Owner</a></td>
+                        <td><button className="btn" type="button" onClick={() => openOwnerEditor(s)}>Edit as Owner</button></td>
                       </tr>
                     ))}</tbody>
                   </table>
@@ -430,6 +440,7 @@ export default function Admin() {
                 <p><strong>Plan</strong> controls what the customer should have: Free, Starter Pro, Business, or Premium.</p>
                 <p><strong>Extra Pages</strong> should match how many $10/month extra page add-ons they purchased.</p>
                 <p><strong>Admin Notes</strong> are private notes for you only.</p>
+                <div className="notice"><strong>Owner/Admin Access Notice:</strong> Cookie Digital Creations may access a customer website only for authorized support, maintenance, security, policy enforcement, or changes requested by the customer. Do not change customer wording, prices, or business information without authorization unless action is necessary for security, legal compliance, or enforcement of an agreed platform policy.</div>
                 <p>Until Gumroad webhooks are connected, plan changes and cancellations are handled manually here.</p>
               </section>
             )}

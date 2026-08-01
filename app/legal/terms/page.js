@@ -52,19 +52,22 @@ export default function PolicyPage(){
           <h2>13. No Guaranteed Results</h2>
           <p>Cookie Mini Website Builder Pro does not guarantee sales, bookings, traffic, leads, followers, engagement, search rankings, income, approvals, funding, business success, video performance, or social media results. Customers are responsible for their own business operations, customer service, marketing, compliance, and follow-up.</p>
 
-          <h2>14. Platform Changes</h2>
+          <h2>14. Owner and Administrative Access</h2>
+          <p>Cookie Digital Creations may access and administer a customer website when reasonably necessary to provide authorized support, perform requested edits or maintenance, troubleshoot technical problems, protect platform security, correct plan or access records, enforce these Terms and related policies, respond to legal requirements, or prevent harm. We will not intentionally change a customer&apos;s ordinary business wording, prices, offers, or published content without customer authorization unless a change, restriction, pause, or removal is reasonably necessary for security, legal compliance, platform safety, or enforcement of an agreed policy. Administrative actions may be recorded for support, security, and accountability.</p>
+
+          <h2>15. Platform Changes</h2>
           <p>Features, templates, prices, plan limits, AI video access, action button limits, media features, and third-party integrations may change over time. We may update the platform to improve quality, security, accuracy, legal compliance, or customer experience.</p>
 
-          <h2>15. Suspension, Removal, and Archive</h2>
+          <h2>16. Suspension, Removal, and Archive</h2>
           <p>We may pause, archive, hide, limit, or remove websites, drafts, accounts, media, or access if payment fails, a subscription ends, a dispute is opened, content appears unsafe or unlawful, a customer violates policies, or continued access creates legal, technical, security, payment, or platform risk.</p>
 
-          <h2>16. Intellectual Property</h2>
+          <h2>17. Intellectual Property</h2>
           <p>Cookie Mini Website Builder Pro, its design system, platform logic, builder structure, templates, admin tools, code, platform wording, and branding remain owned by their respective owners. Customers retain responsibility for their own submitted business content, subject to the rights needed for the platform to host, display, process, save, publish, transmit, and support that content.</p>
 
-          <h2>17. Disclaimers and Limitations</h2>
+          <h2>18. Disclaimers and Limitations</h2>
           <p>The platform is provided as a digital website-building and content-planning tool. It is not legal, tax, financial, medical, marketing, compliance, business formation, advertising, or professional advice. Use of the platform is at the customer&apos;s own responsibility to the fullest extent allowed by law.</p>
 
-          <h2>18. Changes to These Terms</h2>
+          <h2>19. Changes to These Terms</h2>
           <p>These Terms may be updated as features, plans, legal requirements, third-party tools, and business operations change. Continued use after updates means the customer accepts the updated Terms.</p>
 
           <div className="notice">
