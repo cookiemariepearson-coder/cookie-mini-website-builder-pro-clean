@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
+import { sendAdminNotification } from '../../../../lib/adminNotifications';
 
 export async function POST(req) {
   try {
@@ -16,6 +17,14 @@ export async function POST(req) {
       updated_at: new Date().toISOString()
     }).eq('slug', slug);
     if (error) throw error;
+    await sendAdminNotification({
+      subject: `Website updated: ${site.businessName || slug}`,
+      event: 'Website edited and republished',
+      slug,
+      businessName: site.businessName,
+      customerEmail: site.customerEmail || site.email,
+      details: 'An owner or authorized editor saved changes through the website editor.'
+    });
     return NextResponse.json({ ok:true });
   } catch(e) { return NextResponse.json({ ok:false,error:e.message }, { status:500 }); }
 }

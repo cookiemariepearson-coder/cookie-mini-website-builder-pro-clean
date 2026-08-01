@@ -201,3 +201,25 @@
 .homepageFaqGrid details{border:1px solid #eaddec;border-radius:18px;padding:16px 18px;background:white}
 .homepageFaqGrid summary{cursor:pointer;font-weight:900;color:#20172f}.homepageFaqGrid p{color:#5d5068;line-height:1.55;margin-bottom:0}
 @media(max-width:760px){.twoPathGrid,.aiReadyCommerceSection,.homepageFaqGrid{grid-template-columns:1fr}.aiReadyCommerceSection,.homepageFaqSection{margin-left:14px;margin-right:14px;padding:24px}}
+/* Keep owner-editor save feedback visible even when the customer is at the bottom of a long form. */
+.builderShell .builderSide .notice {
+  position: fixed;
+  right: 22px;
+  bottom: 82px;
+  z-index: 10020;
+  width: min(420px, calc(100vw - 32px));
+  margin: 0;
+  border: 2px solid #ff9f1c;
+  border-radius: 16px;
+  background: #fff8e8;
+  box-shadow: 0 16px 45px rgba(32, 23, 47, .24);
+  color: #20172f;
+  font-weight: 800;
+}
+
+@media (max-width: 700px) {
+  .builderShell .builderSide .notice {
+    right: 16px;
+    bottom: 72px;
+  }
+}
