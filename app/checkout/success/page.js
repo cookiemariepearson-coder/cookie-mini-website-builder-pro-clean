@@ -91,6 +91,24 @@ export default function CheckoutSuccess() {
 
       const paidPlan = normalizePaidPlan(paidParam || saved.plan || 'starter', saved.plan || 'starter');
       const slug = pickSlug(saved);
+      if (paidParam && paidParam !== 'free') {
+        const verificationResponse = await fetch('/api/checkout/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            slug,
+            email: saved.customerEmail || saved.email || '',
+            plan: paidParam === '1' || paidParam === 'true' ? paidPlan : paidParam
+          })
+        });
+        const verification = await verificationResponse.json();
+        if (!verification.ok || !verification.verified) {
+          setIsPublishing(false);
+          setError(verification.error || 'Payment confirmation is still pending.');
+          setMessage('Your draft is safe. Website publishing will continue after the Gumroad purchase is confirmed.');
+          return;
+        }
+      }
       const finalSite = {
         ...saved,
         slug,

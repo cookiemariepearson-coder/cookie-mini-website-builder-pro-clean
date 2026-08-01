@@ -3,6 +3,7 @@
 import Nav from '../../../lib/Nav';
 
 export default function AiVideoCheckoutPage() {
+  const checkoutUrl = process.env.NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL || '';
   return (
     <>
       <Nav />
@@ -27,9 +28,13 @@ export default function AiVideoCheckoutPage() {
           </div>
 
           <div className="navRow checkoutSuccessActions">
-            <a className="btn aiStudioSuccessBtn" href="/video-studio">
-              Start AI Video Studio — $5
-            </a>
+            {checkoutUrl ? (
+              <a className="btn aiStudioSuccessBtn" href={checkoutUrl} target="_blank" rel="noreferrer">
+                Continue to Secure Gumroad Checkout — $5
+              </a>
+            ) : (
+              <div className="notice error">The $5 Gumroad checkout link still needs to be added in Vercel as <strong>NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL</strong>.</div>
+            )}
 
             <a className="btn dark" href="/video-studio">
               Already Purchased / Open Studio
