@@ -33,7 +33,7 @@ export default function Customer() {
   const [browserDraft, setBrowserDraft] = useState(null);
   const [browserDrafts, setBrowserDrafts] = useState([]);
   const [savedOpen, setSavedOpen] = useState(false);
-  const [selectedSite, setSelectedSite] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     try {
@@ -61,6 +61,7 @@ export default function Customer() {
       return;
     }
     setLoading(true);
+    setSavedOpen(true);
     setMsg(liveSearch ? 'Filtering saved websites as you type...' : 'Searching for your websites and drafts...');
     try {
       const res = await fetch('/api/site/search', {
@@ -78,7 +79,6 @@ export default function Customer() {
       } else {
         setSites(data.sites);
         setSavedOpen(true);
-        setSelectedSite('all');
         setMsg(`${data.sites.length} saved website/draft record(s) found.`);
       }
     } catch (e) {
@@ -98,8 +98,18 @@ export default function Customer() {
     window.location.href = '/builder?restore=1';
   }
 
-  const shownBrowserDrafts = browserDrafts.filter(item => !sites.some(site => site.slug === item.slug));
-  const visibleSites = selectedSite === 'all' ? sites : sites.filter(site => site.slug === selectedSite);
+  const searchTerm = normalizeSubdomain(query);
+  const matchesWords = (value = '') => !searchTerm || normalizeSubdomain(value).includes(searchTerm);
+  const visibleSites = sites.filter(site => {
+    const status = String(site.status || 'draft').toLowerCase();
+    const matchesStatus = statusFilter === 'all' || statusFilter === status || (statusFilter === 'published' && status === 'live');
+    return matchesStatus && (matchesWords(site.slug) || matchesWords(site.business_name) || matchesWords(site.site?.businessName));
+  });
+  const shownBrowserDrafts = browserDrafts.filter(item => {
+    if (sites.some(site => site.slug === item.slug)) return false;
+    if (!['all', 'draft', 'browser'].includes(statusFilter)) return false;
+    return matchesWords(item.slug) || matchesWords(item.draft?.businessName) || matchesWords(item.draft?.draftName);
+  });
 
   return (
     <>
@@ -137,15 +147,19 @@ export default function Customer() {
           <summary>Saved Websites &amp; Drafts</summary>
           <div className="savedDropdownContent">
           <p className="savedDropdownIntro">Published sites and saved drafts show here. Use Continue Draft to keep building, Open Website to view a live site, or Edit Published Site to update one that is already published.</p>
-          {sites.length > 0 && <div className="savedWebsitePicker field">
-            <label>Choose a saved website or draft</label>
-            <select value={selectedSite} onChange={event => setSelectedSite(event.target.value)}>
-              <option value="all">Show all saved websites and drafts</option>
-              {sites.map(site => <option value={site.slug} key={`select-${site.slug}`}>{site.business_name || site.site?.businessName || site.slug} — {statusLabel(site.status)}</option>)}
+          <div className="savedWebsitePicker field">
+            <label>Filter websites by status</label>
+            <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}>
+              <option value="all">All websites and drafts</option>
+              <option value="draft">Drafts</option>
+              <option value="published">Live / Published websites</option>
+              <option value="paused">Paused websites</option>
+              <option value="archived">Archived websites</option>
+              <option value="browser">Browser draft backups</option>
             </select>
-          </div>}
-          {sites.length === 0 ? (
-            <div className="emptyState"><strong>No saved websites are showing yet.</strong><br/>Search by email first. If nothing appears, check the spelling or start a new website. Browser draft backups may appear below when available.</div>
+          </div>
+          {visibleSites.length === 0 ? (
+            <div className="emptyState"><strong>No online websites match this search and filter.</strong><br/>Try fewer letters, select All, search by email, or check the browser draft backups below.</div>
           ) : (
             <div className="savedSiteList">
               {visibleSites.map(row => {

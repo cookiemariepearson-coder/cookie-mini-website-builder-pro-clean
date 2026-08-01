@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Nav from '../lib/Nav';
 import OwnerFooter from '../lib/OwnerFooter';
+import LandingWelcomeExperience from '../components/LandingWelcomeExperience';
 
 const planTiles = [
   ['Free Launch Page', '$0', 'Up to 3 selected sections', '1 action button'],
@@ -45,6 +46,7 @@ export default function Home(){
               <Link className="btn dark" href="/pricing">View Website Plans</Link>
               <Link className="btn light" href="/checkout/ai-video">AI Video Studio — $5</Link>
             </div>
+            <LandingWelcomeExperience />
           </div>
           <div className="brandHeroMockup" aria-label="Website builder preview">
             <div className="mockBrowser">

@@ -487,7 +487,10 @@ export default function Builder() {
   return (
     <main className="builderShell">
       <aside className="builderSide">
-        <h1>Cookie Mini Website Builder Pro</h1>
+        <a className="builderHomeLogo" href="https://www.cookiesdigitalcreations.com/" aria-label="Return to homepage">
+          <img src="/cookie-mini-website-builder-logo.png" alt="Cookie Mini Website Builder Pro" />
+          <span>Cookie Mini Website Builder Pro</span>
+        </a>
         {['Choose Type & Look','Website Info','Design','Sections & Wording','Preview & Publish'].map((label, index) => (
           <button className={`stepBtn ${step === index ? 'active' : ''}`} onClick={() => { persistLocal('Draft saved.'); setStep(index); }} key={label}>{index + 1}. {label}</button>
         ))}
