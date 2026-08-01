@@ -6,6 +6,7 @@ const servicePlans = [
     name: 'Free Launch Page',
     setup: '$99 setup',
     monthly: '$0/month',
+    turnaround: '3–5 business days',
     tone: 'sunset',
     summary: 'A simple, polished online starting point for a new idea, event, service, or small business.',
     includes: [
@@ -22,6 +23,7 @@ const servicePlans = [
     name: 'Starter Pro',
     setup: '$249 setup',
     monthly: '$19/month',
+    turnaround: '5–7 business days',
     tone: 'berry',
     summary: 'Best for a one-page business website that needs stronger content, media, and customer actions.',
     includes: [
@@ -38,6 +40,7 @@ const servicePlans = [
     name: 'Business',
     setup: '$499 setup',
     monthly: '$30/month',
+    turnaround: '7–10 business days',
     tone: 'gold',
     badge: 'Most Popular',
     summary: 'Built for active businesses that need more sections, customer actions, and promotional support.',
@@ -56,6 +59,7 @@ const servicePlans = [
     name: 'Premium',
     setup: '$899 setup',
     monthly: '$50/month',
+    turnaround: '10–14 business days',
     tone: 'violet',
     summary: 'The complete done-for-you option for a business that wants the fullest website and launch support.',
     includes: [
@@ -71,8 +75,7 @@ const servicePlans = [
   },
 ];
 
-const emailHref = (plan) =>
-  `mailto:cookiepearson@gmail.com?subject=${encodeURIComponent(`Done-for-You Website Request — ${plan}`)}&body=${encodeURIComponent(`Hello Cookie Digital Creations,\n\nI am interested in the ${plan} Done-for-You website service.\n\nBusiness name:\nBusiness type:\nWhat I need customers to do:\nBest email or phone number:\n\nPlease contact me with the next steps.`)}`;
+const requestHref = (plan) => `/done-for-you/request?plan=${encodeURIComponent(plan)}`;
 
 export default function DoneForYouPricing() {
   return (
@@ -87,7 +90,7 @@ export default function DoneForYouPricing() {
             I will organize your content, add your photos and links, and prepare your website for launch.
           </p>
           <div className="pricingHeaderActions">
-            <a className="btn" href={emailHref('Website Setup Consultation')}>Request My Website</a>
+            <Link className="btn" href={requestHref('Website Setup Consultation')}>Request My Website</Link>
             <Link className="btn dark" href="/pricing">Compare DIY Plans</Link>
           </div>
         </section>
@@ -106,12 +109,13 @@ export default function DoneForYouPricing() {
               <h2>{plan.name}</h2>
               <div className="dfyPrice">{plan.setup}</div>
               <div className="dfyMonthly">plus {plan.monthly}</div>
+              <div className="dfyTurnaround"><strong>Estimated turnaround:</strong> {plan.turnaround}</div>
               <p>{plan.summary}</p>
               <h3>What I will do:</h3>
               <ul>
                 {plan.includes.map((item) => <li key={item}>{item}</li>)}
               </ul>
-              <a className="btn" href={emailHref(plan.name)}>Request {plan.name}</a>
+              <Link className="btn" href={requestHref(plan.name)}>Request {plan.name}</Link>
             </article>
           ))}
         </section>
@@ -125,7 +129,7 @@ export default function DoneForYouPricing() {
               plus the existing <strong>$10/month per-page plan fee</strong>.
             </p>
           </div>
-          <a className="btn dark" href={emailHref('Extra Page Add-On')}>Request an Extra Page</a>
+          <Link className="btn dark" href={requestHref('Extra Page Add-On')}>Request an Extra Page</Link>
         </section>
 
         <section className="dfyDetailsGrid">
@@ -156,7 +160,7 @@ export default function DoneForYouPricing() {
             <h2>Not sure which service fits?</h2>
             <p>Tell me about your business and what customers need to do. I will help you choose the best option.</p>
           </div>
-          <a className="btn dark" href={emailHref('Help Choosing a Done-for-You Plan')}>Ask Cookie Digital Creations</a>
+          <button className="btn dark askCookieAiButton" type="button" data-cookie-ai-open="Which Done-for-You service fits my business?">Ask Cookie AI</button>
         </section>
 
         <section className="dfyFinePrint">

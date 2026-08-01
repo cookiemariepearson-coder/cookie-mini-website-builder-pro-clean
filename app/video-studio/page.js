@@ -167,22 +167,24 @@ export default function VideoStudioPage() {
   return (
     <>
       <Nav />
-      <main className="wrap aiKit">
-        <section className="dashboard">
+      <main className="wrap aiKit videoStudioRefresh">
+        <section className="dashboard videoStudioHero">
           <span className="kicker">AI Video Studio</span>
-          <h1>Cookie&apos;s AI Video Studio</h1>
+          <h1>Create your business video, step by step.</h1>
           <p>
-            Create video ideas, hooks, captions, scripts, shot lists, voiceover wording,
-            and video prompts for your business or product.
+            Start with a smart script and video plan. Review it, make any changes you want,
+            then create a real video if your plan includes video credits.
           </p>
-
-          <div className="notice success">
-            <strong>Studio is open.</strong><br />
-            Use this page to create your content plan. Business/Premium website plans may also
-            use real HeyGen generation from the full website workflow when credits are available.
+          <div className="studioSteps" aria-label="AI Video Studio steps">
+            <div><span className="studioStepNumber">1</span><strong>Describe it</strong><span>Tell us about the business and promotion.</span></div>
+            <div><span className="studioStepNumber">2</span><strong>Review your kit</strong><span>Check the script, captions, shots, and voiceover.</span></div>
+            <div><span className="studioStepNumber">3</span><strong>Make the video</strong><span>Business and Premium customers can use available credits.</span></div>
           </div>
+        </section>
 
-          <div className="row">
+        <section className="dashboard studioWorkCard">
+          <div className="studioSectionHeading"><span className="studioStepNumber">1</span><div><h2>Describe your video</h2><p>Complete the details below. You can create and download the planning kit without signing in.</p></div></div>
+          <div className="studioFormGrid">
             <div className="field">
               <label>Business name</label>
               <input value={biz} onChange={e => setBiz(e.target.value)} placeholder="Example: Cookie's Kitchen" />
@@ -191,14 +193,10 @@ export default function VideoStudioPage() {
               <label>What are you promoting?</label>
               <input value={promo} onChange={e => setPromo(e.target.value)} placeholder="Example: mini websites, seafood trays, hair services" />
             </div>
-          </div>
-
-          <div className="field">
-            <label>Target customer</label>
-            <input value={audience} onChange={e => setAudience(e.target.value)} placeholder="Example: small business owners" />
-          </div>
-
-          <div className="row">
+            <div className="field">
+              <label>Target customer</label>
+              <input value={audience} onChange={e => setAudience(e.target.value)} placeholder="Example: small business owners" />
+            </div>
             <div className="field">
               <label>Video type</label>
               <select value={videoType} onChange={e => setVideoType(e.target.value)}>
@@ -211,9 +209,6 @@ export default function VideoStudioPage() {
                 {['TikTok / Reels','YouTube Short','Facebook Ad','Instagram Story','Website Hero Video'].map(item => <option key={item}>{item}</option>)}
               </select>
             </div>
-          </div>
-
-          <div className="row">
             <div className="field">
               <label>Style</label>
               <select value={style} onChange={e => setStyle(e.target.value)}>
@@ -226,13 +221,12 @@ export default function VideoStudioPage() {
                 {['15 seconds','30 seconds','45 seconds','60 seconds'].map(item => <option key={item}>{item}</option>)}
               </select>
             </div>
-          </div>
-
-          <div className="field">
-            <label>Voice style</label>
-            <select value={voice} onChange={e => setVoice(e.target.value)}>
-              {['Warm female voice','Sassy female voice','Professional narrator','Friendly upbeat voice','Luxury commercial voice'].map(item => <option key={item}>{item}</option>)}
-            </select>
+            <div className="field">
+              <label>Voice style</label>
+              <select value={voice} onChange={e => setVoice(e.target.value)}>
+                {['Warm female voice','Sassy female voice','Professional narrator','Friendly upbeat voice','Luxury commercial voice'].map(item => <option key={item}>{item}</option>)}
+              </select>
+            </div>
           </div>
           <div className="navRow">
             <button className="btn" type="button" onClick={generateSmartKit} disabled={Boolean(working)}>
@@ -241,9 +235,9 @@ export default function VideoStudioPage() {
           </div>
         </section>
 
-        <section className="dashboard">
-          <span className="kicker">Generated Video Kit</span>
-          <h1>{clean(biz) || 'Your Business'} Promo Kit</h1>
+        <section className="dashboard studioWorkCard">
+          <div className="studioSectionHeading"><span className="studioStepNumber">2</span><div><h2>Review your video kit</h2><p>Open each tab to review the wording before making your video.</p></div></div>
+          <h3>{clean(biz) || 'Your Business'} Promo Kit</h3>
 
           <div className="pillTabs">
             {tabNames.map(name => (
@@ -253,12 +247,12 @@ export default function VideoStudioPage() {
             ))}
           </div>
 
-          <pre style={{ whiteSpace: 'pre-wrap', background: '#160c22', color: 'white', padding: 20, borderRadius: 18 }}>
+          <pre className="studioOutput">
             {kit[tab]}
           </pre>
 
           {copied && <div className="notice success">{copied}</div>}
-          {status && <div className="notice success">{status}</div>}
+          {status && <div className="notice success studioStatus">{status}</div>}
 
           <div className="navRow">
             <button className="btn" onClick={() => copyText(kit[tab], tab)}>Copy {tab}</button>
@@ -267,24 +261,27 @@ export default function VideoStudioPage() {
             <a className="btn light" href="/builder">Build a Website</a>
           </div>
 
-          <div className="realVideoBox">
-            <span className="kicker">Real video generation</span>
-            <h2>Ready to make the video?</h2>
-            <p>Business and Premium customers can use their included credits. Standalone purchasers and the owner can use their approved access.</p>
+          <div className="realVideoBoxFriendly">
+            <div className="studioSectionHeading"><span className="studioStepNumber">3</span><div><h2>Generate the real video</h2><p>This step uses a video credit. The planning kit above does not.</p></div></div>
+            <div className="videoAccessExplainer">
+              <div><strong>Business or Premium customer?</strong><span>Enter the email or website name connected to your active website plan.</span></div>
+              <div><strong>No included video credits?</strong><span>You can still copy or download the complete kit and use it in your preferred video editor.</span></div>
+            </div>
             <div className="row">
               <div className="field">
-                <label>Customer email</label>
+                <label>Email used for your website plan</label>
                 <input type="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for the website plan" />
               </div>
               <div className="field">
-                <label>Website name / subdomain</label>
+                <label>Website name, if you know it</label>
                 <input value={websiteSlug} onChange={e => setWebsiteSlug(e.target.value)} placeholder="Example: my-business" />
               </div>
             </div>
-            <div className="field">
-              <label>Owner or purchase access code (only when applicable)</label>
-              <input type="password" value={accessCode} onChange={e => setAccessCode(e.target.value)} autoComplete="off" />
-            </div>
+            <details className="ownerAccessDetails">
+              <summary>Owner or special-purchase access only</summary>
+              <p>Most website-plan customers can leave this closed. Enter a code only if Cookie Digital Creations gave you one.</p>
+              <div className="field"><label>Special access code</label><input type="password" value={accessCode} onChange={e => setAccessCode(e.target.value)} autoComplete="off" /></div>
+            </details>
             <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working)}>
               {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
             </button>

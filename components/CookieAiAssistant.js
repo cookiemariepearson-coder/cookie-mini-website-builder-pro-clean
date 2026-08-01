@@ -80,6 +80,25 @@ export default function CookieAiAssistant() {
   }, []);
 
   useEffect(() => {
+    function openFromPage(event) {
+      const prompt = String(event.detail?.prompt || '').trim();
+      setOpen(true);
+      if (prompt) setInput(prompt);
+    }
+    function handlePageClick(event) {
+      const button = event.target.closest('[data-cookie-ai-open]');
+      if (!button) return;
+      openFromPage({ detail: { prompt: button.getAttribute('data-cookie-ai-open') } });
+    }
+    window.addEventListener('open-cookie-ai', openFromPage);
+    document.addEventListener('click', handlePageClick);
+    return () => {
+      window.removeEventListener('open-cookie-ai', openFromPage);
+      document.removeEventListener('click', handlePageClick);
+    };
+  }, []);
+
+  useEffect(() => {
     try { localStorage.setItem('cookieAiAssistantV2Messages', JSON.stringify(dedupeMessages(messages).slice(-14))); } catch {}
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, open]);

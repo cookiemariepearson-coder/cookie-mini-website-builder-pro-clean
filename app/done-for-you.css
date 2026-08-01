@@ -21,6 +21,8 @@
 .dfyPlanLabel{display:inline-block;border-radius:999px;background:#20172f;color:#fff;padding:7px 12px;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
 .dfyPrice{font-size:40px;font-weight:900;color:#20172f}
 .dfyMonthly{font-weight:900;color:#8a3a00;margin:4px 0 14px}
+.dfyTurnaround{display:inline-block;background:#fff;border:1px solid #eaddec;border-radius:14px;padding:10px 12px;margin:0 0 14px;color:#594a68}
+.askCookieAiButton{font:inherit}
 .dfyExtraPage{display:flex;align-items:center;justify-content:space-between;gap:24px;background:linear-gradient(135deg,#fff0dd,#f8edff);border:1px solid #eaddec;border-radius:28px;padding:28px;margin:26px 0;box-shadow:0 22px 48px #00000014}
 .dfyExtraPage h2{margin:7px 0}
 .dfyExtraPage p{max-width:760px;line-height:1.55}

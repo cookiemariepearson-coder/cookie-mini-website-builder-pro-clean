@@ -92,8 +92,8 @@ export default function Customer() {
   return (
     <>
       <Nav />
-      <main className="wrap customerHub">
-        <section className="dashboard">
+      <main className="wrap customerHub customerHubWarm">
+        <section className="dashboard customerWelcome">
           <span className="kicker">My Website</span>
           <h1>Customer Dashboard</h1>
           <p>Find your published websites and saved drafts in one place. You can search with only your email, only the short website name, or the full subdomain link.</p>
@@ -121,9 +121,10 @@ export default function Customer() {
           </div>
         </section>
 
-        <section className="dashboard savedBox">
-          <h2>Saved Websites & Drafts</h2>
-          <p className="mutedText">Published sites and saved drafts show in one box. Use Continue Draft to keep building, Open Website to view a live site, or Edit Published Site to update one that is already published.</p>
+        <details className="savedDropdown" open={sites.length > 0 || shownBrowserDrafts.length > 0}>
+          <summary>Saved Websites &amp; Drafts</summary>
+          <div className="savedDropdownContent">
+          <p className="savedDropdownIntro">Published sites and saved drafts show here. Use Continue Draft to keep building, Open Website to view a live site, or Edit Published Site to update one that is already published.</p>
           {sites.length === 0 ? (
             <div className="emptyState"><strong>No saved websites are showing yet.</strong><br/>Search by email first. If nothing appears, check the spelling or start a new website. Browser draft backups may appear below when available.</div>
           ) : (
@@ -174,7 +175,8 @@ export default function Customer() {
               </div>
             </div>
           )}
-        </section>
+          </div>
+        </details>
       </main>
     </>
   );
