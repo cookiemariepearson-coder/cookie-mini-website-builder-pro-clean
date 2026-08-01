@@ -64,6 +64,8 @@ export async function POST(req) {
       customer_email: row.customer_email || siteFromRow(row).customerEmail || '',
       plan: row.plan || siteFromRow(row).plan || 'free',
       status: row.status || siteFromRow(row).status || 'draft',
+      access_status: row.access_status || 'active',
+      subscription_status: row.subscription_status || 'unverified',
       monthly_price: row.monthly_price || 0,
       extra_pages: row.extra_pages || 0,
       updated_at: row.updated_at,

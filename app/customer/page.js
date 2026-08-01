@@ -24,6 +24,13 @@ function statusLabel(status = '') {
   return 'Draft';
 }
 
+function effectiveStatus(site = {}) {
+  const access = String(site.access_status || '').toLowerCase();
+  if (access === 'archived') return 'archived';
+  if (access === 'paused') return 'paused';
+  return String(site.status || 'draft').toLowerCase();
+}
+
 export default function Customer() {
   const [email, setEmail] = useState('');
   const [query, setQuery] = useState('');
@@ -101,7 +108,7 @@ export default function Customer() {
   const searchTerm = normalizeSubdomain(query);
   const matchesWords = (value = '') => !searchTerm || normalizeSubdomain(value).includes(searchTerm);
   const visibleSites = sites.filter(site => {
-    const status = String(site.status || 'draft').toLowerCase();
+    const status = effectiveStatus(site);
     const matchesStatus = statusFilter === 'all' || statusFilter === status || (statusFilter === 'published' && status === 'live');
     return matchesStatus && (matchesWords(site.slug) || matchesWords(site.business_name) || matchesWords(site.site?.businessName));
   });
@@ -163,13 +170,15 @@ export default function Customer() {
           ) : (
             <div className="savedSiteList">
               {visibleSites.map(row => {
-                const status = statusLabel(row.status);
-                const isPublished = String(row.status || '').toLowerCase() === 'published';
+                const currentStatus = effectiveStatus(row);
+                const status = statusLabel(currentStatus);
+                const isPublished = currentStatus === 'published';
+                const isUnavailable = currentStatus === 'paused' || currentStatus === 'archived';
                 const liveUrl = `https://${row.slug}.${ROOT}`;
                 return (
                   <article className="savedSiteCard" key={row.slug}>
                     <div>
-                      <span className={`statusPill ${String(row.status || 'draft').toLowerCase()}`}>{status}</span>
+                      <span className={`statusPill ${currentStatus}`}>{status}</span>
                       <h3>{row.business_name || row.site?.businessName || row.slug}</h3>
                       <p><strong>Subdomain:</strong> {row.slug}.{ROOT}</p>
                       <p><strong>Email:</strong> {row.customer_email || row.site?.customerEmail || 'Not saved'}</p>
@@ -179,7 +188,8 @@ export default function Customer() {
                     <div className="savedActions">
                       {isPublished && <a className="btn" href={liveUrl} target="_blank" rel="noreferrer">Open Website</a>}
                       {isPublished && <a className="btn dark" href={`/customer/edit/${row.slug}?email=${encodeURIComponent(row.customer_email || '')}`}>Edit Published Site</a>}
-                      <a className="btn dark" href={`/builder?draft=${encodeURIComponent(row.slug)}`}>{isPublished ? 'Use as Draft / Update' : 'Continue Draft'}</a>
+                      {!isUnavailable && <a className="btn dark" href={`/builder?draft=${encodeURIComponent(row.slug)}`}>{isPublished ? 'Use as Draft / Update' : 'Continue Draft'}</a>}
+                      {isUnavailable && <div className="notice">This website is {currentStatus}. Contact Cookie Digital Creations if access should be restored.</div>}
                     </div>
                   </article>
                 );
