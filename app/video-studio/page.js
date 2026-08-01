@@ -79,11 +79,18 @@ export default function VideoStudioPage() {
   const [voice, setVoice] = useState('Warm female voice');
   const [tab, setTab] = useState('Script');
   const [copied, setCopied] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [websiteSlug, setWebsiteSlug] = useState('');
+  const [accessCode, setAccessCode] = useState('');
+  const [smartKit, setSmartKit] = useState(null);
+  const [working, setWorking] = useState('');
+  const [status, setStatus] = useState('');
 
-  const kit = useMemo(
+  const starterKit = useMemo(
     () => makeKit({ biz, promo, audience, videoType, platform, style, length, voice }),
     [biz, promo, audience, videoType, platform, style, length, voice]
   );
+  const kit = smartKit || starterKit;
 
   const tabNames = Object.keys(kit);
   const kitText = tabNames.map(name => `${name}\n${kit[name]}`).join('\n\n---\n\n');
@@ -100,6 +107,61 @@ export default function VideoStudioPage() {
     a.href = URL.createObjectURL(blob);
     a.download = `${clean(biz) || 'ai-video'}-studio-kit.txt`;
     a.click();
+  }
+
+  async function generateSmartKit() {
+    if (!clean(biz) || !clean(promo)) {
+      setStatus('Enter the business name and what you are promoting first.');
+      return;
+    }
+    setWorking('kit');
+    setStatus('Cookie AI is writing a complete custom video kit...');
+    try {
+      const response = await fetch('/api/video-kit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessName: biz, promo, audience, videoType, platform, style, length, voice })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || 'The smart kit could not be generated.');
+      setSmartKit(data.kit);
+      setTab('Script');
+      setStatus('Your custom AI video kit is ready. Review it, then generate the real video when you are satisfied.');
+    } catch (error) {
+      setStatus(error.message);
+    } finally {
+      setWorking('');
+    }
+  }
+
+  async function generateVideo() {
+    if (!clean(biz) || !clean(promo)) {
+      setStatus('Enter the business name and what you are promoting first.');
+      return;
+    }
+    setWorking('video');
+    setStatus('Sending your finished video plan to the AI video generator...');
+    try {
+      const response = await fetch('/api/heygen/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName: biz, promo, audience, videoType, platform, style, length, voice,
+          customerEmail, websiteSlug, accessCode,
+          script: kit.Script,
+          captions: kit.Captions,
+          videoPrompt: kit['Video Prompt']
+        })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || 'The video could not be started.');
+      setStatus(`Video generation started successfully.${data.videoUsage?.remaining !== undefined ? ` Credits remaining: ${data.videoUsage.remaining}.` : ''}`);
+      if (data.heygenSessionUrl) window.open(data.heygenSessionUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      setStatus(error.message);
+    } finally {
+      setWorking('');
+    }
   }
 
   return (
@@ -172,6 +234,11 @@ export default function VideoStudioPage() {
               {['Warm female voice','Sassy female voice','Professional narrator','Friendly upbeat voice','Luxury commercial voice'].map(item => <option key={item}>{item}</option>)}
             </select>
           </div>
+          <div className="navRow">
+            <button className="btn" type="button" onClick={generateSmartKit} disabled={Boolean(working)}>
+              {working === 'kit' ? 'Creating Smart Kit...' : 'Create Smart Video Kit'}
+            </button>
+          </div>
         </section>
 
         <section className="dashboard">
@@ -191,12 +258,36 @@ export default function VideoStudioPage() {
           </pre>
 
           {copied && <div className="notice success">{copied}</div>}
+          {status && <div className="notice success">{status}</div>}
 
           <div className="navRow">
             <button className="btn" onClick={() => copyText(kit[tab], tab)}>Copy {tab}</button>
             <button className="btn dark" onClick={() => copyText(kitText, 'Full kit')}>Copy Full Kit</button>
             <button className="btn light" onClick={downloadKit}>Download Kit</button>
             <a className="btn light" href="/builder">Build a Website</a>
+          </div>
+
+          <div className="realVideoBox">
+            <span className="kicker">Real video generation</span>
+            <h2>Ready to make the video?</h2>
+            <p>Business and Premium customers can use their included credits. Standalone purchasers and the owner can use their approved access.</p>
+            <div className="row">
+              <div className="field">
+                <label>Customer email</label>
+                <input type="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for the website plan" />
+              </div>
+              <div className="field">
+                <label>Website name / subdomain</label>
+                <input value={websiteSlug} onChange={e => setWebsiteSlug(e.target.value)} placeholder="Example: my-business" />
+              </div>
+            </div>
+            <div className="field">
+              <label>Owner or purchase access code (only when applicable)</label>
+              <input type="password" value={accessCode} onChange={e => setAccessCode(e.target.value)} autoComplete="off" />
+            </div>
+            <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working)}>
+              {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
+            </button>
           </div>
         </section>
       </main>

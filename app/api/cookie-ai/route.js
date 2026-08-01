@@ -85,8 +85,17 @@ Hard safety rules:
 `;
 }
 
+function extractResponseText(data) {
+  if (data?.output_text) return data.output_text;
+  return (data?.output || [])
+    .flatMap(item => item?.content || [])
+    .filter(item => item?.type === 'output_text')
+    .map(item => item.text || '')
+    .join('\n');
+}
+
 async function callOpenAI({ apiKey, model, messages }) {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetch('https://api.openai.com/v1/responses', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -94,9 +103,8 @@ async function callOpenAI({ apiKey, model, messages }) {
     },
     body: JSON.stringify({
       model,
-      messages,
-      temperature: 0.2,
-      max_tokens: 700
+      input: messages,
+      max_output_tokens: 900
     })
   });
 
@@ -108,7 +116,7 @@ async function callOpenAI({ apiKey, model, messages }) {
 
   return {
     ok: true,
-    answer: clean(data?.choices?.[0]?.message?.content || '', 3200)
+    answer: clean(extractResponseText(data), 3200)
   };
 }
 
@@ -141,7 +149,7 @@ export async function POST(req) {
 
     const apiKey = process.env.OPENAI_API_KEY;
     const requestedModel = process.env.OPENAI_MODEL || 'gpt-5.1';
-    const backupModels = ['gpt-5.1', 'gpt-4.1', 'gpt-4o'];
+    const backupModels = ['gpt-5.1', 'gpt-4.1'];
 
     if (!apiKey) {
       await logChat({ message: userMessage, answer: fallback, pagePath, intent, businessName, email, needsHumanHelp: false });

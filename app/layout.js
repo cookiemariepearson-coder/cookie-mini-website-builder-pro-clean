@@ -20,6 +20,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <meta name="impact-site-verification" value="6a804b9b-3376-4cc7-8b0f-9c6d95497d97" />
+      </head>
       <body>
         {children}
         <CookieAiAssistant />

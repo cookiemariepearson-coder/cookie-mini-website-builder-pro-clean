@@ -62,6 +62,7 @@ export default function CookieAiAssistant() {
   const [pagePath, setPagePath] = useState('');
   const [planState, setPlanState] = useState(null);
   const [copied, setCopied] = useState('');
+  const [showDetails, setShowDetails] = useState(false);
   const scrollRef = useRef(null);
   const pendingRef = useRef(false);
 
@@ -163,10 +164,13 @@ export default function CookieAiAssistant() {
             <button type="button" onClick={() => setOpen(false)} aria-label="Close Cookie AI Assistant">×</button>
           </header>
 
-          <div className="cookieAiLeadFields">
-            <input value={businessName} onChange={event => setBusinessName(event.target.value)} placeholder="Business name optional" aria-label="Business name optional" />
-            <input value={email} onChange={event => setEmail(event.target.value)} placeholder="Email optional" aria-label="Email optional" />
-          </div>
+          <button className="cookieAiDetailsToggle" type="button" onClick={() => setShowDetails(value => !value)}>
+            {showDetails ? 'Hide optional details' : 'Add business details (optional)'}
+          </button>
+          {showDetails && <div className="cookieAiLeadFields">
+            <input value={businessName} onChange={event => setBusinessName(event.target.value)} placeholder="Business name" aria-label="Business name optional" />
+            <input value={email} onChange={event => setEmail(event.target.value)} placeholder="Email" aria-label="Email optional" />
+          </div>}
 
           <div className="cookieAiQuick">
             {QUICK_PROMPTS.map(prompt => (
@@ -216,7 +220,7 @@ export default function CookieAiAssistant() {
 
       <button className="cookieAiLauncher" type="button" onClick={() => setOpen(value => !value)} aria-label="Open Cookie AI Assistant">
         <span>💬</span>
-        <strong>Ask Cookie AI</strong>
+        <strong>{pagePath === '/' ? 'Need help choosing?' : 'Ask Cookie AI'}</strong>
       </button>
     </div>
   );

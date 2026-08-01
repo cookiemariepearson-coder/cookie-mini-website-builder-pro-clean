@@ -11,6 +11,23 @@ const planTiles = [
 ];
 
 export default function Home(){
+  const faqs = [
+    ['Can I build a website for free?', 'Yes. The Free Launch Page lets you create a simple text-based page with up to three selected sections and one customer action button.'],
+    ['Can Cookie Digital Creations build the website for me?', 'Yes. Choose Done-for-You Website Services if you want Cookie Digital Creations to set up the design, wording, sections, and customer action path for you.'],
+    ['Can customers book, order, buy, or request a quote?', 'Yes. You can add clear action buttons that connect visitors to your booking page, order form, checkout, payment link, quote form, phone, text, or email.'],
+    ['Are these websites AI-friendly?', 'The builder uses clear headings, written descriptions, mobile-friendly layouts, consistent business information, and concise FAQs to help people and AI-assisted shopping tools understand what a business offers.'],
+    ['Does the builder include AI video creation?', 'Business and Premium plans include eligible AI Video Studio credits. A standalone AI Video Studio option is also available. Plan limits and available credits apply.'],
+    ['Can I sell digital products or services?', 'Yes. Add Buy Now, Order Now, Book Now, or another action button linking to Gumroad, a payment page, an order form, or your preferred selling tool.']
+  ];
+  const faqSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map(([question, answer]) => ({
+      '@type': 'Question',
+      name: question,
+      acceptedAnswer: { '@type': 'Answer', text: answer }
+    }))
+  };
   return (
     <>
       <Nav />
@@ -99,6 +116,59 @@ export default function Home(){
             <p>Your site can show clear action buttons so visitors know exactly how to order, book, buy, or contact the business.</p>
           </div>
         </section>
+
+        <section className="brandSection creatorBusinessSection">
+          <span className="kicker">For creators &amp; businesses</span>
+          <h2>Build it yourself—or let Cookie Digital Creations build it for you.</h2>
+          <p>
+            Start with a Free Launch Page, choose a paid builder plan when you need more,
+            or use our Done-for-You service for professional setup, wording, design, and customer action buttons.
+          </p>
+          <div className="twoPathGrid">
+            <article>
+              <strong>Build It Yourself</strong>
+              <p>Choose a template, add your information, watch the live preview, save your draft, and publish when ready.</p>
+              <Link className="btn" href="/builder">Start Building Free</Link>
+            </article>
+            <article>
+              <strong>Done for You</strong>
+              <p>Have Cookie Digital Creations set up your website while you focus on your business, products, or customers.</p>
+              <Link className="btn dark" href="/done-for-you">View Done-for-You Prices</Link>
+            </article>
+          </div>
+        </section>
+
+        <section className="aiReadyCommerceSection">
+          <div>
+            <span className="kicker">AI-ready online selling</span>
+            <h2>Clear product information for people and AI-assisted shopping.</h2>
+            <p>
+              Modern customers may discover businesses through search, social media, or AI shopping assistants.
+              Cookie Mini Website Builder helps you publish clear offers, prices, descriptions, FAQs, and action links
+              so your products and services are easier to understand and act on.
+            </p>
+          </div>
+          <ul>
+            <li>Clear business and product descriptions</li>
+            <li>Consistent contact and action information</li>
+            <li>Mobile-friendly pages with readable headings</li>
+            <li>Book, Order, Buy, Quote, Call, Text, and Email links</li>
+          </ul>
+        </section>
+
+        <section className="homepageFaqSection" id="frequently-asked-questions">
+          <span className="kicker">Frequently asked questions</span>
+          <h2>Quick answers before you get started.</h2>
+          <div className="homepageFaqGrid">
+            {faqs.map(([question, answer]) => (
+              <details key={question}>
+                <summary>{question}</summary>
+                <p>{answer}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
         <OwnerFooter />
       </main>
     </>
