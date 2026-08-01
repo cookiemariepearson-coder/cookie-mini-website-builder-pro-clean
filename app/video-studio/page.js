@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Nav from '../../lib/Nav';
 
 function clean(value = '') {
@@ -85,6 +85,27 @@ export default function VideoStudioPage() {
   const [smartKit, setSmartKit] = useState(null);
   const [working, setWorking] = useState('');
   const [status, setStatus] = useState('');
+  const [accessToken, setAccessToken] = useState('');
+  const [licenseKey, setLicenseKey] = useState('');
+  const [accessMessage, setAccessMessage] = useState('Unlock with your active Business/Premium website or your $5 Gumroad license key.');
+
+  useEffect(() => {
+    try { setAccessToken(localStorage.getItem('cookieVideoAccessToken') || ''); } catch {}
+  }, []);
+
+  async function activateAccess(mode) {
+    setAccessMessage('Verifying access...');
+    const response = await fetch('/api/video-access/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(mode === 'license' ? { licenseKey } : { email: customerEmail, slug: websiteSlug })
+    });
+    const data = await response.json();
+    if (!data.ok) { setAccessMessage(data.error || 'Access could not be verified.'); return; }
+    setAccessToken(data.token);
+    try { localStorage.setItem('cookieVideoAccessToken', data.token); } catch {}
+    setAccessMessage(`Access verified: ${data.access}.`);
+  }
 
   const starterKit = useMemo(
     () => makeKit({ biz, promo, audience, videoType, platform, style, length, voice }),
@@ -110,6 +131,10 @@ export default function VideoStudioPage() {
   }
 
   async function generateSmartKit() {
+    if (!accessToken) {
+      setStatus('Unlock AI Video Studio before creating the AI-powered Smart Video Kit.');
+      return;
+    }
     if (!clean(biz) || !clean(promo)) {
       setStatus('Enter the business name and what you are promoting first.');
       return;
@@ -120,7 +145,7 @@ export default function VideoStudioPage() {
       const response = await fetch('/api/video-kit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessName: biz, promo, audience, videoType, platform, style, length, voice })
+        body: JSON.stringify({ businessName: biz, promo, audience, videoType, platform, style, length, voice, accessToken })
       });
       const data = await response.json();
       if (!response.ok || !data.ok) throw new Error(data.error || 'The smart kit could not be generated.');
@@ -175,6 +200,19 @@ export default function VideoStudioPage() {
             Start with a smart script and video plan. Review it, make any changes you want,
             then create a real video if your plan includes video credits.
           </p>
+          <div className="notice videoAccessPanel">
+            <strong>{accessToken ? '✓ AI Video Studio unlocked' : 'Unlock AI Video Studio'}</strong>
+            <p>{accessMessage}</p>
+            {!accessToken && <>
+              <div className="row">
+                <div className="field"><label>Business/Premium customer email</label><input value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for the website plan" /></div>
+                <div className="field"><label>Website name or subdomain</label><input value={websiteSlug} onChange={e => setWebsiteSlug(e.target.value)} placeholder="Example: my-business" /></div>
+              </div>
+              <button className="btn" type="button" onClick={() => activateAccess('plan')}>Verify Website Plan</button>
+              <div className="field"><label>$5 Gumroad license key</label><input value={licenseKey} onChange={e => setLicenseKey(e.target.value)} placeholder="Paste the license key from your Gumroad receipt" /></div>
+              <button className="btn dark" type="button" onClick={() => activateAccess('license')}>Verify Gumroad Purchase</button>
+            </>}
+          </div>
           <div className="studioSteps" aria-label="AI Video Studio steps">
             <div><span className="studioStepNumber">1</span><strong>Describe it</strong><span>Tell us about the business and promotion.</span></div>
             <div><span className="studioStepNumber">2</span><strong>Review your kit</strong><span>Check the script, captions, shots, and voiceover.</span></div>

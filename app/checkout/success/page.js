@@ -64,13 +64,8 @@ export default function CheckoutSuccess() {
       const paidParam = params.get('paid') || '';
 
       if (String(paidParam).toLowerCase() === 'ai-video') {
-        try {
-          localStorage.setItem('cookieAiVideoStandalonePass', 'true');
-          localStorage.setItem('cookieAiVideoStandaloneCredits', '1');
-          localStorage.setItem('cookieAiVideoStandalonePurchasedAt', new Date().toISOString());
-        } catch {}
         setAiVideoPurchase(true);
-        setMessage('AI Video Studio checkout complete. Your video access is ready on this device.');
+        setMessage('Checkout complete. Open AI Video Studio and verify the license key from your Gumroad receipt.');
         setIsPublishing(false);
         return;
       }
@@ -168,7 +163,7 @@ export default function CheckoutSuccess() {
         </div>
 
         <div className="navRow checkoutSuccessActions">
-          <a className="btn aiStudioSuccessBtn" href="/video-studio?mode=standalone">Open AI Video Studio</a>
+          <a className="btn aiStudioSuccessBtn" href="/video-studio?activate=1">Open AI Video Studio &amp; Verify License</a>
           <a className="btn dark" href="/video-studio/results">Open Video Results</a>
           <a className="btn light" href="/pricing">View Website Plans</a>
           <a className="btn light" href="/builder">Build a Website</a>

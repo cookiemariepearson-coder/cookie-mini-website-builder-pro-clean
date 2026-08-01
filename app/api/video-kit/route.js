@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { verifyVideoAccessToken } from '../../../lib/videoAccessToken';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,6 +20,8 @@ function extractText(data) {
 export async function POST(request) {
   try {
     const body = await request.json();
+    const access = verifyVideoAccessToken(body.accessToken);
+    if (!access) return NextResponse.json({ ok: false, error: 'Unlock AI Video Studio with an active website plan or Gumroad license key first.' }, { status: 403 });
     const businessName = clean(body.businessName, 160);
     const promo = clean(body.promo, 400);
     if (!businessName || !promo) {
