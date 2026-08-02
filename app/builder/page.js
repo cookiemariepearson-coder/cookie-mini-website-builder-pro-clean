@@ -205,14 +205,19 @@ export default function Builder() {
     const style = type.styles[0];
     const palette = style.palette || {};
     const preset = stylePreset(style.key);
-    setSite(current => mergeDefaults({
+    setSite(current => {
+      const previousDefault = createDefaultSite({ typeKey: current.typeKey || 'local', styleKey: current.styleKey });
+      const hasCustomBusinessName = Boolean(current.businessName && current.businessName !== 'My Business Name' && current.businessName !== previousDefault.businessName);
+      const hasCustomHeadline = Boolean(current.headline && current.headline !== 'A beautiful website created in minutes.' && current.headline !== previousDefault.headline);
+      const hasCustomDescription = Boolean(current.description && current.description !== 'Add your business details, services, products, and contact information so customers know what you offer.' && current.description !== previousDefault.description);
+      return mergeDefaults({
       ...ns,
-      businessName: !current.businessName || current.businessName === 'My Business Name' ? ns.businessName : current.businessName,
+      businessName: hasCustomBusinessName ? current.businessName : ns.businessName,
       customerEmail: current.customerEmail,
       phone: current.phone,
       plan: current.plan,
-      headline: current.headline && current.headline !== 'A beautiful website created in minutes.' ? current.headline : ns.headline,
-      description: current.description && current.description !== 'Add your business details, services, products, and contact information so customers know what you offer.' ? current.description : ns.description,
+      headline: hasCustomHeadline ? current.headline : ns.headline,
+      description: hasCustomDescription ? current.description : ns.description,
       heroImage: current.heroImage,
       heroMediaLink: current.heroMediaLink,
       media: current.media || [],
@@ -226,7 +231,8 @@ export default function Builder() {
       offers: ns.offers,
       sections: ns.sections,
       designUpdatedAt: Date.now()
-    }));
+    });
+    });
     setMessage('Website type changed. Your selected sections were kept. Go to Sections & Wording to pick your own sections and add Order / Book / Buy buttons.');
   }
 
