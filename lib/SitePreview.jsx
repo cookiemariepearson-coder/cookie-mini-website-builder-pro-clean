@@ -183,6 +183,25 @@ function RealEstateTemplatePromotion({ site, page }) {
   return null;
 }
 
+function WellnessTemplatePromotion({ site, page }) {
+  if (site.typeKey !== 'wellness') return null;
+  const hasReplacement = Array.isArray(site.media) && site.media.some(item => item?.section === page && item?.url);
+  if (hasReplacement) return null;
+  const clean = site.styleKey === 'clean-minimal';
+  if (page === 'Products') return (
+    <div className={`wellnessProductsPromotion ${clean ? 'cleanWellnessProducts' : 'botanicalWellnessProducts'}`}>
+      <header><small>{clean ? 'Simple wellness support' : 'Botanical collection'}</small><strong>{site.offerTitle || 'Wellness Benefits'}</strong></header>
+      <div className="wellnessPromotionItems">{(site.offers || []).slice(0,3).map((offer,index)=><div key={index}><b>{offer.title}</b><span>{offer.text}</span></div>)}</div>
+      <a className="wellnessPromotionButton" href="#contact">Learn More</a>
+    </div>
+  );
+  if (page === 'About') {
+    const copy = sectionText(site, 'About').trim() || (clean ? 'A calmer approach to everyday wellness' : 'Rooted in thoughtful botanical traditions');
+    return <div className={`wellnessStoryPromotion ${clean ? 'cleanWellnessStory' : 'botanicalWellnessStory'}`}><div><small>{clean ? 'Our approach' : 'Our botanical story'}</small><strong>{copy.split('\n')[0].slice(0,78)}</strong><span>Edit this section with your story, ingredients, practices, qualifications, and customer guidance.</span></div><a className="wellnessPromotionButton" href="#contact">Connect With Us</a></div>;
+  }
+  return null;
+}
+
 function sectionText(site, page) {
   return site.sections?.[page] || '';
 }
@@ -267,6 +286,7 @@ export default function SitePreview({ site, live = false, draftMode = false }) {
             <FoodTemplatePromotion site={site} page={page} />
             <BeautyTemplatePromotion site={site} page={page} />
             <RealEstateTemplatePromotion site={site} page={page} />
+            <WellnessTemplatePromotion site={site} page={page} />
             {['Gallery','Portfolio','Projects','Before & After','Products','Menu','Services'].includes(page) && pageMedia.length > 0 && (
               <div className="mediaGrid">
                 {pageMedia.slice(0, 12).map((m, i) => (
