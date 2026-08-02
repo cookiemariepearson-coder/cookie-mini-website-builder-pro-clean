@@ -166,7 +166,8 @@ function styleClasses(site, type, style) {
     `layout-${site.layoutStyle || 'split'}`,
     `font-${site.fontStyle || 'bold'}`,
     `bg-${site.backgroundStyle || 'gradient'}`,
-    `shape-${site.sectionShape || 'cards'}`
+    `shape-${site.sectionShape || 'cards'}`,
+    site.heroImage ? 'has-hero-upload' : 'uses-template-hero'
   ].join(' ');
 }
 
