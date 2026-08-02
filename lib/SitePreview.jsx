@@ -210,6 +210,38 @@ function LocalTemplatePromotion({ site, page }) {
   return null;
 }
 
+const signatureTemplateConfig = {
+  digital: { feature: 'Products', story: 'Testimonials', featureLabel: 'Digital collection', storyLabel: 'Why customers choose it', action: 'Get Instant Access' },
+  nonprofit: { feature: 'Projects', story: 'Gallery', featureLabel: 'Community programs', storyLabel: 'Our mission in action', action: 'Support the Mission' },
+  creator: { feature: 'Portfolio', story: 'Gallery', featureLabel: 'Selected creative work', storyLabel: 'Behind the work', action: 'Book a Project' },
+  cleaning: { feature: 'Services', story: 'Before & After', featureLabel: 'Cleaning packages', storyLabel: 'Real results', action: 'Request Cleaning' },
+  coaching: { feature: 'Services', story: 'Testimonials', featureLabel: 'Ways to work together', storyLabel: 'Client progress', action: 'Book a Strategy Call' },
+  party: { feature: 'Services', story: 'Gallery', featureLabel: 'Celebration packages', storyLabel: 'Party moments', action: 'Plan Your Event' },
+  shop: { feature: 'Products', story: 'Gallery', featureLabel: 'Shop the collection', storyLabel: 'Inside the boutique', action: 'Shop Now' }
+};
+
+function SignatureTemplatePromotion({ site, page }) {
+  const config = signatureTemplateConfig[site.typeKey];
+  if (!config) return null;
+  const hasReplacement = Array.isArray(site.media) && site.media.some(item => item?.section === page && item?.url);
+  if (hasReplacement) return null;
+  if (page === config.feature) return (
+    <div className="signatureCategoryPromotion">
+      <header><small>{config.featureLabel}</small><strong>{site.offerTitle || config.featureLabel}</strong></header>
+      <div className="signaturePromotionItems">
+        {(site.offers || []).slice(0, 3).map((offer, index) => <div key={index}><b>{offer.title}</b><span>{offer.text}</span></div>)}
+      </div>
+      <a className="signaturePromotionButton" href="#contact">{config.action}</a>
+    </div>
+  );
+  if (page === config.story) {
+    const copy = sectionText(site, page).trim();
+    const firstLine = copy.split('\n').find(Boolean) || config.storyLabel;
+    return <div className="signatureCategoryStory"><div><small>{config.storyLabel}</small><strong>{firstLine.slice(0, 86)}</strong><span>Edit this section with your own photos, results, story, details, and customer message.</span></div><a className="signaturePromotionButton" href="#contact">Learn More</a></div>;
+  }
+  return null;
+}
+
 function sectionText(site, page) {
   return site.sections?.[page] || '';
 }
@@ -296,6 +328,7 @@ export default function SitePreview({ site, live = false, draftMode = false }) {
             <RealEstateTemplatePromotion site={site} page={page} />
             <WellnessTemplatePromotion site={site} page={page} />
             <LocalTemplatePromotion site={site} page={page} />
+            <SignatureTemplatePromotion site={site} page={page} />
             {['Gallery','Portfolio','Projects','Before & After','Products','Menu','Services'].includes(page) && pageMedia.length > 0 && (
               <div className="mediaGrid">
                 {pageMedia.slice(0, 12).map((m, i) => (
