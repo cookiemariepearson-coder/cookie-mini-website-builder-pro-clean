@@ -175,11 +175,15 @@
 .type-food{font-family:Georgia,'Times New Roman',serif}
 .type-food .siteTopbar{background:#28150f}
 .type-food .siteHero{background:linear-gradient(100deg,#fffaf1 0 62%,#f3dfc7 62%)}
-.foodScene{background:linear-gradient(150deg,#2a130d,#8a3415 64%,#e38a2f)}
-.foodScene:before{width:310px;height:310px;border-radius:50%;background:radial-gradient(circle,#fff8e9 0 54%,#d8a05a 55% 60%,#3b1f18 61%);top:44px;left:50%;transform:translateX(-50%);box-shadow:0 24px 60px rgba(0,0,0,.4)}
-.foodPlate{position:absolute;top:112px;left:50%;transform:translateX(-50%);width:230px;display:flex;align-items:center;justify-content:center;gap:4px;font-style:normal;font-size:58px;z-index:1}
-.foodPlate i,.foodPlate em{font-style:normal;font-size:46px}.sceneSteam{position:absolute;top:28px;left:0;right:0;text-align:center;font-size:28px;color:#ffe3c0;letter-spacing:10px}
+.foodScene{min-height:470px;background-image:linear-gradient(90deg,rgba(22,8,4,.58),transparent 52%),url('/templates/food/soul-food-hero-v1.webp');background-size:cover;background-position:center}
+.foodScene:before{inset:0;background:linear-gradient(180deg,transparent 45%,rgba(19,7,3,.88))}
+.foodSceneLabel{position:relative;z-index:2;display:grid;gap:8px}.foodSceneLabel span{font-size:clamp(31px,4vw,52px);font-weight:900;line-height:.95}.foodSceneLabel small{font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:.12em;color:#ffe3c0}
 .type-food .siteOfferCard{border-radius:8px;border-top:5px solid #d46a23}
+.type-food .siteSection{display:block;padding:28px}.type-food .siteSectionNumber{margin-bottom:15px}.type-food .section-menu,.type-food .section-gallery{background:#1b0c08;color:#fff;border:0}.type-food .section-menu h2,.type-food .section-menu p,.type-food .section-gallery h2,.type-food .section-gallery p{color:#fff}
+.foodMenuPromo{position:relative;min-height:690px;margin-top:24px;border-radius:24px;overflow:hidden;padding:40px;background-image:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.38)),url('/templates/food/menu-promo-v1.webp');background-size:cover;background-position:center;box-shadow:0 30px 72px rgba(0,0,0,.34);display:grid;grid-template-rows:auto 1fr auto}
+.foodMenuPromoTitle{width:min(84%,580px);justify-self:center;text-align:center;color:#24110a;padding:10px 20px}.foodMenuPromoTitle small{display:block;text-transform:uppercase;letter-spacing:.18em;font:900 12px Arial,sans-serif}.foodMenuPromoTitle strong{display:block;font-size:clamp(30px,5vw,55px);line-height:1}
+.foodMenuPromoItems{align-self:center;width:min(72%,520px);justify-self:center;display:grid;gap:18px;color:#fff;text-align:center}.foodMenuPromoItems div{border-bottom:1px solid rgba(255,189,73,.5);padding:0 8px 14px}.foodMenuPromoItems b,.foodMenuPromoItems span{display:block}.foodMenuPromoItems b{font-size:24px;color:#ffbd49}.foodMenuPromoItems span{font:15px/1.45 Arial,sans-serif;color:#fff7e9;margin-top:5px}.foodMenuPromo .siteActionRow{justify-content:center}
+.foodEventPromo{min-height:620px;margin-top:24px;border-radius:24px;overflow:hidden;padding:42px;background-image:url('/templates/food/event-promo-v1.webp');background-size:cover;background-position:center;box-shadow:0 30px 72px rgba(0,0,0,.34);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}.foodEventPromoCopy{width:min(72%,620px);display:grid;gap:14px}.foodEventPromoCopy small{font:900 13px Arial,sans-serif;text-transform:uppercase;letter-spacing:.16em;color:#ffbd49}.foodEventPromoCopy strong{font-size:clamp(38px,6vw,72px);line-height:.9;color:#fff;text-shadow:0 5px 0 rgba(0,0,0,.25)}.foodEventPromoCopy span{font:17px/1.5 Arial,sans-serif;color:#fff}.foodEventPromo .siteActionRow{justify-content:center}
 
 .type-beauty .siteTopbar{background:linear-gradient(90deg,#2c1028,#63345d)}
 .type-beauty .siteHero{grid-template-columns:.88fr 1.12fr;background:linear-gradient(125deg,#fff8fb,#f8e3ef)}
@@ -208,7 +212,7 @@
 .type-shop .siteTopbar{background:#21182c}.type-shop .siteHero{grid-template-columns:.9fr 1.1fr;background:linear-gradient(110deg,#fff 0 52%,#efe6e2 52%)}.type-shop .siteHeroCopy{padding:20px}.type-shop .siteHero h1{font-family:Georgia,'Times New Roman',serif;text-transform:none!important;letter-spacing:-.04em!important}
 .shopScene{background:linear-gradient(145deg,#2d2037,#4d2f43 58%,#aa6e68)}.shopScene:before{inset:30px 35px 120px;border:1px solid rgba(255,255,255,.26);border-radius:180px 180px 20px 20px}.productShelf{position:absolute;top:75px;left:38px;right:38px;height:220px;border-bottom:12px solid #d9aa72;display:flex;align-items:flex-end;justify-content:space-around;padding-bottom:15px;font-style:normal}.productShelf span,.productShelf b,.productShelf i{font-style:normal;font-size:74px;filter:drop-shadow(0 18px 12px rgba(0,0,0,.3))}.type-shop .siteOfferCard{border-radius:0;background:#fff;border-bottom:4px solid #c77a6d;box-shadow:none}
 
-@media(max-width:900px){.type-beauty .siteHero,.type-realestate .siteHero,.type-shop .siteHero{grid-template-columns:1fr}.templateScene{min-height:340px}.type-shop .siteHero{background:#fff9f6}}
+@media(max-width:900px){.type-beauty .siteHero,.type-realestate .siteHero,.type-shop .siteHero{grid-template-columns:1fr}.templateScene{min-height:340px}.type-shop .siteHero{background:#fff9f6}.foodMenuPromo{min-height:600px;padding:24px}.foodMenuPromoItems{width:88%}.foodEventPromo{min-height:540px;padding:24px}.foodEventPromoCopy{width:88%}}
 
 
 /* Action selector fix: make Order / Book / Buy and quick buttons truly selectable */
