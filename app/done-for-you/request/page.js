@@ -43,8 +43,6 @@ export default function DoneForYouRequestPage() {
       if (data.checkoutRequired && data.checkoutConfigured && data.checkoutUrl) {
         setStatus(`Request ${data.requestId} received. A confirmation email was sent. Opening secure checkout...`);
         setTimeout(() => window.location.assign(data.checkoutUrl), 1400);
-      } else if (data.checkoutRequired) {
-        setStatus(`Request ${data.requestId} received and your confirmation email was sent. Your secure payment link is being prepared; no work begins until payment is completed.`);
       } else {
         setStatus(`Request ${data.requestId} received. A confirmation email with next steps was sent to ${form.email}.`);
       }

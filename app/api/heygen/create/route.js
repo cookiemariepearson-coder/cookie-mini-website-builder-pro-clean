@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
+import { verifyVideoAccessToken } from '../../../../lib/videoAccessToken';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -167,9 +169,27 @@ async function checkCustomerAccess(body) {
     return { ok: true, ownerOverride: true, plan: 'owner', limit: 9999, used: 0, remaining: 9999, website: null };
   }
 
-  const standalonePass = body.standalonePass === true || String(body.standalonePass || '').toLowerCase() === 'true';
-  if (standalonePass) {
-    return { ok: true, ownerOverride: false, standalonePass: true, plan: 'ai-video-pass', limit: 1, used: 0, remaining: 1, website: null };
+  const videoAccess = verifyVideoAccessToken(body.accessToken || '');
+  if (videoAccess?.kind === 'standalone' && videoAccess.saleId) {
+    const usageKey = `standalone-${crypto.createHash('sha256').update(String(videoAccess.saleId)).digest('hex').slice(0, 24)}`;
+    const prior = await supabaseGet(`heygen_video_jobs?website_slug=eq.${encodeURIComponent(usageKey)}&select=id,status&limit=1`);
+    if (prior.missing) return { ok: false, status: 500, error: 'Supabase is not connected for standalone video usage.' };
+    if (!prior.ok) return { ok: false, status: prior.status || 500, error: 'Standalone video usage could not be checked.' };
+    if (Array.isArray(prior.data) && prior.data.length) {
+      return { ok: false, status: 403, plan: 'standalone', used: 1, limit: 1, remaining: 0, error: 'The real video included with this $5 license has already been used. Open Video Results to watch or download it.' };
+    }
+    return {
+      ok: true,
+      ownerOverride: false,
+      standalonePass: true,
+      plan: 'standalone',
+      limit: 1,
+      used: 0,
+      remaining: 1,
+      website: null,
+      customerEmail: getEmail(videoAccess.email || ''),
+      usageKey
+    };
   }
 
   const email = getEmail(body.customerEmail || body.email || body.accountEmail || '');
@@ -239,8 +259,8 @@ async function saveVideoJob(access, body, heygenPayload, prompt) {
   const slug = normalizeSlug(body.websiteSlug || body.slug || body.websiteName || body.subdomain || '');
   const row = {
     website_id: access.website?.id || null,
-    customer_email: email || access.website?.email || access.website?.customer_email || null,
-    website_slug: slug || access.website?.slug || null,
+    customer_email: email || access.customerEmail || access.website?.email || access.website?.customer_email || null,
+    website_slug: access.usageKey || slug || access.website?.slug || null,
     business_name: cleanText(body.businessName, 'Your Business', 160),
     prompt,
     status: heygenPayload.status || 'generating',

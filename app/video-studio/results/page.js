@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Nav from '../../../lib/Nav';
 
 function normalizeInput(value) {
@@ -41,10 +41,10 @@ export default function VideoResultsPage() {
   const [refreshingId, setRefreshingId] = useState('');
   const sortedJobs = useMemo(() => sortJobs(jobs), [jobs]);
 
-  async function searchVideos() {
+  async function searchVideos(inputEmail = email, inputSlug = slug) {
     const q = new URLSearchParams();
-    if (normalizeInput(email)) q.set('email', normalizeInput(email));
-    if (normalizeInput(slug)) q.set('slug', normalizeInput(slug));
+    if (normalizeInput(inputEmail)) q.set('email', normalizeInput(inputEmail));
+    if (normalizeInput(inputSlug)) q.set('slug', normalizeInput(inputSlug));
     if (!q.toString()) { setMessage('Enter an email or website/subdomain first.'); return; }
     setLoading(true);
     setMessage('Loading video results...');
@@ -61,6 +61,15 @@ export default function VideoResultsPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const initialEmail = q.get('email') || '';
+    const initialSlug = q.get('slug') || '';
+    if (initialEmail) setEmail(initialEmail);
+    if (initialSlug) setSlug(initialSlug);
+    if (initialEmail || initialSlug) searchVideos(initialEmail, initialSlug);
+  }, []);
 
   async function refreshJob(job) {
     const key = job.id || sessionId(job) || videoId(job);
@@ -108,7 +117,7 @@ export default function VideoResultsPage() {
         <div className="field"><label>Email</label><input value={email} onChange={e => setEmail(e.target.value)} placeholder="customer@email.com" autoComplete="off" /></div>
         <div className="field"><label>Website name or subdomain</label><input value={slug} onChange={e => setSlug(e.target.value)} placeholder="my-business-name" autoComplete="off" /></div>
       </div>
-      <div className="navRow"><button className="btn" onClick={searchVideos} disabled={loading}>{loading ? 'Searching...' : 'Find My Videos'}</button><a className="btn dark" href="/video-studio">Create Another Video</a><a className="btn light" href="/customer">My Website</a></div>
+      <div className="navRow"><button className="btn" onClick={() => searchVideos()} disabled={loading}>{loading ? 'Searching...' : 'Find My Videos'}</button><a className="btn dark" href="/video-studio">Create Another Video</a><a className="btn light" href="/customer">My Website</a></div>
       <div className="notice">{message}</div>
     </section>
 

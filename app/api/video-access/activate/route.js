@@ -23,7 +23,13 @@ export async function POST(request) {
     if (licenseKey) {
       const result = await verifyLicense(licenseKey);
       if (!result.valid) return NextResponse.json({ ok: false, error: 'That license key could not be verified as an active AI Video Studio purchase.' }, { status: 403 });
-      return NextResponse.json({ ok: true, token: createVideoAccessToken({ kind: 'standalone', saleId: result.purchase.sale_id || '' }), access: 'Standalone AI Video Studio' });
+      const purchaseEmail = clean(result.purchase.email || result.purchase.purchaser_email || '');
+      return NextResponse.json({
+        ok: true,
+        token: createVideoAccessToken({ kind: 'standalone', saleId: result.purchase.sale_id || '', email: purchaseEmail }),
+        access: 'Standalone AI Video Studio — 1 real video',
+        email: purchaseEmail
+      });
     }
 
     const slug = clean(body.slug).replace(/[^a-z0-9-]/g, '');

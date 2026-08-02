@@ -121,6 +121,7 @@ export default function VideoStudioPage() {
     if (!data.ok) { setAccessMessage(data.error || 'Access could not be verified.'); return; }
     setAccessToken(data.token);
     setAccessKind(readAccessKind(data.token));
+    if (data.email) setCustomerEmail(data.email);
     try { localStorage.setItem('cookieVideoAccessToken', data.token); } catch {}
     setAccessMessage(`Access verified: ${data.access}.`);
   }
@@ -182,6 +183,10 @@ export default function VideoStudioPage() {
       setStatus('Enter the business name and what you are promoting first.');
       return;
     }
+    if (accessKind === 'standalone' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean(customerEmail))) {
+      setStatus('Enter the email where you want to find your finished video results.');
+      return;
+    }
     setWorking('video');
     setStatus('Sending your finished video plan to the AI video generator...');
     try {
@@ -191,6 +196,7 @@ export default function VideoStudioPage() {
         body: JSON.stringify({
           businessName: biz, promo, audience, videoType, platform, style, length, voice,
           customerEmail, websiteSlug, accessCode,
+          accessToken,
           script: kit.Script,
           captions: kit.Captions,
           videoPrompt: kit['Video Prompt']
@@ -198,8 +204,11 @@ export default function VideoStudioPage() {
       });
       const data = await response.json();
       if (!response.ok || !data.ok) throw new Error(data.error || 'The video could not be started.');
-      setStatus(`Video generation started successfully.${data.videoUsage?.remaining !== undefined ? ` Credits remaining: ${data.videoUsage.remaining}.` : ''}`);
-      if (data.heygenSessionUrl) window.open(data.heygenSessionUrl, '_blank', 'noopener,noreferrer');
+      setStatus(`Video generation started successfully.${data.videoUsage?.remaining !== undefined ? ` Credits remaining: ${data.videoUsage.remaining}.` : ''} Opening your on-site Video Results...`);
+      const results = new URLSearchParams();
+      if (customerEmail) results.set('email', customerEmail);
+      if (!customerEmail && websiteSlug) results.set('slug', websiteSlug);
+      setTimeout(() => window.location.assign(`/video-studio/results?${results.toString()}`), 1200);
     } catch (error) {
       setStatus(error.message);
     } finally {
@@ -221,7 +230,7 @@ export default function VideoStudioPage() {
           <div className="notice videoAccessPanel">
             <strong>{accessToken ? '✓ AI Video Studio unlocked' : 'Unlock AI Video Studio'}</strong>
             <p>{accessMessage}</p>
-            {accessKind === 'standalone' && <p><strong>$5 standalone access:</strong> Your purchase creates the complete planning kit—script, captions, shot list, prompt, voiceover, and next steps. It does not include automatic video rendering.</p>}
+            {accessKind === 'standalone' && <p><strong>$5 standalone access:</strong> Your purchase includes the complete planning kit and one real video generated through this website.</p>}
             {!accessToken && <>
               <div className="row">
                 <div className="field"><label>Business/Premium customer email</label><input value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for the website plan" /></div>
@@ -320,9 +329,15 @@ export default function VideoStudioPage() {
 
           {accessKind === 'standalone' ? (
             <div className="realVideoBoxFriendly standaloneVideoNotice">
-              <div className="studioSectionHeading"><span className="studioStepNumber">3</span><div><h2>Turn your kit into a video</h2><p>Your $5 standalone purchase includes the complete planning kit above.</p></div></div>
-              <p>Copy or download your kit and use it in HeyGen, CapCut, Canva, TikTok, Instagram, Facebook, or YouTube Shorts. Automatic video rendering requires an active Business or Premium website plan with an available video credit.</p>
-              <div className="navRow"><a className="btn dark" href="/pricing">View Website Plans</a></div>
+              <div className="studioSectionHeading"><span className="studioStepNumber">3</span><div><h2>Generate your real video</h2><p>Your $5 standalone license includes one real video.</p></div></div>
+              <p>Review the planning kit above, then click Generate My Video. Your video will be created in the background and saved to the on-site Video Results page—no HeyGen visit is required.</p>
+              <div className="field">
+                <label>Email for your saved video results</label>
+                <input type="email" name="standalone-video-email" autoComplete="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for your Gumroad purchase" />
+              </div>
+              <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working)}>
+                {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
+              </button>
             </div>
           ) : <div className="realVideoBoxFriendly">
             <div className="studioSectionHeading"><span className="studioStepNumber">3</span><div><h2>Generate the real video</h2><p>This step uses a video credit. The planning kit above does not.</p></div></div>

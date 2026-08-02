@@ -75,13 +75,14 @@ export async function POST(request) {
     }
 
     const checkoutUrl = service.checkoutEnv ? clean(process.env[service.checkoutEnv], 1000) : '';
+    if (service.checkoutEnv && !checkoutUrl) {
+      return NextResponse.json({ ok: false, error: 'Checkout is temporarily unavailable for this service. Please try again shortly.' }, { status: 503 });
+    }
     const requestId = `DFY-${Date.now().toString(36).toUpperCase()}`;
     const safe = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, escapeHtml(value)]));
     const checkoutBlock = checkoutUrl
       ? `<p><a href="${escapeHtml(checkoutUrl)}" style="display:inline-block;padding:13px 20px;background:#f28a1e;color:#20172f;text-decoration:none;border-radius:999px;font-weight:800">Continue to secure checkout</a></p><p>Your place in the build schedule is confirmed after payment is completed.</p>`
-      : plan === 'Website Setup Consultation'
-        ? '<p>No payment is due for submitting this consultation request. Cookie Digital Creations will review it and contact you.</p>'
-        : '<p>Your request was received. Cookie Digital Creations will send the secure setup-payment link before work begins.</p>';
+      : '<p>No payment is due for submitting this consultation request. Cookie Digital Creations will review it and contact you.</p>';
 
     const detailRows = `
       <p><strong>Request:</strong> ${requestId}</p>
