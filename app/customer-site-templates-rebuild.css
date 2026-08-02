@@ -165,6 +165,51 @@
   .siteMediaGrid{grid-template-columns:1fr;}
 }
 
+/* 2026 signature template collection: the five primary industries now have
+   distinct compositions instead of sharing one recolored mockup. */
+.templateScene{min-height:410px;border-radius:34px;padding:28px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;color:#fff;box-shadow:0 28px 70px rgba(18,7,29,.28);isolation:isolate}
+.templateScene:before,.templateScene:after{content:"";position:absolute;z-index:-1}
+.templateScene>strong{font-size:clamp(28px,3.4vw,46px);line-height:1;margin-top:20px}
+.templateScene>small{font-size:14px;margin-top:9px;color:rgba(255,255,255,.82)}
+
+.type-food{font-family:Georgia,'Times New Roman',serif}
+.type-food .siteTopbar{background:#28150f}
+.type-food .siteHero{background:linear-gradient(100deg,#fffaf1 0 62%,#f3dfc7 62%)}
+.foodScene{background:linear-gradient(150deg,#2a130d,#8a3415 64%,#e38a2f)}
+.foodScene:before{width:310px;height:310px;border-radius:50%;background:radial-gradient(circle,#fff8e9 0 54%,#d8a05a 55% 60%,#3b1f18 61%);top:44px;left:50%;transform:translateX(-50%);box-shadow:0 24px 60px rgba(0,0,0,.4)}
+.foodPlate{position:absolute;top:112px;left:50%;transform:translateX(-50%);width:230px;display:flex;align-items:center;justify-content:center;gap:4px;font-style:normal;font-size:58px;z-index:1}
+.foodPlate i,.foodPlate em{font-style:normal;font-size:46px}.sceneSteam{position:absolute;top:28px;left:0;right:0;text-align:center;font-size:28px;color:#ffe3c0;letter-spacing:10px}
+.type-food .siteOfferCard{border-radius:8px;border-top:5px solid #d46a23}
+
+.type-beauty .siteTopbar{background:linear-gradient(90deg,#2c1028,#63345d)}
+.type-beauty .siteHero{grid-template-columns:.88fr 1.12fr;background:linear-gradient(125deg,#fff8fb,#f8e3ef)}
+.type-beauty .siteHero h1{font-family:Georgia,'Times New Roman',serif;font-weight:500;letter-spacing:-.04em}
+.beautyScene{background:linear-gradient(145deg,#2d102a,#6b2a5f 58%,#d38fb9)}
+.beautyScene:before{inset:22px;border:1px solid rgba(255,255,255,.35);border-radius:160px 160px 30px 30px}
+.beautyBloom{position:absolute;top:-34px;right:-10px;font-size:170px;color:rgba(255,225,240,.18)}
+.beautyPortrait{position:absolute;top:55px;left:50%;transform:translateX(-50%);font-size:130px;filter:drop-shadow(0 20px 22px rgba(0,0,0,.32))}
+.type-beauty .siteOfferStrip{transform:translateY(-16px)}
+.type-beauty .siteOfferCard{border-radius:60px 60px 22px 22px;text-align:center;background:#fff9fc}
+
+.type-realestate .siteTopbar{background:#10233c}
+.type-realestate .siteHero{grid-template-columns:1.12fr .88fr;background:#f5f7f9;border-bottom:8px solid #b17a2f}
+.type-realestate .siteHero h1{text-transform:none!important;font-family:Arial,sans-serif;letter-spacing:-.055em!important}
+.propertyScene{background:linear-gradient(160deg,#8ca3b3,#34485a 48%,#122238)}
+.propertyScene:after{inset:0;background:linear-gradient(transparent 55%,rgba(7,18,32,.8))}
+.skyline{position:absolute;top:50px;left:25px;right:25px;bottom:100px;display:flex;align-items:flex-end;justify-content:center;gap:12px;font-style:normal}
+.skyline span,.skyline i{font-style:normal;font-size:145px;line-height:.8;color:#d8e0e5;text-shadow:0 15px 25px rgba(0,0,0,.3)}.skyline b{font-size:110px;z-index:2}
+.type-realestate .siteOfferStrip{background:#10233c;padding-top:26px}.type-realestate .siteOfferCard{border-radius:4px;border:0;border-left:5px solid #b17a2f}
+
+.type-digital .siteTopbar{background:#0d0b27}.type-digital .siteHero{background:radial-gradient(circle at 80% 20%,rgba(122,63,242,.28),transparent 30%),linear-gradient(135deg,#0f0c2e,#221454);color:#fff}.type-digital .siteHero h1,.type-digital .siteHero p,.type-digital .siteKicker{color:#fff!important}.digitalScene{background:linear-gradient(145deg,#7b3ff2,#291163 62%,#0f0c2e);transform:perspective(800px) rotateY(-3deg)}
+.digitalScene:before{width:210px;height:210px;border-radius:50%;background:#ffbd49;right:-80px;top:-70px;opacity:.9}.digitalScene:after{width:180px;height:180px;border-radius:40px;background:#e34fbc;left:-80px;bottom:-70px;transform:rotate(24deg);opacity:.45}
+.deviceMockup{margin:auto;width:min(100%,340px);min-height:230px;border-radius:24px;padding:24px;background:rgba(255,255,255,.94);color:#20172f;box-shadow:18px 20px 0 rgba(255,189,73,.28);display:flex;flex-direction:column;justify-content:center;gap:16px}.deviceMockup span{font-size:13px;letter-spacing:.18em;color:#7b3ff2;font-weight:1000}.deviceMockup b{font-size:35px;line-height:1}.deviceMockup i{font-style:normal;background:#efe8ff;border-radius:999px;padding:10px 12px;width:max-content;font-weight:900}
+.type-digital .siteOfferCard{background:#171239;color:#fff;border-color:#7b3ff2}.type-digital .siteOfferCard strong,.type-digital .siteOfferCard p{color:#fff}
+
+.type-shop .siteTopbar{background:#21182c}.type-shop .siteHero{grid-template-columns:.9fr 1.1fr;background:linear-gradient(110deg,#fff 0 52%,#efe6e2 52%)}.type-shop .siteHeroCopy{padding:20px}.type-shop .siteHero h1{font-family:Georgia,'Times New Roman',serif;text-transform:none!important;letter-spacing:-.04em!important}
+.shopScene{background:linear-gradient(145deg,#2d2037,#4d2f43 58%,#aa6e68)}.shopScene:before{inset:30px 35px 120px;border:1px solid rgba(255,255,255,.26);border-radius:180px 180px 20px 20px}.productShelf{position:absolute;top:75px;left:38px;right:38px;height:220px;border-bottom:12px solid #d9aa72;display:flex;align-items:flex-end;justify-content:space-around;padding-bottom:15px;font-style:normal}.productShelf span,.productShelf b,.productShelf i{font-style:normal;font-size:74px;filter:drop-shadow(0 18px 12px rgba(0,0,0,.3))}.type-shop .siteOfferCard{border-radius:0;background:#fff;border-bottom:4px solid #c77a6d;box-shadow:none}
+
+@media(max-width:900px){.type-beauty .siteHero,.type-realestate .siteHero,.type-shop .siteHero{grid-template-columns:1fr}.templateScene{min-height:340px}.type-shop .siteHero{background:#fff9f6}}
+
 
 /* Action selector fix: make Order / Book / Buy and quick buttons truly selectable */
 .actionSelectorPanel{

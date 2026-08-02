@@ -207,7 +207,7 @@ export default function Builder() {
     const preset = stylePreset(style.key);
     setSite(current => mergeDefaults({
       ...ns,
-      businessName: current.businessName,
+      businessName: !current.businessName || current.businessName === 'My Business Name' ? ns.businessName : current.businessName,
       customerEmail: current.customerEmail,
       phone: current.phone,
       plan: current.plan,
@@ -216,7 +216,7 @@ export default function Builder() {
       heroImage: current.heroImage,
       heroMediaLink: current.heroMediaLink,
       media: current.media || [],
-      customerActions: current.customerActions || ns.customerActions,
+      customerActions: ns.customerActions,
       ...preset,
       primaryColor: palette.primary || current.primaryColor,
       accentColor: palette.accent || current.accentColor,
