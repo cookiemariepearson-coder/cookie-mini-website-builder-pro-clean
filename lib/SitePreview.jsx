@@ -94,7 +94,11 @@ function FoodTemplatePromotion({ site, page }) {
     );
   }
   if (page === 'Gallery') {
-    const firstLine = sectionText(site, 'Gallery').split('\n').find(Boolean) || 'Plan your next food event';
+    const galleryCopy = sectionText(site, 'Gallery').trim();
+    const customFirstLine = galleryCopy.split('\n').find(Boolean) || '';
+    const firstLine = !customFirstLine || /^Add photos,?\s+video links/i.test(customFirstLine)
+      ? 'Plan your next food event'
+      : customFirstLine.slice(0, 72);
     return (
       <div className="foodEventPromotion">
         <div><small>Food • Music • Community</small><strong>{firstLine}</strong><span>Add your date, location, special offer, and event details in the Gallery wording.</span></div>
