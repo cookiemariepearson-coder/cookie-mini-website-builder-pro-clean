@@ -584,6 +584,7 @@ export default function Builder() {
               <>
                 <h2>Design</h2>
                 {site.typeKey === 'food' && <div className="notice"><strong>Food template image controls:</strong> The restaurant hero, menu promotion, and event promotion include original starter artwork. Starter Pro and higher customers can replace the hero here, then replace the Menu or Gallery promotion by uploading their own image to that section in Sections &amp; Wording.</div>}
+                {site.typeKey === 'beauty' && <div className="notice"><strong>Beauty template image controls:</strong> The salon hero, services promotion, and gallery promotion include original starter artwork. Starter Pro and higher customers can replace the hero here, then replace the Services or Gallery promotion by uploading their own image to that section in Sections &amp; Wording.</div>}
                 <p className="mutedText">Change the website type, template look, colors, layout, hero image, and media. Template changes apply immediately to the preview.</p>
                 <Field label="Plan"><select value={site.plan} onChange={e => {
                   const nextPlan = e.target.value;
@@ -680,6 +681,7 @@ export default function Builder() {
                 ))}
                 <h3>Gallery / media items</h3>
                 {site.typeKey === 'food' && <div className="notice"><strong>Replace a Food template image:</strong> Upload an image to <b>Menu</b> to replace the starter menu-promotion artwork, or upload one to <b>Gallery</b> to replace the starter event artwork. Titles and wording remain editable above.</div>}
+                {site.typeKey === 'beauty' && <div className="notice"><strong>Replace a Beauty template image:</strong> Upload an image to <b>Services</b> to replace the starter services artwork, or upload one to <b>Gallery</b> to replace the starter hairstyle-gallery artwork. Titles and wording remain editable above.</div>}
                 {canUseMedia ? <>
                   <p className="mutedText">Starter Pro, Business, and Premium can add uploaded images and video/media links to selected visual sections.</p>
                   <MediaEditor site={{ ...site, pages: selectedSections }} update={update} setSaveMessage={setSaveMessage} ensureMediaSection={ensureMediaSection} />
@@ -895,7 +897,7 @@ function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
     }
   }
 
-  const sections = ['Gallery','Portfolio','Projects','Before & After','Products','Menu'];
+  const sections = ['Gallery','Portfolio','Projects','Before & After','Products','Menu','Services'];
   const mediaSectionsSelected = sections.filter(sec => site.pages?.includes(sec));
 
   return <div className="mediaEditor">

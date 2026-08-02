@@ -55,6 +55,16 @@ function TemplateArtwork({ type, style }) {
       </div>
     );
   }
+  if (type.key === 'beauty') {
+    return (
+      <div className="beautyHeroArtwork">
+        <div className="beautyHeroCaption">
+          <strong>Polished care. Beautiful results.</strong>
+          <span>Hair care • Styling • Appointments</span>
+        </div>
+      </div>
+    );
+  }
   const icons = visualScenes[type.key] || ['✨','⭐','💻','📌'];
   const effects = styleEffects[style.key] || [style.name, style.visual || style.mood, 'custom layout'];
   return (
@@ -103,6 +113,37 @@ function FoodTemplatePromotion({ site, page }) {
       <div className="foodEventPromotion">
         <div><small>Food • Music • Community</small><strong>{firstLine}</strong><span>Add your date, location, special offer, and event details in the Gallery wording.</span></div>
         <a className="foodPromotionButton" href="#contact">Contact Us</a>
+      </div>
+    );
+  }
+  return null;
+}
+
+function BeautyTemplatePromotion({ site, page }) {
+  if (site.typeKey !== 'beauty') return null;
+  const hasReplacement = Array.isArray(site.media) && site.media.some(item => item?.section === page && item?.url);
+  if (hasReplacement) return null;
+  if (page === 'Services') {
+    return (
+      <div className="beautyServicesPromotion">
+        <header><small>Our signature services</small><strong>{site.offerTitle || 'Beauty Services'}</strong></header>
+        <div className="beautyServicesPromotionItems">
+          {(site.offers || []).slice(0, 3).map((offer, index) => <div key={index}><b>{offer.title}</b><span>{offer.text}</span></div>)}
+        </div>
+        <a className="beautyPromotionButton" href="#contact">Book an Appointment</a>
+      </div>
+    );
+  }
+  if (page === 'Gallery') {
+    const galleryCopy = sectionText(site, 'Gallery').trim();
+    const customFirstLine = galleryCopy.split('\n').find(Boolean) || '';
+    const firstLine = !customFirstLine || /^Add photos,?\s+video links/i.test(customFirstLine)
+      ? 'Styles created for every kind of beauty'
+      : customFirstLine.slice(0, 72);
+    return (
+      <div className="beautyGalleryPromotion">
+        <div><small>Salon gallery</small><strong>{firstLine}</strong><span>Add your own work, transformation photos, and appointment message in the Gallery section.</span></div>
+        <a className="beautyPromotionButton" href="#contact">Reserve Your Style</a>
       </div>
     );
   }
@@ -190,7 +231,8 @@ export default function SitePreview({ site, live = false, draftMode = false }) {
             <h2>{page}</h2>
             <p>{sectionText(site, page)}</p>
             <FoodTemplatePromotion site={site} page={page} />
-            {['Gallery','Portfolio','Projects','Before & After','Products','Menu'].includes(page) && pageMedia.length > 0 && (
+            <BeautyTemplatePromotion site={site} page={page} />
+            {['Gallery','Portfolio','Projects','Before & After','Products','Menu','Services'].includes(page) && pageMedia.length > 0 && (
               <div className="mediaGrid">
                 {pageMedia.slice(0, 12).map((m, i) => (
                   <div className="mediaItem" key={i}>
