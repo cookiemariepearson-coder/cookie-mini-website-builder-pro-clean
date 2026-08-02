@@ -154,6 +154,35 @@ function BeautyTemplatePromotion({ site, page }) {
   return null;
 }
 
+function RealEstateTemplatePromotion({ site, page }) {
+  if (site.typeKey !== 'realestate') return null;
+  const hasReplacement = Array.isArray(site.media) && site.media.some(item => item?.section === page && item?.url);
+  if (hasReplacement) return null;
+  const residential = site.styleKey === 'modern-property';
+  if (page === 'Services') {
+    return (
+      <div className={`realEstateServicesPromotion ${residential ? 'residentialRealEstateServices' : 'commercialRealEstateServices'}`}>
+        <header><small>{residential ? 'Home buying made clearer' : 'Commercial property strategy'}</small><strong>{site.offerTitle || 'Real Estate Services'}</strong></header>
+        <div className="realEstatePromotionItems">
+          {(site.offers || []).slice(0, 3).map((offer, index) => <div key={index}><b>{offer.title}</b><span>{offer.text}</span></div>)}
+        </div>
+        <a className="realEstatePromotionButton" href="#contact">Request Information</a>
+      </div>
+    );
+  }
+  if (page === 'Projects') {
+    const copy = sectionText(site, 'Projects').trim();
+    const firstLine = copy.split('\n').find(Boolean) || (residential ? 'Homes for every chapter' : 'Properties positioned for opportunity');
+    return (
+      <div className={`realEstateProjectsPromotion ${residential ? 'residentialRealEstateProjects' : 'commercialRealEstateProjects'}`}>
+        <div><small>{residential ? 'Featured homes' : 'Featured properties'}</small><strong>{firstLine.slice(0, 78)}</strong><span>Edit this section with listings, recent projects, property types, locations, or investment highlights.</span></div>
+        <a className="realEstatePromotionButton" href="#contact">Discuss Your Goals</a>
+      </div>
+    );
+  }
+  return null;
+}
+
 function sectionText(site, page) {
   return site.sections?.[page] || '';
 }
@@ -237,6 +266,7 @@ export default function SitePreview({ site, live = false, draftMode = false }) {
             <p>{sectionText(site, page)}</p>
             <FoodTemplatePromotion site={site} page={page} />
             <BeautyTemplatePromotion site={site} page={page} />
+            <RealEstateTemplatePromotion site={site} page={page} />
             {['Gallery','Portfolio','Projects','Before & After','Products','Menu','Services'].includes(page) && pageMedia.length > 0 && (
               <div className="mediaGrid">
                 {pageMedia.slice(0, 12).map((m, i) => (
