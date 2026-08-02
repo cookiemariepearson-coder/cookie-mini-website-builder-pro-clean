@@ -223,3 +223,23 @@
     bottom: 72px;
   }
 }
+
+/* Signature Food / Restaurant template: image-led design with editable HTML copy. */
+.sitePreview.food{font-family:Georgia,'Times New Roman',serif;background:#fffaf2}
+.sitePreview.food .siteTop{background:#1f0e09;border-bottom:4px solid #c95c1e}
+.sitePreview.food .hero{grid-template-columns:.82fr 1.18fr!important;background:linear-gradient(115deg,#1b0905,#5a1d0d 58%,#b94f18)!important;padding:40px!important}
+.sitePreview.food .hero:before{display:none}
+.sitePreview.food .heroText h1{font-size:clamp(42px,6vw,80px);line-height:.9;text-transform:none!important;letter-spacing:-.05em}
+.sitePreview.food .heroText p{font-family:Arial,sans-serif}
+.sitePreview.food .artCard{padding:0!important;min-height:480px!important;border:0!important;background:transparent!important;display:block!important;box-shadow:0 30px 80px #0007!important}
+.sitePreview.food .artCard>strong,.sitePreview.food .artCard>p{display:none}
+.foodHeroArtwork{position:relative;min-height:480px;border-radius:30px;overflow:hidden;background-image:linear-gradient(180deg,transparent 42%,rgba(20,6,2,.92)),url('/templates/food/soul-food-hero-v1.webp');background-size:cover;background-position:center}
+.foodHeroCaption{position:absolute;left:28px;right:28px;bottom:28px;display:grid;gap:7px;color:#fff;text-align:left}.foodHeroCaption strong{font-size:clamp(29px,4vw,48px);line-height:.94}.foodHeroCaption span{font:800 12px Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#ffd69d}
+.sitePreview.food .offers{background:#fff3e2;padding-top:54px}.sitePreview.food .offers h2{font-size:clamp(38px,5vw,62px)}.sitePreview.food .offerCard{border-radius:4px;border:0;border-top:7px solid #c95c1e;background:#fffaf4;box-shadow:0 20px 45px #58220d1c}
+.sitePreview.food .contentSection{padding:48px 36px}.sitePreview.food .contentSection>h2{font-size:clamp(40px,5vw,60px)}
+.foodMenuPromotion{min-height:720px;margin-top:24px;border-radius:26px;overflow:hidden;padding:42px;background-image:linear-gradient(180deg,rgba(0,0,0,.06),rgba(0,0,0,.42)),url('/templates/food/menu-promo-v1.webp');background-size:cover;background-position:center;box-shadow:0 30px 75px #0005;display:grid;grid-template-rows:auto 1fr auto}
+.foodMenuPromotion header{width:min(82%,570px);justify-self:center;text-align:center;color:#271109}.foodMenuPromotion header small{display:block;font:900 12px Arial,sans-serif;text-transform:uppercase;letter-spacing:.17em}.foodMenuPromotion header strong{display:block;font-size:clamp(33px,5vw,58px);line-height:.95}
+.foodMenuPromotionItems{align-self:center;width:min(72%,520px);justify-self:center;display:grid;gap:18px;color:white;text-align:center}.foodMenuPromotionItems div{padding:0 8px 15px;border-bottom:1px solid #d9a24588}.foodMenuPromotionItems b,.foodMenuPromotionItems span{display:block}.foodMenuPromotionItems b{font-size:25px;color:#ffbd49}.foodMenuPromotionItems span{font:15px/1.45 Arial,sans-serif;color:#fff8ec;margin-top:5px}
+.foodPromotionButton{justify-self:center;display:inline-flex;padding:14px 25px;border-radius:999px;background:linear-gradient(135deg,#c64d18,#ff9f1c);color:#fff;text-decoration:none;font:900 15px Arial,sans-serif;box-shadow:0 15px 35px #0004}
+.foodEventPromotion{min-height:620px;margin-top:24px;border-radius:26px;overflow:hidden;padding:42px;background-image:url('/templates/food/event-promo-v1.webp');background-size:cover;background-position:center;box-shadow:0 30px 75px #0005;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#fff}.foodEventPromotion>div{width:min(72%,620px);display:grid;gap:14px}.foodEventPromotion small{font:900 13px Arial,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#ffbd49}.foodEventPromotion strong{font-size:clamp(40px,6vw,72px);line-height:.88;text-shadow:0 5px 0 #0004}.foodEventPromotion span{font:17px/1.5 Arial,sans-serif}.foodEventPromotion .foodPromotionButton{margin-top:24px}
+@media(max-width:900px){.sitePreview.food .hero{grid-template-columns:1fr!important}.sitePreview.food .artCard,.foodHeroArtwork{min-height:360px!important}.foodMenuPromotion{min-height:620px;padding:25px}.foodMenuPromotionItems{width:88%}.foodEventPromotion{min-height:540px;padding:25px}.foodEventPromotion>div{width:88%}}

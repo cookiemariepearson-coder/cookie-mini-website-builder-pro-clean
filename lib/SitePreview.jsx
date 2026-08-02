@@ -45,6 +45,16 @@ const styleEffects = {
 };
 
 function TemplateArtwork({ type, style }) {
+  if (type.key === 'food') {
+    return (
+      <div className="foodHeroArtwork">
+        <div className="foodHeroCaption">
+          <strong>Fresh from the kitchen</strong>
+          <span>Made to order • Pickup • Catering</span>
+        </div>
+      </div>
+    );
+  }
   const icons = visualScenes[type.key] || ['✨','⭐','💻','📌'];
   const effects = styleEffects[style.key] || [style.name, style.visual || style.mood, 'custom layout'];
   return (
@@ -66,6 +76,33 @@ function TemplateArtwork({ type, style }) {
       </div>
     </div>
   );
+}
+
+function FoodTemplatePromotion({ site, page }) {
+  if (site.typeKey !== 'food') return null;
+  const hasReplacement = Array.isArray(site.media) && site.media.some(item => item?.section === page && item?.url);
+  if (hasReplacement) return null;
+  if (page === 'Menu') {
+    return (
+      <div className="foodMenuPromotion">
+        <header><small>Featured menu</small><strong>{site.offerTitle || 'Menu & Specials'}</strong></header>
+        <div className="foodMenuPromotionItems">
+          {(site.offers || []).slice(0, 3).map((offer, index) => <div key={index}><b>{offer.title}</b><span>{offer.text}</span></div>)}
+        </div>
+        <a className="foodPromotionButton" href="#order-and-book-and-buy">Order Now</a>
+      </div>
+    );
+  }
+  if (page === 'Gallery') {
+    const firstLine = sectionText(site, 'Gallery').split('\n').find(Boolean) || 'Plan your next food event';
+    return (
+      <div className="foodEventPromotion">
+        <div><small>Food • Music • Community</small><strong>{firstLine}</strong><span>Add your date, location, special offer, and event details in the Gallery wording.</span></div>
+        <a className="foodPromotionButton" href="#contact">Contact Us</a>
+      </div>
+    );
+  }
+  return null;
 }
 
 function sectionText(site, page) {
@@ -148,6 +185,7 @@ export default function SitePreview({ site, live = false, draftMode = false }) {
           <section className="contentSection" id={idFor(page)} key={page}>
             <h2>{page}</h2>
             <p>{sectionText(site, page)}</p>
+            <FoodTemplatePromotion site={site} page={page} />
             {['Gallery','Portfolio','Projects','Before & After','Products','Menu'].includes(page) && pageMedia.length > 0 && (
               <div className="mediaGrid">
                 {pageMedia.slice(0, 12).map((m, i) => (
