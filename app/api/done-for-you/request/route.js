@@ -23,6 +23,21 @@ function escapeHtml(value = '') {
   return clean(value, 5000).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+function cleanCheckoutUrl(value = '') {
+  let url = clean(value, 1000).replace(/^["']+|["']+$/g, '').trim();
+  if (/^https?%3A%2F%2F/i.test(url)) {
+    try { url = decodeURIComponent(url); } catch {}
+  }
+  if (url.startsWith('//')) url = `https:${url}`;
+  if (/^((www\.)?gumroad\.com|[a-z0-9-]+\.gumroad\.com)\//i.test(url)) url = `https://${url}`;
+  try {
+    const parsed = new URL(url);
+    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.toString() : '';
+  } catch {
+    return '';
+  }
+}
+
 async function sendEmail({ apiKey, from, to, subject, html, replyTo }) {
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -74,9 +89,14 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'Email confirmation is temporarily unavailable. Please try again shortly.' }, { status: 503 });
     }
 
-    const checkoutUrl = service.checkoutEnv ? clean(process.env[service.checkoutEnv], 1000) : '';
+    const checkoutUrl = service.checkoutEnv ? cleanCheckoutUrl(process.env[service.checkoutEnv]) : '';
     if (service.checkoutEnv && !checkoutUrl) {
-      return NextResponse.json({ ok: false, error: 'Checkout is temporarily unavailable for this service. Please try again shortly.' }, { status: 503 });
+      console.error('[done-for-you] checkout URL missing or invalid', { plan, environmentVariable: service.checkoutEnv });
+      return NextResponse.json({
+        ok: false,
+        error: 'This service checkout is not connected yet. Your request was not submitted or charged. Please contact hello@cookiesdigitalcreations.com.',
+        configurationRequired: service.checkoutEnv
+      }, { status: 503 });
     }
     const requestId = `DFY-${Date.now().toString(36).toUpperCase()}`;
     const safe = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, escapeHtml(value)]));

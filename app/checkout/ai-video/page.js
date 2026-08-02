@@ -1,9 +1,10 @@
 'use client';
 
 import Nav from '../../../lib/Nav';
+import { cleanCheckoutUrl } from '../../../lib/checkoutRedirect';
 
 export default function AiVideoCheckoutPage() {
-  const checkoutUrl = process.env.NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL || '';
+  const checkoutUrl = cleanCheckoutUrl(process.env.NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL || '');
   return (
     <>
       <Nav />

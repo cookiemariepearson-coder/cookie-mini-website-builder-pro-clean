@@ -203,7 +203,13 @@ export default function VideoStudioPage() {
         })
       });
       const data = await response.json();
-      if (!response.ok || !data.ok) throw new Error(data.error || 'The video could not be started.');
+      if (!response.ok || !data.ok) {
+        if (data.providerCreditRequired) {
+          setStatus(data.error);
+          return;
+        }
+        throw new Error(data.error || 'The video could not be started.');
+      }
       setStatus(`Video generation started successfully.${data.videoUsage?.remaining !== undefined ? ` Credits remaining: ${data.videoUsage.remaining}.` : ''} Opening your on-site Video Results...`);
       const results = new URLSearchParams();
       if (customerEmail) results.set('email', customerEmail);

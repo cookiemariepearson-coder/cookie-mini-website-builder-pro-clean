@@ -308,11 +308,16 @@ export async function POST(request) {
     try { data = JSON.parse(responseText); } catch { data = { raw: responseText }; }
 
     if (!heygenResponse.ok) {
+      const providerMessage = data?.error?.message || data?.message || '';
+      const insufficientCredits = heygenResponse.status === 402 || /insufficient.*credits|credits required/i.test(providerMessage);
       return NextResponse.json({
         ok: false,
-        error: data?.error?.message || data?.message || 'HeyGen video request failed.',
+        error: insufficientCredits
+          ? 'Video generation is temporarily unavailable because the Cookie Digital Creations HeyGen API account needs more provider credits. Your website or standalone video credit was not used. Please try again later or contact hello@cookiesdigitalcreations.com.'
+          : providerMessage || 'HeyGen video request failed.',
+        providerCreditRequired: insufficientCredits,
         detail: data
-      }, { status: heygenResponse.status });
+      }, { status: insufficientCredits ? 503 : heygenResponse.status });
     }
 
     const payload = data?.data || data || {};

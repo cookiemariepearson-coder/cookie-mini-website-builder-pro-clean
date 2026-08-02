@@ -25,3 +25,6 @@
 .cookieAiFooter{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;color:#6a5b74;font-size:11px;background:#fff3e4;}
 .cookieAiFooter button{border:0;background:transparent;color:#2a103b;font-weight:900;cursor:pointer;}
 @media(max-width:560px){.cookieAiAssistant{right:10px;bottom:10px}.cookieAiPanel{width:calc(100vw - 20px);height:min(560px,calc(100vh - 76px))}.cookieAiLauncher strong{font-size:12px}}
+.publishedSitePage ~ .cookieAiAssistant {
+  display: none !important;
+}
