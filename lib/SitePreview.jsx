@@ -46,21 +46,23 @@ const styleEffects = {
 
 function TemplateArtwork({ type, style }) {
   if (type.key === 'food') {
+    const coastal = style.key === 'cartoon-food';
     return (
-      <div className="foodHeroArtwork">
+      <div className={`foodHeroArtwork${coastal ? ' coastalFoodHeroArtwork' : ''}`}>
         <div className="foodHeroCaption">
-          <strong>Fresh from the kitchen</strong>
-          <span>Made to order • Pickup • Catering</span>
+          <strong>{coastal ? 'Fresh from the coast' : 'Fresh from the kitchen'}</strong>
+          <span>{coastal ? 'Seafood • Sunset dining • Events' : 'Made to order • Pickup • Catering'}</span>
         </div>
       </div>
     );
   }
   if (type.key === 'beauty') {
+    const luxury = style.key === 'luxury-salon';
     return (
-      <div className="beautyHeroArtwork">
+      <div className={`beautyHeroArtwork${luxury ? ' luxuryBeautyHeroArtwork' : ''}`}>
         <div className="beautyHeroCaption">
-          <strong>Polished care. Beautiful results.</strong>
-          <span>Hair care • Styling • Appointments</span>
+          <strong>{luxury ? 'Luxury looks. Unforgettable confidence.' : 'Polished care. Beautiful results.'}</strong>
+          <span>{luxury ? 'Editorial styling • Glam • Private appointments' : 'Hair care • Styling • Appointments'}</span>
         </div>
       </div>
     );
@@ -92,10 +94,11 @@ function FoodTemplatePromotion({ site, page }) {
   if (site.typeKey !== 'food') return null;
   const hasReplacement = Array.isArray(site.media) && site.media.some(item => item?.section === page && item?.url);
   if (hasReplacement) return null;
+  const coastal = site.styleKey === 'cartoon-food';
   if (page === 'Menu') {
     return (
-      <div className="foodMenuPromotion">
-        <header><small>Featured menu</small><strong>{site.offerTitle || 'Menu & Specials'}</strong></header>
+      <div className={`foodMenuPromotion${coastal ? ' coastalFoodMenuPromotion' : ''}`}>
+        <header><small>{coastal ? 'Fresh catch menu' : 'Featured menu'}</small><strong>{site.offerTitle || 'Menu & Specials'}</strong></header>
         <div className="foodMenuPromotionItems">
           {(site.offers || []).slice(0, 3).map((offer, index) => <div key={index}><b>{offer.title}</b><span>{offer.text}</span></div>)}
         </div>
@@ -110,8 +113,8 @@ function FoodTemplatePromotion({ site, page }) {
       ? 'Plan your next food event'
       : customFirstLine.slice(0, 72);
     return (
-      <div className="foodEventPromotion">
-        <div><small>Food • Music • Community</small><strong>{firstLine}</strong><span>Add your date, location, special offer, and event details in the Gallery wording.</span></div>
+      <div className={`foodEventPromotion${coastal ? ' coastalFoodEventPromotion' : ''}`}>
+        <div><small>{coastal ? 'Seafood • Sunsets • Celebrations' : 'Food • Music • Community'}</small><strong>{firstLine}</strong><span>Add your date, location, special offer, and event details in the Gallery wording.</span></div>
         <a className="foodPromotionButton" href="#contact">Contact Us</a>
       </div>
     );
@@ -123,10 +126,11 @@ function BeautyTemplatePromotion({ site, page }) {
   if (site.typeKey !== 'beauty') return null;
   const hasReplacement = Array.isArray(site.media) && site.media.some(item => item?.section === page && item?.url);
   if (hasReplacement) return null;
+  const luxury = site.styleKey === 'luxury-salon';
   if (page === 'Services') {
     return (
-      <div className="beautyServicesPromotion">
-        <header><small>Our signature services</small><strong>{site.offerTitle || 'Beauty Services'}</strong></header>
+      <div className={`beautyServicesPromotion${luxury ? ' luxuryBeautyServicesPromotion' : ''}`}>
+        <header><small>{luxury ? 'Midnight luxury services' : 'Our signature services'}</small><strong>{site.offerTitle || 'Beauty Services'}</strong></header>
         <div className="beautyServicesPromotionItems">
           {(site.offers || []).slice(0, 3).map((offer, index) => <div key={index}><b>{offer.title}</b><span>{offer.text}</span></div>)}
         </div>
@@ -141,8 +145,8 @@ function BeautyTemplatePromotion({ site, page }) {
       ? 'Styles created for every kind of beauty'
       : customFirstLine.slice(0, 72);
     return (
-      <div className="beautyGalleryPromotion">
-        <div><small>Salon gallery</small><strong>{firstLine}</strong><span>Add your own work, transformation photos, and appointment message in the Gallery section.</span></div>
+      <div className={`beautyGalleryPromotion${luxury ? ' luxuryBeautyGalleryPromotion' : ''}`}>
+        <div><small>{luxury ? 'The evening edit' : 'Salon gallery'}</small><strong>{firstLine}</strong><span>Add your own work, transformation photos, and appointment message in the Gallery section.</span></div>
         <a className="beautyPromotionButton" href="#contact">Reserve Your Style</a>
       </div>
     );
