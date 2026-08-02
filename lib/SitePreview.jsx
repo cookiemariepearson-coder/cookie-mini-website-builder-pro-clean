@@ -202,6 +202,14 @@ function WellnessTemplatePromotion({ site, page }) {
   return null;
 }
 
+function LocalTemplatePromotion({ site, page }) {
+  if (site.typeKey !== 'local') return null;
+  const studio = site.styleKey === 'service-realistic';
+  if (page === 'Services') return <div className={`localServicesPromotion ${studio?'studioLocalServices':'repairLocalServices'}`}><header><small>{studio?'Friendly local service':'Dependable home service'}</small><strong>{site.offerTitle||'Services & Offers'}</strong></header><div className="localPromotionItems">{(site.offers||[]).slice(0,3).map((o,i)=><div key={i}><b>{o.title}</b><span>{o.text}</span></div>)}</div><a className="localPromotionButton" href="#contact">Request Service</a></div>;
+  if (page === 'About') { const copy=(sectionText(site,'About').trim()||'Local service you can count on').split('\n')[0]; return <div className={`localStoryPromotion ${studio?'studioLocalStory':'repairLocalStory'}`}><div><small>{studio?'Your neighborhood business':'Why choose us'}</small><strong>{copy.slice(0,78)}</strong><span>Edit this section with your experience, service area, process, guarantees, and customer promise.</span></div><a className="localPromotionButton" href="#contact">Contact Us</a></div>; }
+  return null;
+}
+
 function sectionText(site, page) {
   return site.sections?.[page] || '';
 }
@@ -287,6 +295,7 @@ export default function SitePreview({ site, live = false, draftMode = false }) {
             <BeautyTemplatePromotion site={site} page={page} />
             <RealEstateTemplatePromotion site={site} page={page} />
             <WellnessTemplatePromotion site={site} page={page} />
+            <LocalTemplatePromotion site={site} page={page} />
             {['Gallery','Portfolio','Projects','Before & After','Products','Menu','Services'].includes(page) && pageMedia.length > 0 && (
               <div className="mediaGrid">
                 {pageMedia.slice(0, 12).map((m, i) => (
