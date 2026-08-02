@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import SitePreview from '../../../lib/SitePreview';
+import SitePreview from '../../../lib/SitePreview.js';
 import { slugify, plans, normalizeSelectedPagesForPlan } from '../../../lib/siteDefaults';
 
 const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'cookiesdigitalcreations.com';

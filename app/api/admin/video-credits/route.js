@@ -20,7 +20,7 @@ function headers(){const key=process.env.SUPABASE_SERVICE_ROLE_KEY;return {apike
 async function get(path){const url=process.env.NEXT_PUBLIC_SUPABASE_URL;if(!url||!process.env.SUPABASE_SERVICE_ROLE_KEY)return {ok:false,error:'Supabase env missing'};const res=await fetch(`${url}/rest/v1/${path}`,{headers:headers(),cache:'no-store'});const text=await res.text();let data;try{data=JSON.parse(text)}catch{data=text}return {ok:res.ok,status:res.status,data};}
 async function patch(path, body){const url=process.env.NEXT_PUBLIC_SUPABASE_URL;if(!url||!process.env.SUPABASE_SERVICE_ROLE_KEY)return {ok:false,error:'Supabase env missing'};const res=await fetch(`${url}/rest/v1/${path}`,{method:'PATCH',headers:headers(),body:JSON.stringify(body)});const text=await res.text();let data;try{data=JSON.parse(text)}catch{data=text}return {ok:res.ok,status:res.status,data};}
 async function findWebsite({slug,email}){if(slug){const r=await get(`websites?slug=eq.${encodeURIComponent(slug)}&select=*&limit=1`);if(r.ok&&Array.isArray(r.data)&&r.data[0])return r.data[0];}
-if(email){const r=await get(`websites?email=eq.${encodeURIComponent(email)}&select=*&order=updated_at.desc&limit=1`);if(r.ok&&Array.isArray(r.data)&&r.data[0])return r.data[0];}
+if(email){const r=await get(`websites?customer_email=eq.${encodeURIComponent(email)}&select=*&order=updated_at.desc&limit=1`);if(r.ok&&Array.isArray(r.data)&&r.data[0])return r.data[0];}
 return null;}
 function adminOk(pin){return String(pin||'').trim() && String(pin||'').trim()===String(process.env.ADMIN_PIN||'').trim();}
 export async function POST(request){

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import SitePreview from '../../lib/SitePreview';
+import SitePreview from '../../lib/SitePreview.js';
 import { createDefaultSite, templateLibrary, getTemplate, pageOptions, plans, slugify, sectionPrompts, normalizeSelectedPagesForPlan, planAllowsMedia, planAllowsAiVideo, planSectionLimit, customerActionLimit, customerActionTypes, normalizeCustomerActions } from '../../lib/siteDefaults';
 
 const checkout = {
@@ -225,7 +225,7 @@ export default function Builder() {
       ...preset,
       primaryColor: palette.primary || current.primaryColor,
       accentColor: palette.accent || current.accentColor,
-      pages: normalizeSelectedPagesForPlan(current.pages || ['Home'], current.plan),
+      pages: normalizeSelectedPagesForPlan(type.pages || ['Home'], current.plan),
       desiredPages: type.pages,
       offerTitle: ns.offerTitle,
       offers: ns.offers,
@@ -509,7 +509,8 @@ export default function Builder() {
   // customer-action links update immediately while the customer types.
   const previewSite = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan) };
 
-  const previewKey = `${site.typeKey}-${site.styleKey}-${site.primaryColor}-${site.accentColor}-${site.fontStyle}-${site.layoutStyle}-${site.backgroundStyle}-${site.sectionShape}-${site.templateAppliedAt || ''}-${site.designUpdatedAt || ''}-${JSON.stringify(site.customerActions || [])}`;
+  const mediaPreviewKey = (site.media || []).map(item => `${item.section || ''}:${item.kind || ''}:${String(item.url || '').slice(-24)}:${item.title || ''}`).join('|');
+  const previewKey = `${site.typeKey}-${site.styleKey}-${site.primaryColor}-${site.accentColor}-${site.fontStyle}-${site.layoutStyle}-${site.backgroundStyle}-${site.sectionShape}-${site.templateAppliedAt || ''}-${site.designUpdatedAt || ''}-${site.heroImage ? site.heroImage.slice(-32) : 'template-hero'}-${JSON.stringify(site.pages || [])}-${mediaPreviewKey}-${JSON.stringify(site.customerActions || [])}`;
 
   return (
     <main className="builderShell">
@@ -861,14 +862,21 @@ function CustomerActionEditor({ site, updateSection, updateCustomerActions }) {
 
 function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
   const media = site.media || [];
-  const [quick, setQuick] = useState({ title: '', section: 'Gallery', url: '' });
+  const sections = ['Gallery','Portfolio','Projects','Before & After','Products','Menu','Services'];
+  const firstSelectedMediaSection = sections.find(section => site.pages?.includes(section)) || 'Gallery';
+  const [quick, setQuick] = useState({ title: '', section: firstSelectedMediaSection, url: '' });
+
+  useEffect(() => {
+    const selected = sections.find(section => site.pages?.includes(section));
+    if (selected && !site.pages?.includes(quick.section)) setQuick(current => ({ ...current, section: selected }));
+  }, [site.pages, quick.section]);
 
   function setMedia(next) { update({ media: next }); }
-  function addImageSlot(section = 'Gallery') { ensureMediaSection?.(section); setMedia([...media, { kind: 'image', url: '', title: '', section }]); }
-  function addLinkSlot(section = 'Gallery') { ensureMediaSection?.(section); setMedia([...media, { kind: 'link', url: '', title: '', section }]); }
+  function addImageSlot(section = firstSelectedMediaSection) { if (ensureMediaSection?.(section) === false) return; setMedia([...media, { kind: 'image', url: '', title: '', section }]); }
+  function addLinkSlot(section = firstSelectedMediaSection) { if (ensureMediaSection?.(section) === false) return; setMedia([...media, { kind: 'link', url: '', title: '', section }]); }
   function addQuickLink() {
     if (!quick.url.trim()) { setSaveMessage('Paste a media/video link first.'); return; }
-    ensureMediaSection?.(quick.section);
+    if (ensureMediaSection?.(quick.section) === false) { setSaveMessage(`Select ${quick.section} as a website section before adding media, or remove another section if this plan is at its limit.`); return; }
     setMedia([...media, { kind: 'link', url: quick.url.trim(), title: quick.title || 'Media link', section: quick.section }]);
     setQuick({ ...quick, title: '', url: '' });
     setSaveMessage('Media link added.');
@@ -894,7 +902,7 @@ function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
     setSaveMessage('Preparing uploaded image...');
     try {
       const image = await compressImage(file, 560, 0.60);
-      ensureMediaSection?.(quick.section);
+      if (ensureMediaSection?.(quick.section) === false) { setSaveMessage(`The image was not added because ${quick.section} is not selected and this plan is at its section limit.`); return; }
       setMedia([...media, { kind: 'image', url: image, title: quick.title || file.name, section: quick.section }]);
       setQuick({ ...quick, title: '' });
       setSaveMessage('Image added to media section.');
@@ -903,7 +911,6 @@ function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
     }
   }
 
-  const sections = ['Gallery','Portfolio','Projects','Before & After','Products','Menu','Services'];
   const mediaSectionsSelected = sections.filter(sec => site.pages?.includes(sec));
 
   return <div className="mediaEditor">
@@ -923,8 +930,8 @@ function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
     </div>
 
     <div className="navRow">
-      <button className="btn dark" onClick={() => addImageSlot('Gallery')}>Add Empty Image Slot</button>
-      <button className="btn dark" onClick={() => addLinkSlot('Gallery')}>Add Empty Video Link Slot</button>
+      <button className="btn dark" onClick={() => addImageSlot(firstSelectedMediaSection)}>Add Empty Image Slot</button>
+      <button className="btn dark" onClick={() => addLinkSlot(firstSelectedMediaSection)}>Add Empty Video Link Slot</button>
     </div>
     {media.length === 0 && <div className="notice">No media added yet. Add an uploaded image or a video/media link.</div>}
     {media.map((item, index) => (

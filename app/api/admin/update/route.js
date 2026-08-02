@@ -5,7 +5,7 @@ import { sendAdminNotification } from '../../../../lib/adminNotifications';
 export async function POST(req) {
   try {
     const { pin, slug, updates } = await req.json();
-    if (pin !== process.env.ADMIN_PIN) {
+    if (!process.env.ADMIN_PIN || !pin || pin !== process.env.ADMIN_PIN) {
       return NextResponse.json({ ok: false, error: 'Invalid PIN' }, { status: 401 });
     }
     if (!slug) {

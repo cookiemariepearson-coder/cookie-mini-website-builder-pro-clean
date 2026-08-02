@@ -4,7 +4,7 @@ import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 export async function POST(req) {
   try {
     const { pin } = await req.json();
-    if (pin !== process.env.ADMIN_PIN) {
+    if (!process.env.ADMIN_PIN || !pin || pin !== process.env.ADMIN_PIN) {
       return NextResponse.json({ ok: false, error: 'Invalid PIN' }, { status: 401 });
     }
     const supabase = getSupabaseAdmin();

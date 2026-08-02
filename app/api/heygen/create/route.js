@@ -132,7 +132,7 @@ async function findWebsite({ email, slug }) {
   }
 
   if (email) {
-    const result = await supabaseGet(`websites?email=eq.${encodeURIComponent(email)}&select=*&order=updated_at.desc&limit=10`);
+    const result = await supabaseGet(`websites?customer_email=eq.${encodeURIComponent(email)}&select=*&order=updated_at.desc&limit=10`);
     if (result.missing) return { missingSupabase: true };
     if (result.ok && Array.isArray(result.data) && result.data.length) {
       return { website: result.data.find((row) => row.status === 'published') || result.data[0] };

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import SitePreview from '../../../lib/SitePreview';
+import SitePreview from '../../../lib/SitePreview.js';
 import { getSupabaseAdmin } from '../../../lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';

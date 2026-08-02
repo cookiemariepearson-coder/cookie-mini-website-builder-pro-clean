@@ -28,6 +28,9 @@ export async function POST(req) {
     const email = String(body.email || '').trim().toLowerCase();
     const rawQuery = String(body.query || body.slug || '').trim();
     const slug = rawQuery ? normalizeSlug(rawQuery) : '';
+    if (!email && !slug) {
+      return NextResponse.json({ ok: false, error: 'Enter an email address or website name/subdomain.' }, { status: 400 });
+    }
     const supabase = getSupabaseAdmin();
     const found = new Map();
 
@@ -54,10 +57,6 @@ export async function POST(req) {
         );
       }
     }
-    if (!email && !slug) {
-      return NextResponse.json({ ok: false, error: 'Enter an email address or website name/subdomain.' }, { status: 400 });
-    }
-
     const sites = Array.from(found.values()).sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || ''))).map(row => ({
       slug: row.slug,
       business_name: row.business_name || siteFromRow(row).businessName || row.slug,
