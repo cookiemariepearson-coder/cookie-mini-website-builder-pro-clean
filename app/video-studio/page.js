@@ -7,6 +7,18 @@ function clean(value = '') {
   return String(value || '').trim();
 }
 
+function readAccessKind(token = '') {
+  try {
+    const data = String(token).split('.')[0];
+    if (!data) return '';
+    const normalized = data.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    return JSON.parse(window.atob(padded))?.kind || '';
+  } catch {
+    return '';
+  }
+}
+
 function makeKit({ biz, promo, audience, videoType, platform, style, length, voice }) {
   const business = clean(biz) || 'Your Business';
   const offer = clean(promo) || 'your offer';
@@ -86,11 +98,16 @@ export default function VideoStudioPage() {
   const [working, setWorking] = useState('');
   const [status, setStatus] = useState('');
   const [accessToken, setAccessToken] = useState('');
+  const [accessKind, setAccessKind] = useState('');
   const [licenseKey, setLicenseKey] = useState('');
   const [accessMessage, setAccessMessage] = useState('Unlock with your active Business/Premium website or your $5 Gumroad license key.');
 
   useEffect(() => {
-    try { setAccessToken(localStorage.getItem('cookieVideoAccessToken') || ''); } catch {}
+    try {
+      const savedToken = localStorage.getItem('cookieVideoAccessToken') || '';
+      setAccessToken(savedToken);
+      setAccessKind(readAccessKind(savedToken));
+    } catch {}
   }, []);
 
   async function activateAccess(mode) {
@@ -103,6 +120,7 @@ export default function VideoStudioPage() {
     const data = await response.json();
     if (!data.ok) { setAccessMessage(data.error || 'Access could not be verified.'); return; }
     setAccessToken(data.token);
+    setAccessKind(readAccessKind(data.token));
     try { localStorage.setItem('cookieVideoAccessToken', data.token); } catch {}
     setAccessMessage(`Access verified: ${data.access}.`);
   }
@@ -151,7 +169,7 @@ export default function VideoStudioPage() {
       if (!response.ok || !data.ok) throw new Error(data.error || 'The smart kit could not be generated.');
       setSmartKit(data.kit);
       setTab('Script');
-      setStatus('Your custom AI video kit is ready. Review it, then generate the real video when you are satisfied.');
+      setStatus('Your custom AI video planning kit is ready. Review each tab, then copy or download the complete kit.');
     } catch (error) {
       setStatus(error.message);
     } finally {
@@ -203,6 +221,7 @@ export default function VideoStudioPage() {
           <div className="notice videoAccessPanel">
             <strong>{accessToken ? '✓ AI Video Studio unlocked' : 'Unlock AI Video Studio'}</strong>
             <p>{accessMessage}</p>
+            {accessKind === 'standalone' && <p><strong>$5 standalone access:</strong> Your purchase creates the complete planning kit—script, captions, shot list, prompt, voiceover, and next steps. It does not include automatic video rendering.</p>}
             {!accessToken && <>
               <div className="row">
                 <div className="field"><label>Business/Premium customer email</label><input value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for the website plan" /></div>
@@ -299,7 +318,13 @@ export default function VideoStudioPage() {
             <a className="btn light" href="/builder">Build a Website</a>
           </div>
 
-          <div className="realVideoBoxFriendly">
+          {accessKind === 'standalone' ? (
+            <div className="realVideoBoxFriendly standaloneVideoNotice">
+              <div className="studioSectionHeading"><span className="studioStepNumber">3</span><div><h2>Turn your kit into a video</h2><p>Your $5 standalone purchase includes the complete planning kit above.</p></div></div>
+              <p>Copy or download your kit and use it in HeyGen, CapCut, Canva, TikTok, Instagram, Facebook, or YouTube Shorts. Automatic video rendering requires an active Business or Premium website plan with an available video credit.</p>
+              <div className="navRow"><a className="btn dark" href="/pricing">View Website Plans</a></div>
+            </div>
+          ) : <div className="realVideoBoxFriendly">
             <div className="studioSectionHeading"><span className="studioStepNumber">3</span><div><h2>Generate the real video</h2><p>This step uses a video credit. The planning kit above does not.</p></div></div>
             <div className="videoAccessExplainer">
               <div><strong>Business or Premium customer?</strong><span>Enter the email or website name connected to your active website plan.</span></div>
@@ -308,11 +333,11 @@ export default function VideoStudioPage() {
             <div className="row">
               <div className="field">
                 <label>Email used for your website plan</label>
-                <input type="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for the website plan" />
+                <input type="email" name="video-plan-email" autoComplete="off" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for the website plan" />
               </div>
               <div className="field">
                 <label>Website name, if you know it</label>
-                <input value={websiteSlug} onChange={e => setWebsiteSlug(e.target.value)} placeholder="Example: my-business" />
+                <input name="video-website-name" autoComplete="off" value={websiteSlug} onChange={e => setWebsiteSlug(e.target.value)} placeholder="Example: my-business" />
               </div>
             </div>
             <details className="ownerAccessDetails">
@@ -323,7 +348,7 @@ export default function VideoStudioPage() {
             <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working)}>
               {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
             </button>
-          </div>
+          </div>}
         </section>
       </main>
     </>

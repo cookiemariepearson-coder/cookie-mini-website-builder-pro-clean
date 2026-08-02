@@ -47,6 +47,7 @@ export default function Home(){
               <Link className="btn dark" href="/pricing">View Website Plans</Link>
               <Link className="btn light" href="/checkout/ai-video">AI Video Studio — $5</Link>
             </div>
+            <p className="aiReviewNote">Created with the assistance of AI and professionally reviewed by Cookie Digital Creations for quality and accuracy.</p>
             <LandingWelcomeExperience />
           </div>
           <div className="brandHeroMockup" aria-label="Website builder preview">
