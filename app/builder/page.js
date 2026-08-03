@@ -116,6 +116,7 @@ export default function Builder() {
   const [site, setSite] = useState(() => createDefaultSite());
   const [message, setMessage] = useState('');
   const [saveMessage, setSaveMessage] = useState('');
+  const [showCurrentDraft, setShowCurrentDraft] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
   const [isSmallBuilderScreen, setIsSmallBuilderScreen] = useState(false);
@@ -172,6 +173,11 @@ export default function Builder() {
     const handle = setTimeout(() => setSaveMessage(''), 4500);
     return () => clearTimeout(handle);
   }, [saveMessage]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => setShowCurrentDraft(false), 4500);
+    return () => clearTimeout(handle);
+  }, []);
 
   useEffect(() => {
     // Slower, lightweight autosave keeps the builder from freezing while typing or uploading images.
@@ -536,7 +542,12 @@ export default function Builder() {
         {planAllowsAiVideo(site.plan) ? <button className="btn light aiStudioBuilderBtn" onClick={goVideo}>AI Video Studio</button> : <button className="btn light lockedBtn aiStudioBuilderBtn" onClick={goVideo}>AI Video Upgrade</button>}
         <a className="btn light" href="/customer">Open My Drafts</a>
         <button className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
-        <div className="notice smallNotice currentDraftNotice"><strong>Current draft:</strong> <span>{draftSlugFor(site)}.cookiesdigitalcreations.com</span></div>
+        {showCurrentDraft && (
+          <div className="notice smallNotice currentDraftNotice" role="status">
+            <span><strong>Current draft:</strong> {draftSlugFor(site)}.cookiesdigitalcreations.com</span>
+            <button type="button" className="saveStatusDismiss" onClick={() => setShowCurrentDraft(false)} aria-label="Dismiss current draft message">×</button>
+          </div>
+        )}
         {saveMessage && (
           <div className={`notice smallNotice saveStatusNotice ${/could not|failed|error|trouble/i.test(saveMessage) ? 'error' : ''}`} role="status" aria-live="polite">
             <span>{saveMessage}</span>
