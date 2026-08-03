@@ -803,3 +803,74 @@
     border-radius:24px!important;
   }
 }
+
+/* Approved full-width hero treatment for every template.
+   This affects only the top hero; all sections below it remain unchanged. */
+.cookieCustomerSite .siteHero{
+  position:relative!important;
+  display:flex!important;
+  align-items:center!important;
+  min-height:570px!important;
+  padding:44px!important;
+  overflow:hidden!important;
+  isolation:isolate!important;
+}
+.cookieCustomerSite .siteHero:after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  z-index:-1!important;
+  background:linear-gradient(90deg,rgba(13,5,18,.91) 0%,rgba(13,5,18,.72) 44%,rgba(13,5,18,.2) 73%,rgba(13,5,18,.06) 100%)!important;
+  pointer-events:none!important;
+}
+.cookieCustomerSite .siteHeroVisual{
+  position:absolute!important;
+  inset:0!important;
+  z-index:-2!important;
+  width:100%!important;
+  height:100%!important;
+}
+.cookieCustomerSite .siteHeroVisual>img,
+.cookieCustomerSite .siteHeroVisual>.templateScene,
+.cookieCustomerSite .siteHeroVisual>.siteHeroArt{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:100%!important;
+  max-height:none!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  transform:none!important;
+  object-fit:cover!important;
+  background-size:cover!important;
+  background-position:center!important;
+}
+.cookieCustomerSite .siteHeroCopy{
+  position:relative!important;
+  z-index:2!important;
+  width:min(58%,650px)!important;
+}
+.cookieCustomerSite .siteHero h1,
+.cookieCustomerSite .siteHero p,
+.cookieCustomerSite .siteHero .siteKicker,
+.cookieCustomerSite .siteHero .siteActionUnit small{
+  color:#fff!important;
+  text-shadow:0 2px 16px rgba(0,0,0,.52)!important;
+}
+.cookieCustomerSite .siteHero .siteActionBtn{
+  box-shadow:0 14px 34px rgba(0,0,0,.3)!important;
+}
+@media(max-width:700px){
+  .cookieCustomerSite .siteHero{
+    min-height:560px!important;
+    padding:28px 22px!important;
+    align-items:flex-end!important;
+  }
+  .cookieCustomerSite .siteHero:after{
+    background:linear-gradient(180deg,rgba(13,5,18,.12),rgba(13,5,18,.91) 72%)!important;
+  }
+  .cookieCustomerSite .siteHeroCopy{
+    width:100%!important;
+  }
+}
