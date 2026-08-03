@@ -17,6 +17,10 @@ export async function POST(req) {
   try {
     const body = await req.json();
     const site = body.site || body;
+    const businessSlug = slugify(site.businessName || site.draftName || '');
+    if (!businessSlug || ['my-business-name', 'my-website', 'published-website'].includes(businessSlug)) {
+      return NextResponse.json({ ok: false, error: 'Add a real business or website name before publishing. This creates a unique website address.' }, { status: 400 });
+    }
     const requestedSlug = slugify(site.slug || '');
     const placeholderSlugs = new Set(['my-website', 'my-business-name', 'published-website']);
     const slug = requestedSlug && !placeholderSlugs.has(requestedSlug)
