@@ -23,7 +23,10 @@ function safeParse(raw) {
 }
 
 function pickSlug(site) {
-  return slugify(site?.slug || site?.draftName || site?.businessName || localStorage.getItem(CURRENT_DRAFT_SLUG_KEY) || 'my-website');
+  const savedSlug = slugify(site?.slug || localStorage.getItem(CURRENT_DRAFT_SLUG_KEY) || '');
+  const placeholderSlugs = new Set(['my-website', 'my-business-name', 'published-website']);
+  if (savedSlug && !placeholderSlugs.has(savedSlug)) return savedSlug;
+  return slugify(site?.draftName || site?.businessName || 'my-website');
 }
 
 function normalizePaidPlan(value, fallback = 'starter') {
