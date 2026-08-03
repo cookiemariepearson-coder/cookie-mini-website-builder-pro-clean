@@ -7,13 +7,13 @@ const STARTER_MESSAGE = {
   content: "Hey boo, I’m Cookie AI Assistant. I can help you choose a plan, write your website wording, add Order / Book / Buy buttons, understand AI Video Studio, publish, or troubleshoot."
 };
 
-const QUICK_PROMPTS = [
-  'Which plan should I choose?',
-  'Write my homepage headline',
-  'How do I add Order / Book / Buy?',
-  'How does AI Video Studio work?',
-  'How do I publish?'
-];
+function quickPromptsFor(pathname = '') {
+  if (pathname.includes('/builder')) return ['Write my homepage', 'Help me add a button', 'Which sections should I use?'];
+  if (pathname.includes('/pricing') || pathname.includes('/done-for-you')) return ['Help me choose a plan', 'Compare my options', 'What is included?'];
+  if (pathname.includes('/video-studio')) return ['Write a video hook', 'Create a video script', 'Explain my video access'];
+  if (pathname.includes('/customer')) return ['Find my draft', 'Help me publish', 'Explain my saved website'];
+  return ['Help me choose a plan', 'Write my homepage', 'Help me add Order / Book / Buy'];
+}
 
 function safeLoadMessages() {
   try {
@@ -129,6 +129,7 @@ export default function CookieAiAssistant() {
   }, [planState]);
 
   const lastMessages = useMemo(() => dedupeMessages(messages).slice(-8), [messages]);
+  const quickPrompts = useMemo(() => quickPromptsFor(pagePath), [pagePath]);
 
   async function ask(messageText) {
     const question = String(messageText || input || '').trim();
@@ -203,14 +204,20 @@ export default function CookieAiAssistant() {
         <section className="cookieAiPanel" aria-label="Cookie AI Assistant chat">
           <header className="cookieAiHeader">
             <div>
-              <strong>Cookie AI Assistant</strong>
-              <span>Smart site help + writing helper</span>
+              <span className="cookieAiEyebrow">Cookie Digital Creations</span>
+              <strong>Ask Cookie AI</strong>
+              <span>Your website helper</span>
             </div>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close Cookie AI Assistant">×</button>
           </header>
 
+          <div className="cookieAiWelcome">
+            <strong>What are you working on?</strong>
+            <span>Ask naturally. I can help with the next step, wording, plans, or buttons.</span>
+          </div>
+
           <button className="cookieAiDetailsToggle" type="button" onClick={() => setShowDetails(value => !value)}>
-            {showDetails ? 'Hide optional details' : 'Add business details (optional)'}
+            {showDetails ? 'Hide details' : 'Add business details for better answers'}
           </button>
           {showDetails && <div className="cookieAiLeadFields">
             <input value={businessName} onChange={event => setBusinessName(event.target.value)} placeholder="Business name" aria-label="Business name optional" />
@@ -218,7 +225,7 @@ export default function CookieAiAssistant() {
           </div>}
 
           <div className="cookieAiQuick">
-            {QUICK_PROMPTS.map(prompt => (
+            {quickPrompts.map(prompt => (
               <button type="button" key={prompt} onClick={() => ask(prompt)} disabled={loading}>
                 {prompt}
               </button>
@@ -231,7 +238,7 @@ export default function CookieAiAssistant() {
                 {message.content}
               </div>
             ))}
-            {loading && <div className="cookieAiBubble assistant">Thinking...</div>}
+            {loading && <div className="cookieAiBubble assistant cookieAiThinking"><i /><i /><i />Cookie is thinking…</div>}
           </div>
 
           <form
@@ -244,16 +251,16 @@ export default function CookieAiAssistant() {
             <input
               value={input}
               onChange={event => setInput(event.target.value)}
-              placeholder="Ask Cookie AI..."
+              placeholder="Type your question here..."
               aria-label="Ask Cookie AI"
             />
             <button type="submit" disabled={loading || !input.trim()}>
-              Send
+              <span aria-hidden="true">➜</span><span className="srOnly">Send</span>
             </button>
           </form>
 
           <footer className="cookieAiFooter">
-            <span>May make mistakes. Use Contact Us for billing, refunds, or account access.</span>
+            <span>For billing or account help, use Contact Us.</span>
             <div>
               {copied && <em>{copied}</em>}
               <button type="button" onClick={copyLastAnswer}>Copy</button>

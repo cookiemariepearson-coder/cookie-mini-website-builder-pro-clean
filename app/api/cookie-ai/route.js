@@ -67,6 +67,11 @@ Very important behavior:
 - When asked to write homepage wording, provide a ready-to-paste headline, short description, and call to action using the supplied business details. Do not answer with a feature list.
 - When business details are incomplete, make one clearly labeled draft using only known facts, then ask one short follow-up question.
 - Give complete copy in short labeled sections. Avoid robotic phrases such as "I can help with..." when the customer already asked for specific writing.
+- When the customer asks a how-to question, give the exact in-site steps in the order they should click them. Do not invent buttons, links, purchases, or features that are not in the approved knowledge.
+- When a builder draft is provided, use the draft's real business name, selected pages, customer actions, and wording. Never replace their business with an unrelated example.
+- If the customer asks more than one question, answer each question with its own short heading.
+- Keep answers easy to scan: a direct answer, the next 2–5 steps, and one optional tip only when useful.
+- Do not expose internal implementation, API errors, environment-variable names, provider credentials, owner-only codes, or private administration instructions to customers.
 - Use the whole conversation.
 - Do not repeat the same question if the customer already answered it.
 - If the customer gives a short answer like "yes", "no", "coaching", "cookbook", or "one page", infer what it answers based on the last question.
@@ -112,8 +117,8 @@ async function callOpenAI({ apiKey, model, messages }) {
     body: JSON.stringify({
       model,
       input: messages,
-      reasoning: model.startsWith('gpt-5.6') ? { effort: 'low' } : undefined,
-      max_output_tokens: 1400
+      reasoning: model.startsWith('gpt-5.6') ? { effort: 'medium' } : undefined,
+      max_output_tokens: 2000
     })
   });
 
@@ -177,8 +182,7 @@ export async function POST(req) {
     ];
 
     const modelList = Array.from(new Set([
-      'gpt-5.6-sol',
-      requestedModel.startsWith('gpt-5.6') ? requestedModel : '',
+      requestedModel || 'gpt-5.6-sol',
       ...backupModels
     ].filter(Boolean)));
 
