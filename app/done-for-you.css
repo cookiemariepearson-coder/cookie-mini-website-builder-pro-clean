@@ -18,6 +18,9 @@
 .dfyPlanCard p{color:#594a68;line-height:1.55}
 .dfyPlanCard ul{padding-left:22px;min-height:228px}
 .dfyPlanCard li{margin:9px 0;line-height:1.4}
+.dfyTemplateExample{margin:20px 0 18px;padding:9px;border:1px solid #eaddec;border-radius:22px;background:#fff;box-shadow:0 16px 34px #2a103b16}
+.dfyTemplateExample img{display:block;width:100%;height:auto;aspect-ratio:1/1;object-fit:cover;border-radius:15px}
+.dfyTemplateExample figcaption{padding:10px 6px 4px;color:#6d5c7e;font-size:12px;font-weight:800;line-height:1.35;text-align:center}
 .dfyPlanLabel{display:inline-block;border-radius:999px;background:#20172f;color:#fff;padding:7px 12px;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
 .dfyPrice{font-size:40px;font-weight:900;color:#20172f}
 .dfyMonthly{font-weight:900;color:#8a3a00;margin:4px 0 14px}

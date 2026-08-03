@@ -8,6 +8,8 @@ const servicePlans = [
     monthly: '$0/month',
     turnaround: '3–5 business days',
     tone: 'sunset',
+    exampleImage: '/done-for-you/templates/dfy-free-launch-page-99.png',
+    exampleAlt: 'Actual Food and Beauty templates available in the Cookie Mini Website Builder for the $99 Free Launch Page setup',
     summary: 'A simple, polished online starting point for a new idea, event, service, or small business.',
     includes: [
       'I build and format the one-page website for you',
@@ -25,6 +27,8 @@ const servicePlans = [
     monthly: '$19/month',
     turnaround: '5–7 business days',
     tone: 'berry',
+    exampleImage: '/done-for-you/templates/dfy-starter-pro-249.png',
+    exampleAlt: 'Actual Real Estate and Local Services templates available in the Cookie Mini Website Builder for the $249 Starter Pro setup',
     summary: 'Best for a one-page business website that needs stronger content, media, and customer actions.',
     includes: [
       'Everything in the Free Launch setup',
@@ -43,6 +47,8 @@ const servicePlans = [
     turnaround: '7–10 business days',
     tone: 'gold',
     badge: 'Most Popular',
+    exampleImage: '/done-for-you/templates/dfy-business-499.png',
+    exampleAlt: 'Actual Digital Product and Cleaning templates available in the Cookie Mini Website Builder for the $499 Business setup',
     summary: 'Built for active businesses that need more sections, customer actions, and promotional support.',
     includes: [
       'Everything in the Starter Pro setup',
@@ -61,6 +67,8 @@ const servicePlans = [
     monthly: '$50/month',
     turnaround: '10–14 business days',
     tone: 'violet',
+    exampleImage: '/done-for-you/templates/dfy-premium-899.png',
+    exampleAlt: 'Actual Boutique and Creator templates available in the Cookie Mini Website Builder for the $899 Premium setup',
     summary: 'The complete done-for-you option for a business that wants the fullest website and launch support.',
     includes: [
       'Everything in the Business setup',
@@ -110,6 +118,10 @@ export default function DoneForYouPricing() {
               <div className="dfyPrice">{plan.setup}</div>
               <div className="dfyMonthly">plus {plan.monthly}</div>
               <div className="dfyTurnaround"><strong>Estimated turnaround:</strong> {plan.turnaround}</div>
+              <figure className="dfyTemplateExample">
+                <img src={plan.exampleImage} alt={plan.exampleAlt} />
+                <figcaption>Actual builder template examples. All template designs are available for this setup.</figcaption>
+              </figure>
               <p>{plan.summary}</p>
               <h3>What I will do:</h3>
               <ul>
