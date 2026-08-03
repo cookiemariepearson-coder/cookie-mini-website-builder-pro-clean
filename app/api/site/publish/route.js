@@ -17,7 +17,11 @@ export async function POST(req) {
   try {
     const body = await req.json();
     const site = body.site || body;
-    const slug = slugify(site.slug || site.businessName);
+    const requestedSlug = slugify(site.slug || '');
+    const placeholderSlugs = new Set(['my-website', 'my-business-name', 'published-website']);
+    const slug = requestedSlug && !placeholderSlugs.has(requestedSlug)
+      ? requestedSlug
+      : slugify(site.draftName || site.businessName || 'my-website');
     const plan = site.plan || 'free';
     const monthly = plan === 'premium' ? 50 : plan === 'business' ? 30 : plan === 'starter' ? 19 : 0;
     const supabase = getSupabaseAdmin();
