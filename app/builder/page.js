@@ -464,6 +464,12 @@ export default function Builder() {
   }
 
   async function publishFree() {
+    const businessSlug = slugify(site.businessName || '');
+    if (!businessSlug || ['my-business-name', 'my-website', 'published-website'].includes(businessSlug)) {
+      setStep(1);
+      setMessage('Add your real business or website name in Website Info before publishing. This name creates your unique website address.');
+      return;
+    }
     const incompleteActions = missingActionLinks(site);
     if (incompleteActions.length) {
       setStep(3);
