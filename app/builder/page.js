@@ -166,6 +166,14 @@ export default function Builder() {
   }, []);
 
   useEffect(() => {
+    if (!saveMessage) return;
+    const keepVisible = /saving|opening|preparing|could not|failed|error|trouble/i.test(saveMessage);
+    if (keepVisible) return;
+    const handle = setTimeout(() => setSaveMessage(''), 4500);
+    return () => clearTimeout(handle);
+  }, [saveMessage]);
+
+  useEffect(() => {
     // Slower, lightweight autosave keeps the builder from freezing while typing or uploading images.
     const handle = setTimeout(() => persistLocal('Draft auto-saved.', true), 13000);
     return () => clearTimeout(handle);
@@ -528,8 +536,13 @@ export default function Builder() {
         {planAllowsAiVideo(site.plan) ? <button className="btn light aiStudioBuilderBtn" onClick={goVideo}>AI Video Studio</button> : <button className="btn light lockedBtn aiStudioBuilderBtn" onClick={goVideo}>AI Video Upgrade</button>}
         <a className="btn light" href="/customer">Open My Drafts</a>
         <button className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
-        <div className="notice smallNotice"><strong>Current draft:</strong><br />{draftSlugFor(site)}.cookiesdigitalcreations.com</div>
-        {saveMessage && <div className="notice smallNotice">{saveMessage}</div>}
+        <div className="notice smallNotice currentDraftNotice"><strong>Current draft:</strong> <span>{draftSlugFor(site)}.cookiesdigitalcreations.com</span></div>
+        {saveMessage && (
+          <div className={`notice smallNotice saveStatusNotice ${/could not|failed|error|trouble/i.test(saveMessage) ? 'error' : ''}`} role="status" aria-live="polite">
+            <span>{saveMessage}</span>
+            <button type="button" className="saveStatusDismiss" onClick={() => setSaveMessage('')} aria-label="Dismiss draft message">×</button>
+          </div>
+        )}
       </aside>
 
       <section className="builderMain">
