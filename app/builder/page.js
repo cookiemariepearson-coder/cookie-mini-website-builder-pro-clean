@@ -35,7 +35,10 @@ function nowStamp() {
 }
 
 function draftSlugFor(draft = {}) {
-  return slugify(draft.slug || draft.draftName || draft.businessName || 'my-website');
+  const savedSlug = slugify(draft.slug || '');
+  const placeholderSlugs = new Set(['my-website', 'my-business-name', 'published-website']);
+  if (savedSlug && !placeholderSlugs.has(savedSlug)) return savedSlug;
+  return slugify(draft.draftName || draft.businessName || 'my-website');
 }
 
 
