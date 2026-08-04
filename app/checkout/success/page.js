@@ -8,6 +8,15 @@ const ROOT = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'cookiesdigitalcreations.com
 const DRAFT_KEY = 'cookieDraftSite';
 const CURRENT_DRAFT_SLUG_KEY = 'cookieBuilderCurrentSlug';
 const DRAFTS_INDEX_KEY = 'cookieDraftSitesIndex';
+const AUTH_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
+
+function ownerAuthHeaders() {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY) || '';
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`
+  };
+}
 
 const planSummary = {
   free: 'Free Launch Page — includes up to 3 selected sections and 1 customer action button.',
@@ -123,7 +132,7 @@ export default function CheckoutSuccess() {
       try {
         const res = await fetch('/api/site/publish', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: ownerAuthHeaders(),
           body: JSON.stringify({ site: finalSite })
         });
         const data = await res.json();
