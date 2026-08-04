@@ -201,7 +201,7 @@ export default function Customer() {
           <h1>Customer Dashboard</h1>
           <p>Find your published websites and saved drafts in one place. Type only a few letters or words from the website name and matching results will appear as you type.</p>
           <div className="customerSearchTips">
-            <div><strong>Email only</strong><span>Best option if you forgot the website name.</span></div>
+            <div><strong>Email only</strong><span>Use the email that owns the website.</span></div>
             <div><strong>A few words</strong><span>Type any part you remember, like kitchen or tadda.</span></div>
             <div><strong>Full link</strong><span>Paste the whole subdomain if you have it.</span></div>
           </div>
@@ -227,7 +227,7 @@ export default function Customer() {
           </div>
           <div className="row">
             <div className="field">
-              <label>Email, optional but recommended</label>
+              <label>Email for secure sign-in</label>
               <input placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} disabled={Boolean(verifiedEmail)} />
             </div>
             <div className="field">
