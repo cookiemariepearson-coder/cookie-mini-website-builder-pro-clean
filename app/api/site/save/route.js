@@ -35,7 +35,7 @@ export async function POST(req) {
       event: 'Website edited and republished',
       slug,
       businessName: site.businessName,
-      customerEmail: site.customerEmail || site.email,
+      customerEmail: owner.email,
       details: 'An owner or authorized editor saved changes through the website editor.'
     });
     return NextResponse.json({ ok:true });
