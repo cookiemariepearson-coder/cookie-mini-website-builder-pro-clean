@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { slugify } from '../../../../lib/siteDefaults';
+import { getVerifiedSiteOwner } from '../../../../lib/siteOwnerAuth';
 
 function normalizeSlug(input = '') {
   let value = String(input || '').trim().toLowerCase();
@@ -24,8 +25,13 @@ function siteFromRow(row) {
 
 export async function POST(req) {
   try {
+    const owner = await getVerifiedSiteOwner(req);
+    if (!owner.ok) {
+      return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
+    }
+
     const body = await req.json();
-    const email = String(body.email || '').trim().toLowerCase();
+    const email = owner.email;
     const rawQuery = String(body.query || body.slug || '').trim();
     const slug = rawQuery ? normalizeSlug(rawQuery) : '';
     if (!email && !slug) {
@@ -51,6 +57,7 @@ export async function POST(req) {
           supabase
             .from('websites')
             .select('*')
+            .eq('customer_email', email)
             .or(`slug.ilike.%${safeTerm}%,business_name.ilike.%${safeTerm}%,business_name.ilike.%${spacedTerm}%`)
             .order('updated_at', { ascending: false })
             .limit(25)
