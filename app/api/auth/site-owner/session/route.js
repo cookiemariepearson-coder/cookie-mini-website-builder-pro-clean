@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getVerifiedSiteOwner } from '../../../../../../lib/siteOwnerAuth';
+import { getVerifiedSiteOwner } from '../../../../../lib/siteOwnerAuth';
 
 export async function GET(req) {
   const owner = await getVerifiedSiteOwner(req);
