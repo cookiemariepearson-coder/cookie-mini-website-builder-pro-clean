@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { slugify } from '../../../../lib/siteDefaults';
 import { sendAdminNotification } from '../../../../lib/adminNotifications';
+import { getVerifiedSiteOwner, siteBelongsToEmail } from '../../../../lib/siteOwnerAuth';
 
 function friendlyError(message='') {
   if (message.includes('site') && message.includes('schema cache')) {
@@ -12,19 +13,29 @@ function friendlyError(message='') {
 
 export async function POST(req) {
   try {
+    const owner = await getVerifiedSiteOwner(req);
+    if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
+
     const body = await req.json();
     const site = body.site || body;
     const slug = slugify(site.slug || site.businessName);
     const supabase = getSupabaseAdmin();
+    const { data: existing, error: lookupError } = await supabase.from('websites').select('*').eq('slug', slug).maybeSingle();
+    if (lookupError) throw lookupError;
+    if (existing && !siteBelongsToEmail(existing, owner.email)) {
+      return NextResponse.json({ ok: false, error: 'That website address already belongs to a different verified email. Choose another business or website name.' }, { status: 403 });
+    }
+
+    const protectedSite = { ...site, slug, customerEmail: owner.email, status: 'draft' };
     const row = {
       slug,
-      customer_email: String(site.customerEmail || site.email || '').trim().toLowerCase() || null,
+      customer_email: owner.email,
       business_name: site.businessName || null,
       plan: site.plan || 'free',
       status: 'draft',
       extra_pages: Number(site.extraPages || site.extra_pages || 0),
       monthly_price: site.plan === 'premium' ? 50 : site.plan === 'business' ? 30 : site.plan === 'starter' ? 19 : 0,
-      site: { ...site, slug, status: 'draft' },
+      site: protectedSite,
       updated_at: new Date().toISOString()
     };
     const { error } = await supabase.from('websites').upsert(row, { onConflict: 'slug' });
