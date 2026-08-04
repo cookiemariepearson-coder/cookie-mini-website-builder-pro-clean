@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getVerifiedAdmin } from '../../../../lib/siteOwnerAuth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -22,12 +23,13 @@ async function patch(path, body){const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
 async function findWebsite({slug,email}){if(slug){const r=await get(`websites?slug=eq.${encodeURIComponent(slug)}&select=*&limit=1`);if(r.ok&&Array.isArray(r.data)&&r.data[0])return r.data[0];}
 if(email){const r=await get(`websites?customer_email=eq.${encodeURIComponent(email)}&select=*&order=updated_at.desc&limit=1`);if(r.ok&&Array.isArray(r.data)&&r.data[0])return r.data[0];}
 return null;}
-function adminOk(pin){return String(pin||'').trim() && String(pin||'').trim()===String(process.env.ADMIN_PIN||'').trim();}
 export async function POST(request){
  try{
   const body=await request.json().catch(()=>({}));
-  if(!adminOk(body.pin)) return NextResponse.json({ok:false,error:'Invalid admin PIN.'},{status:403});
+  const admin=await getVerifiedAdmin(request);
+  if(!admin.ok) return NextResponse.json({ok:false,error:admin.error},{status:admin.status});
   const action=String(body.action||'lookup');
+  if(action==='session_check') return NextResponse.json({ok:true});
   const slug=normalizeSlug(body.slug||body.websiteSlug||'');
   const email=cleanEmail(body.email||body.customerEmail||'');
   const website=await findWebsite({slug,email});

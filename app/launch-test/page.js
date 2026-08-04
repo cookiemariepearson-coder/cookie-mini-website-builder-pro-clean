@@ -8,7 +8,7 @@ const checks = [
   ['Premium Checkout', 'Select Premium, click checkout, confirm it opens the $50/mo Gumroad subscription.'],
   ['Extra Page Checkout', 'Try to add a page beyond the plan limit and confirm the $10/mo extra page checkout opens.'],
   ['Customer Dashboard', 'Search by email only, short website name, and full subdomain. Confirm drafts and published sites show.'],
-  ['Admin Dashboard', 'Open /admin, enter PIN manually, review plans/status/notes, and lock admin again.'],
+  ['Admin Dashboard', 'Open /admin, complete secure owner email sign-in, review plans/status/notes, and lock admin again.'],
   ['Template Switching', 'Change website type and template look. Confirm preview changes layout, colors, artwork, and section style.'],
   ['Media Upload', 'Upload hero image, add gallery image, and add a media/video link. Confirm preview and save still work.'],
   ['AI Video Studio', 'Generate a video kit, download the kit, and return back to the builder/customer dashboard.']

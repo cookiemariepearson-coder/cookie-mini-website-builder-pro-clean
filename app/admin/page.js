@@ -54,11 +54,10 @@ function pinMessage(text) {
 }
 
 export default function Admin() {
-  const [pin, setPin] = useState('');
-  const [sessionPin, setSessionPin] = useState('');
+  const [email, setEmail] = useState('');
   const [unlocked, setUnlocked] = useState(false);
   const [sites, setSites] = useState([]);
-  const [msg, setMsg] = useState('Enter your private admin PIN to open the admin dashboard.');
+  const [msg, setMsg] = useState('Sign in with your authorized owner email to open the admin dashboard.');
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('websites');
   const [loading, setLoading] = useState(false);
@@ -66,40 +65,30 @@ export default function Admin() {
   const [savedNoteSlug, setSavedNoteSlug] = useState('');
 
   useEffect(() => {
-    const clearTimer = setTimeout(() => setPin(''), 250);
-    return () => clearTimeout(clearTimer);
+    loadAdmin();
   }, []);
 
-  async function loadAdmin(candidatePin = sessionPin || pin) {
-    const checkPin = String(candidatePin || '').trim();
-    if (!checkPin) {
-      setMsg('Enter your ADMIN_PIN first.');
-      return;
-    }
+  async function loadAdmin() {
     setLoading(true);
-    setMsg('Checking PIN...');
+    setMsg('Checking your secure owner session...');
     try {
       const r = await fetch('/api/admin/list', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: checkPin })
+        body: '{}'
       });
       const d = await r.json();
       if (d.ok) {
         setSites(d.sites || []);
-        setSessionPin(checkPin);
-        setPin('');
         setUnlocked(true);
         setMsg('Admin Plan Management v2 loaded. Use the tabs below to manage websites, plans, notes, and archived sites.');
       } else {
         setUnlocked(false);
-        setSessionPin('');
         setSites([]);
-        setMsg(d.error || 'Invalid PIN. Please try again.');
+        setMsg(d.error || 'Owner sign-in required.');
       }
     } catch (e) {
       setUnlocked(false);
-      setSessionPin('');
       setSites([]);
       setMsg(e.message || 'Unable to load admin dashboard.');
     } finally {
@@ -107,19 +96,26 @@ export default function Admin() {
     }
   }
 
-  function lockAdmin() {
+  async function requestOwnerLink() {
+    setLoading(true);
+    const r = await fetch('/api/auth/admin/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+    const d = await r.json();
+    setMsg(d.message || d.error || 'Unable to send the secure owner link.');
+    setLoading(false);
+  }
+
+  async function lockAdmin() {
+    await fetch('/api/auth/admin/session', { method: 'DELETE' });
     setUnlocked(false);
-    setPin('');
-    setSessionPin('');
     setSites([]);
     setSearch('');
     setTab('websites');
-    setMsg('Admin dashboard locked. Enter your private admin PIN to open it again.');
+    setMsg('Admin dashboard locked. Request a secure owner email link to reopen it.');
   }
 
   async function update(slug, updates, quiet = false) {
-    if (!unlocked || !sessionPin) {
-      setMsg('Admin is locked. Enter your PIN first.');
+    if (!unlocked) {
+      setMsg('Admin is locked. Sign in with your owner email first.');
       return;
     }
     setSavingSlug(slug);
@@ -127,7 +123,7 @@ export default function Admin() {
       const r = await fetch('/api/admin/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: sessionPin, slug, updates })
+        body: JSON.stringify({ slug, updates })
       });
       const d = await r.json();
       if (d.ok) {
@@ -135,7 +131,7 @@ export default function Admin() {
           ? `Private note saved in this website's database record at ${new Date().toLocaleTimeString()}.`
           : 'Saved admin change.');
         if (updates?.admin_notes !== undefined) setSavedNoteSlug(slug);
-        await loadAdmin(sessionPin);
+        await loadAdmin();
       } else {
         setMsg(d.error || 'Unable to update website.');
       }
@@ -216,27 +212,21 @@ export default function Admin() {
         {!unlocked && (
           <>
             <section className="adminPanel adminPinPanel" style={card}>
-              <form onSubmit={(e) => { e.preventDefault(); loadAdmin(pin); }}>
-                <input type="text" name="fake-user-field" autoComplete="username" style={{ display: 'none' }} tabIndex="-1" />
-                <input type="password" name="fake-password-field" autoComplete="current-password" style={{ display: 'none' }} tabIndex="-1" />
+              <form onSubmit={(e) => { e.preventDefault(); requestOwnerLink(); }}>
                 <div className="row">
                   <div className="field">
-                    <label>Admin PIN</label>
+                    <label>Authorized owner email</label>
                     <input
-                      type="password"
-                      value={pin}
-                      onChange={(e) => setPin(e.target.value)}
-                      placeholder="Type your admin PIN"
-                      autoComplete="new-password"
-                      name="cookie-admin-pin-manual-entry"
-                      data-lpignore="true"
-                      data-1p-ignore="true"
-                      inputMode="numeric"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      autoComplete="email"
                     />
                   </div>
                   <div className="field">
                     <label>&nbsp;</label>
-                    <button className="btn" type="submit">{loading ? 'Checking...' : 'Open Admin'}</button>
+                    <button className="btn" type="submit">{loading ? 'Sending...' : 'Email Secure Sign-In Link'}</button>
                   </div>
                 </div>
               </form>
@@ -244,8 +234,7 @@ export default function Admin() {
             </section>
             <section className="adminPanel adminLockedPanel" style={{ ...card, background: '#fff8ef' }}>
               <h2 style={{ marginTop: 0 }}>Admin dashboard is locked</h2>
-              <p>Customer website records, revenue totals, plan controls, private notes, and archived sites stay hidden until the correct PIN is entered.</p>
-              <p><strong>Reminder:</strong> the PIN comes from your Vercel environment variable named <code>ADMIN_PIN</code>.</p>
+              <p>Customer records, revenue totals, plan controls, private notes, and archived sites stay hidden until an authorized owner completes secure email verification.</p>
             </section>
           </>
         )}
@@ -256,9 +245,9 @@ export default function Admin() {
               <div className="row" style={{ alignItems: 'center' }}>
                 <div>
                   <h2 style={{ marginTop: 0 }}>Admin dashboard unlocked</h2>
-                  <p style={{ marginBottom: 0 }}>Your PIN is hidden. Use the tabs below to manage customer websites.</p>
+                  <p style={{ marginBottom: 0 }}>Your verified owner session is active. Use the tabs below to manage customer websites.</p>
                 </div>
-                <button className="btn dark" onClick={() => loadAdmin(sessionPin)}>{loading ? 'Refreshing...' : 'Refresh Admin'}</button>
+                <button className="btn dark" onClick={() => loadAdmin()}>{loading ? 'Refreshing...' : 'Refresh Admin'}</button>
                 <button className="btn danger" onClick={lockAdmin}>Lock Admin</button>
               </div>
               {msg && pinMessage(msg)}

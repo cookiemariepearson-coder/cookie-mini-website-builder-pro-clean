@@ -3,7 +3,7 @@ import Nav from '../../lib/Nav';
 
 const groups = [
   ['Gumroad setup', ['Free Launch Page product links to /builder', 'Starter Pro is $19/month', 'Business is $30/month', 'Premium is $50/month', 'Extra Page Add-On is $10/month per page', 'All paid products include return link to /checkout/success?paid=1']],
-  ['Vercel setup', ['All Gumroad checkout links are in Environment Variables', 'Supabase URL and service role key are in Environment Variables', 'ADMIN_PIN is set', 'cookiesdigitalcreations.com, www, and wildcard are valid']],
+  ['Vercel setup', ['All Gumroad checkout links are in Environment Variables', 'Supabase URL and service role key are in Environment Variables', 'ADMIN_EMAILS contains only authorized owner email addresses', 'cookiesdigitalcreations.com, www, and wildcard are valid']],
   ['Supabase setup', ['websites table exists', 'site JSON column exists', 'draft/published statuses work', 'admin notes/plan columns are migrated', 'test records can be edited from admin']],
   ['Launch habit', ['Test a free site once per week', 'Check Gumroad subscribers weekly', 'Pause unpaid/canceled sites manually for now', 'Keep a note for customer requests inside Admin Notes', 'Use Archive instead of permanent delete unless the customer requests deletion']]
 ];

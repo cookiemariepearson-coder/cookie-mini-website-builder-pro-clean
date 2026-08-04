@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getVerifiedAdmin } from '../../../../lib/siteOwnerAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,11 +13,8 @@ function baseUrl(req) {
 
 export async function POST(req) {
   try {
-    const body = await req.json().catch(() => ({}));
-    const pin = String(body.pin || '');
-    if (!process.env.ADMIN_PIN || pin !== process.env.ADMIN_PIN) {
-      return NextResponse.json({ ok:false, error:'Invalid admin PIN.' }, { status:401 });
-    }
+    const admin = await getVerifiedAdmin(req);
+    if (!admin.ok) return NextResponse.json({ ok:false, error:admin.error }, { status:admin.status });
     const token = process.env.GUMROAD_ACCESS_TOKEN;
     if (!token) {
       return NextResponse.json({ ok:false, error:'Missing GUMROAD_ACCESS_TOKEN in Vercel.' }, { status:400 });

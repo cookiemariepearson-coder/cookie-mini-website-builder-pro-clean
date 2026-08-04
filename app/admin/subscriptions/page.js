@@ -58,7 +58,7 @@ function compareSites(a, b, sortBy) {
 }
 
 export default function GumroadSubscriptionsAdmin() {
-  const [pin, setPin] = useState('');
+  const [email, setEmail] = useState('');
   const [ready, setReady] = useState(false);
   const [websites, setWebsites] = useState([]);
   const [events, setEvents] = useState([]);
@@ -77,6 +77,7 @@ export default function GumroadSubscriptionsAdmin() {
       const saved = JSON.parse(localStorage.getItem('cookieAdminHiddenSubscriptionSites') || '[]');
       if (Array.isArray(saved)) setHiddenSlugs(saved);
     } catch {}
+    load();
   }, []);
 
   function saveHidden(next) {
@@ -90,7 +91,7 @@ export default function GumroadSubscriptionsAdmin() {
     const res = await fetch('/api/admin/subscriptions/list', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin })
+      body: '{}'
     });
     const data = await res.json();
     setLoading(false);
@@ -107,7 +108,7 @@ export default function GumroadSubscriptionsAdmin() {
     const res = await fetch('/api/admin/subscriptions/manual-update', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin, slug, updates })
+      body: JSON.stringify({ slug, updates })
     });
     const data = await res.json();
     if (!data.ok) {
@@ -124,7 +125,7 @@ export default function GumroadSubscriptionsAdmin() {
     const res = await fetch('/api/gumroad/register-webhooks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin })
+      body: '{}'
     });
     const data = await res.json();
     setRegistering(false);
@@ -134,6 +135,14 @@ export default function GumroadSubscriptionsAdmin() {
     }
     setMsg('Gumroad webhook registration request completed. Check Gumroad resource subscriptions if needed.');
     setEvents([{ resource_name: 'setup', action_taken: JSON.stringify(data.results, null, 2), processed_at: new Date().toISOString() }, ...events]);
+  }
+
+  async function requestOwnerLink() {
+    setLoading(true);
+    const res = await fetch('/api/auth/admin/request', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ email }) });
+    const data = await res.json();
+    setLoading(false);
+    setMsg(data.message || data.error || 'Could not send owner sign-in link.');
   }
 
   const activeCount = websites.filter(w => w.access_status === 'active' && w.status === 'published').length;
@@ -278,19 +287,18 @@ export default function GumroadSubscriptionsAdmin() {
 
         {!ready && (
           <section className="card">
-            <h2>Enter Admin PIN</h2>
+            <h2>Secure Owner Sign-In</h2>
             <div className="field">
-              <label>Admin PIN</label>
+              <label>Authorized owner email</label>
               <input
-                type="password"
-                value={pin}
-                onChange={e => setPin(e.target.value)}
-                placeholder="Enter your PIN"
-                autoComplete="new-password"
-                name="cookie-subscription-admin-pin"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoComplete="email"
               />
             </div>
-            <button className="btn" onClick={load} disabled={loading}>{loading ? 'Opening...' : 'Open Subscription Dashboard'}</button>
+            <button className="btn" onClick={requestOwnerLink} disabled={loading}>{loading ? 'Sending...' : 'Email Secure Sign-In Link'}</button>
             {msg && <div className="notice danger">{msg}</div>}
           </section>
         )}

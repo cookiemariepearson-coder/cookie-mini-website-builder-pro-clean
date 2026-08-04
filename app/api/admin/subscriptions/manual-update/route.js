@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../../lib/supabaseAdmin';
+import { getVerifiedAdmin } from '../../../../../lib/siteOwnerAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,10 +8,9 @@ const allowed = new Set(['active','unverified','canceled','ended','refunded','di
 
 export async function POST(req) {
   try {
-    const { pin, slug, updates } = await req.json();
-    if (!process.env.ADMIN_PIN || pin !== process.env.ADMIN_PIN) {
-      return NextResponse.json({ ok:false, error:'Invalid admin PIN.' }, { status:401 });
-    }
+    const admin = await getVerifiedAdmin(req);
+    if (!admin.ok) return NextResponse.json({ ok:false, error:admin.error }, { status:admin.status });
+    const { slug, updates } = await req.json();
     if (!slug) return NextResponse.json({ ok:false, error:'Missing website slug.' }, { status:400 });
     const safe = {};
     if (updates?.subscription_status && allowed.has(updates.subscription_status)) safe.subscription_status = updates.subscription_status;

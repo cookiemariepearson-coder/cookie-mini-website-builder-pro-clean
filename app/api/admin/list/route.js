@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
+import { getVerifiedAdmin } from '../../../../lib/siteOwnerAuth';
 
 export async function POST(req) {
   try {
-    const { pin } = await req.json();
-    if (!process.env.ADMIN_PIN || !pin || pin !== process.env.ADMIN_PIN) {
-      return NextResponse.json({ ok: false, error: 'Invalid PIN' }, { status: 401 });
-    }
+    const admin = await getVerifiedAdmin(req);
+    if (!admin.ok) return NextResponse.json({ ok: false, error: admin.error }, { status: admin.status });
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from('websites')
