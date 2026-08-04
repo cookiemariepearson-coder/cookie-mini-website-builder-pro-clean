@@ -110,7 +110,7 @@ export default function Customer() {
       const returnPath = new URLSearchParams(window.location.search).get('return') === 'builder' ? '/builder' : '/customer';
       const res = await fetch('/api/auth/site-owner/request', {
         method: 'POST',
-        headers: secureHeaders(),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: cleanEmail, returnPath })
       });
       const data = await res.json();
@@ -147,7 +147,7 @@ export default function Customer() {
     try {
       const res = await fetch('/api/site/search', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: secureHeaders(),
         body: JSON.stringify({ email: cleanEmail, query: cleanSlug })
       });
       const data = await res.json();
