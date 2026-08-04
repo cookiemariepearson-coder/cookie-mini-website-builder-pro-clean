@@ -15,6 +15,19 @@ const DRAFT_KEY = 'cookieDraftSite';
 const LAST_STEP_KEY = 'cookieBuilderStep';
 const CURRENT_DRAFT_SLUG_KEY = 'cookieBuilderCurrentSlug';
 const DRAFTS_INDEX_KEY = 'cookieDraftSitesIndex';
+const AUTH_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
+
+function ownerAccessToken() {
+  try { return localStorage.getItem(AUTH_TOKEN_KEY) || ''; } catch { return ''; }
+}
+
+function ownerAuthHeaders() {
+  const token = ownerAccessToken();
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`
+  };
+}
 
 function safeParse(raw) {
   try { return raw ? JSON.parse(raw) : null; } catch { return null; }
@@ -132,7 +145,9 @@ export default function Builder() {
       if (draftSlug && draftSlug !== 'my-website') {
         setSaveMessage('Opening saved draft...');
         try {
-          const res = await fetch(`/api/site/get?slug=${encodeURIComponent(draftSlug)}`);
+          const res = await fetch(`/api/site/get?slug=${encodeURIComponent(draftSlug)}&owner=1`, {
+            headers: ownerAuthHeaders()
+          });
           const data = await res.json();
           if (data.ok && data.site) {
             const merged = mergeDefaults(data.site);
@@ -412,9 +427,12 @@ export default function Builder() {
   }
 
   async function saveDraftOnline(draft, quiet = false) {
+    if (!ownerAccessToken()) {
+      throw new Error('Verify your email from My Website before saving online.');
+    }
     const res = await fetch('/api/site/draft', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: ownerAuthHeaders(),
       body: JSON.stringify({ site: draft })
     });
     const data = await res.json();
@@ -464,6 +482,12 @@ export default function Builder() {
   }
 
   async function publishFree() {
+    if (!ownerAccessToken()) {
+      persistLocal('Draft saved before secure email verification.');
+      setMessage('Verify your email before publishing. Opening secure customer access now...');
+      setTimeout(() => { window.location.href = '/customer?return=builder'; }, 700);
+      return;
+    }
     const businessSlug = slugify(site.businessName || '');
     if (!businessSlug || ['my-business-name', 'my-website', 'published-website'].includes(businessSlug)) {
       setStep(1);
@@ -482,7 +506,7 @@ export default function Builder() {
     try {
       const res = await fetch('/api/site/publish', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: ownerAuthHeaders(),
         body: JSON.stringify({ site: published })
       });
       const data = await res.json();
@@ -494,6 +518,12 @@ export default function Builder() {
   }
 
   async function checkoutPlan() {
+    if (!ownerAccessToken()) {
+      persistLocal('Draft saved before secure email verification.');
+      setMessage('Verify your email before checkout so the paid website belongs securely to you.');
+      setTimeout(() => { window.location.href = '/customer?return=builder'; }, 700);
+      return;
+    }
     const incompleteActions = missingActionLinks(site);
     if (incompleteActions.length) {
       setStep(3);
@@ -503,7 +533,12 @@ export default function Builder() {
     const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     try { const lightDraft = stripHeavyLocalData(draft); localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft)); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draft.slug); saveLocalDraftIndex(lightDraft); } catch {}
     setMessage('Saving your draft before checkout. If checkout opens, your draft was saved.');
-    try { await saveDraftOnline(draft, true); } catch {}
+    try {
+      await saveDraftOnline(draft, true);
+    } catch (error) {
+      setMessage(error.message || 'Secure online draft save failed. Checkout was not opened.');
+      return;
+    }
     const url = checkout[site.plan];
     if (!url) { setMessage('Checkout route missing.'); return; }
     window.location.href = url;
