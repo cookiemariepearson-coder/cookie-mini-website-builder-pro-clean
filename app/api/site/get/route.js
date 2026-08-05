@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
-import { getVerifiedSiteOwner, siteBelongsToEmail } from '../../../../lib/siteOwnerAuth';
+import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 
 function fallbackSite(row){
   return row.site || {
@@ -32,7 +32,7 @@ export async function GET(req) {
     if (ownerOnly || String(data.status || '').toLowerCase() !== 'published') {
       const owner = await getVerifiedSiteOwner(req);
       if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
-      if (!siteBelongsToEmail(data, owner.email)) {
+      if (!siteBelongsToOwner(data, owner)) {
         return NextResponse.json({ ok: false, error: 'This website belongs to a different verified email.' }, { status: 403 });
       }
     }

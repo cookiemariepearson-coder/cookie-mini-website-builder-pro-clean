@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { slugify } from '../../../../lib/siteDefaults';
 import { sendAdminNotification } from '../../../../lib/adminNotifications';
-import { getVerifiedSiteOwner, siteBelongsToEmail } from '../../../../lib/siteOwnerAuth';
+import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 
 function friendlyError(message='') {
   if (message.includes('site') && message.includes('schema cache')) {
@@ -35,7 +35,7 @@ export async function POST(req) {
     const supabase = getSupabaseAdmin();
     const { data: existing, error: lookupError } = await supabase.from('websites').select('*').eq('slug', slug).maybeSingle();
     if (lookupError) throw lookupError;
-    if (existing && !siteBelongsToEmail(existing, owner.email)) {
+    if (existing && !siteBelongsToOwner(existing, owner)) {
       return NextResponse.json({ ok: false, error: 'That website address already belongs to a different verified email. Choose another business or website name.' }, { status: 403 });
     }
 
@@ -55,6 +55,7 @@ export async function POST(req) {
     const protectedSite = { ...site, slug, customerEmail: owner.email, status: 'published' };
     const row = {
       slug,
+      owner_id: owner.user.id,
       customer_email: owner.email,
       business_name: site.businessName || null,
       plan,

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
-import { getVerifiedSiteOwner, siteBelongsToEmail } from '../../../../lib/siteOwnerAuth';
+import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +23,7 @@ export async function POST(request) {
     if (error) throw error;
     const website = data?.[0];
     if (!website) return NextResponse.json({ ok: true, verified: false, pending: true, error: 'The Gumroad purchase has not matched this website yet.' });
-    if (!siteBelongsToEmail(website, owner.email)) {
+    if (!siteBelongsToOwner(website, owner)) {
       return NextResponse.json({ ok: false, verified: false, error: 'This website belongs to a different verified email.' }, { status: 403 });
     }
 

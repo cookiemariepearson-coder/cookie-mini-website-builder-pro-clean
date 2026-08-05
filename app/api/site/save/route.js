@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { sendAdminNotification } from '../../../../lib/adminNotifications';
-import { getVerifiedSiteOwner, siteBelongsToEmail } from '../../../../lib/siteOwnerAuth';
+import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 
 export async function POST(req) {
   try {
@@ -15,13 +15,14 @@ export async function POST(req) {
     const { data: existing, error: lookupError } = await supabase.from('websites').select('*').eq('slug', slug).maybeSingle();
     if (lookupError) throw lookupError;
     if (!existing) return NextResponse.json({ ok: false, error: 'Website not found.' }, { status: 404 });
-    if (!siteBelongsToEmail(existing, owner.email)) {
+    if (!siteBelongsToOwner(existing, owner)) {
       return NextResponse.json({ ok: false, error: 'This website belongs to a different verified email.' }, { status: 403 });
     }
 
     const protectedSite = { ...site, slug, customerEmail: owner.email, status: 'published' };
     const { data: updated, error } = await supabase.from('websites').update({
       customer_email: owner.email,
+      owner_id: owner.user.id,
       business_name: protectedSite.businessName || null,
       plan: site.plan || 'free',
       extra_pages: Number(site.extraPages || 0),
