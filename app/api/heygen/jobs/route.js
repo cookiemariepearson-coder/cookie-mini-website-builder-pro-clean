@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
+import { verifyVideoAccessToken } from '../../../../lib/videoAccessToken';
+import { getVerifiedSiteOwner } from '../../../../lib/siteOwnerAuth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -38,19 +41,21 @@ async function supabaseGet(path) {
 }
 
 export async function GET(request) {
-  const url = new URL(request.url);
-  const email = getEmail(url.searchParams.get('email') || '');
-  const slug = normalizeSlug(url.searchParams.get('slug') || url.searchParams.get('website') || '');
+  const access = verifyVideoAccessToken(request.headers.get('x-video-access-token') || '');
+  if (!access) return NextResponse.json({ ok: false, error: 'Unlock AI Video Studio to view saved video results.' }, { status: 401 });
 
-  if (!email && !slug) {
-    return NextResponse.json({ ok: false, error: 'Enter customer email or website/subdomain to find video results.' }, { status: 400 });
+  let slug = '';
+  if (access.kind === 'standalone' && access.saleId) {
+    slug = `standalone-${crypto.createHash('sha256').update(String(access.saleId)).digest('hex').slice(0, 24)}`;
+  } else if (access.kind === 'website-plan' && access.slug && access.ownerId) {
+    const owner = await getVerifiedSiteOwner(request);
+    if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
+    if (String(access.ownerId) !== String(owner.user.id)) return NextResponse.json({ ok: false, error: 'Re-verify this website plan from your secure owner session.' }, { status: 403 });
+    slug = normalizeSlug(access.slug);
   }
+  if (!slug) return NextResponse.json({ ok: false, error: 'This video access pass is no longer valid. Verify access again.' }, { status: 403 });
 
-  const filters = [];
-  if (email) filters.push(`customer_email.eq.${email}`);
-  if (slug) filters.push(`website_slug.eq.${slug}`);
-  const filterQuery = filters.length > 1 ? `or=(${filters.join(',')})` : (email ? `customer_email=eq.${encodeURIComponent(email)}` : `website_slug=eq.${encodeURIComponent(slug)}`);
-  const path = `heygen_video_jobs?select=*&${filterQuery}&order=created_at.desc&limit=30`;
+  const path = `heygen_video_jobs?select=*&website_slug=eq.${encodeURIComponent(slug)}&order=created_at.desc&limit=30`;
   const result = await supabaseGet(path);
 
   if (result.missing) return NextResponse.json({ ok: false, error: 'Supabase is not connected.' }, { status: 500 });

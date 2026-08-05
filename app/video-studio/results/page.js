@@ -2,6 +2,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Nav from '../../../lib/Nav';
 
+const VIDEO_ACCESS_TOKEN_KEY = 'cookieVideoAccessToken';
+const SITE_OWNER_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
+
 function normalizeInput(value) {
   return String(value || '').trim();
 }
@@ -39,9 +42,10 @@ export default function VideoResultsPage() {
   const [message, setMessage] = useState('Enter an email or website/subdomain to find videos created through Cookie AI Video Studio.');
   const [loading, setLoading] = useState(false);
   const [refreshingId, setRefreshingId] = useState('');
+  const [accessToken, setAccessToken] = useState('');
   const sortedJobs = useMemo(() => sortJobs(jobs), [jobs]);
 
-  async function searchVideos(inputEmail = email, inputSlug = slug) {
+  async function searchVideos(inputEmail = email, inputSlug = slug, token = accessToken) {
     const q = new URLSearchParams();
     if (normalizeInput(inputEmail)) q.set('email', normalizeInput(inputEmail));
     if (normalizeInput(inputSlug)) q.set('slug', normalizeInput(inputSlug));
@@ -49,7 +53,12 @@ export default function VideoResultsPage() {
     setLoading(true);
     setMessage('Loading video results...');
     try {
-      const res = await fetch(`/api/heygen/jobs?${q.toString()}`);
+      const res = await fetch(`/api/heygen/jobs?${q.toString()}`, {
+        headers: {
+          'X-Video-Access-Token': token,
+          Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}`
+        }
+      });
       const data = await res.json().catch(() => ({ ok: false, error: 'Could not read server response.' }));
       if (!res.ok || !data.ok) throw new Error(data.error || 'Could not load videos.');
       setJobs(data.jobs || []);
@@ -63,12 +72,17 @@ export default function VideoResultsPage() {
   }
 
   useEffect(() => {
+    setAccessToken(localStorage.getItem(VIDEO_ACCESS_TOKEN_KEY) || '');
     const q = new URLSearchParams(window.location.search);
     const initialEmail = q.get('email') || '';
     const initialSlug = q.get('slug') || '';
     if (initialEmail) setEmail(initialEmail);
     if (initialSlug) setSlug(initialSlug);
-    if (initialEmail || initialSlug) searchVideos(initialEmail, initialSlug);
+    if (initialEmail || initialSlug) {
+      const token = localStorage.getItem(VIDEO_ACCESS_TOKEN_KEY) || '';
+      setAccessToken(token);
+      searchVideos(initialEmail, initialSlug, token);
+    }
   }, []);
 
   async function refreshJob(job) {
@@ -79,7 +93,11 @@ export default function VideoResultsPage() {
     try {
       const res = await fetch('/api/heygen/status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Video-Access-Token': accessToken,
+          Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}`
+        },
         body: JSON.stringify({ jobId: job.id, sessionId: sessionId(job), videoId: videoId(job) })
       });
       const data = await res.json().catch(() => ({ ok: false, error: 'Could not read status response.' }));

@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
+import { verifyVideoAccessToken } from '../../../../lib/videoAccessToken';
+import { getVerifiedSiteOwner } from '../../../../lib/siteOwnerAuth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -27,6 +30,17 @@ async function supabasePatch(path, update) {
     headers: supabaseHeaders(),
     body: JSON.stringify(update)
   });
+  const text = await res.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = text; }
+  return { ok: res.ok, status: res.status, data };
+}
+
+async function supabaseGet(path) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return { ok: false, missing: true, data: null };
+  const res = await fetch(`${url}/rest/v1/${path}`, { headers: supabaseHeaders(), cache: 'no-store' });
   const text = await res.text();
   let data;
   try { data = JSON.parse(text); } catch { data = text; }
@@ -66,6 +80,21 @@ export async function POST(request) {
     let sessionId = String(body.sessionId || '').trim();
     let videoId = String(body.videoId || '').trim();
     const jobId = String(body.jobId || '').trim();
+    const access = verifyVideoAccessToken(request.headers.get('x-video-access-token') || '');
+    if (!access || !jobId) return NextResponse.json({ ok: false, error: 'Unlock AI Video Studio to refresh a saved video.' }, { status: 401 });
+    let allowedSlug = '';
+    if (access.kind === 'standalone' && access.saleId) {
+      allowedSlug = `standalone-${crypto.createHash('sha256').update(String(access.saleId)).digest('hex').slice(0, 24)}`;
+    } else if (access.kind === 'website-plan' && access.slug && access.ownerId) {
+      const owner = await getVerifiedSiteOwner(request);
+      if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
+      if (String(access.ownerId) !== String(owner.user.id)) return NextResponse.json({ ok: false, error: 'Re-verify this website plan from your secure owner session.' }, { status: 403 });
+      allowedSlug = String(access.slug);
+    }
+    if (!allowedSlug) return NextResponse.json({ ok: false, error: 'This video access pass is no longer valid. Verify access again.' }, { status: 403 });
+    const stored = await supabaseGet(`heygen_video_jobs?id=eq.${encodeURIComponent(jobId)}&select=id,website_slug&limit=1`);
+    if (!stored.ok || !Array.isArray(stored.data) || !stored.data[0]) return NextResponse.json({ ok: false, error: 'Saved video was not found.' }, { status: 404 });
+    if (String(stored.data[0].website_slug || '') !== allowedSlug) return NextResponse.json({ ok: false, error: 'This saved video does not belong to your access pass.' }, { status: 403 });
     let sessionData = null;
 
     if (sessionId && !videoId) {

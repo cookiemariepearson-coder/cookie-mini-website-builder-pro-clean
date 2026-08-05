@@ -145,6 +145,16 @@ export default function GumroadSubscriptionsAdmin() {
     setMsg(data.message || data.error || 'Could not send owner sign-in link.');
   }
 
+  async function lockDashboard() {
+    try {
+      await fetch('/api/auth/admin/session', { method: 'DELETE' });
+    } catch {}
+    setReady(false);
+    setWebsites([]);
+    setEvents([]);
+    setMsg('Dashboard locked.');
+  }
+
   const activeCount = websites.filter(w => w.access_status === 'active' && w.status === 'published').length;
   const pausedCount = websites.filter(w => w.access_status === 'paused' || w.status === 'paused').length;
   const archiveCount = websites.filter(isArchived).length;
@@ -306,7 +316,7 @@ export default function GumroadSubscriptionsAdmin() {
         {ready && (
           <>
             <div className="navRow" style={{ flexWrap: 'wrap', gap: 12 }}>
-              <button className="btn dark" onClick={() => { setReady(false); setPin(''); setWebsites([]); setEvents([]); }}>Lock Dashboard</button>
+              <button className="btn dark" onClick={lockDashboard}>Lock Dashboard</button>
               <button className="btn" onClick={load}>Refresh</button>
               <button className="btn light" onClick={registerHooks} disabled={registering}>{registering ? 'Registering...' : 'Register Gumroad Webhooks'}</button>
               <a className="btn light" href="/admin">Back to Admin</a>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { createVideoAccessToken } from '../../../../lib/videoAccessToken';
+import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,8 @@ export async function POST(request) {
       });
     }
 
+    const owner = await getVerifiedSiteOwner(request);
+    if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
     const slug = clean(body.slug).replace(/[^a-z0-9-]/g, '');
     const email = clean(body.email);
     if (!slug && !email) return NextResponse.json({ ok: false, error: 'Enter the website email or subdomain, or use a Gumroad license key.' }, { status: 400 });
@@ -44,8 +47,8 @@ export async function POST(request) {
     const active = site && clean(site.access_status) === 'active' && clean(site.subscription_status) === 'active';
     const eligible = site && ['business', 'premium'].includes(clean(site.plan));
     const emailMatches = !email || [site?.customer_email, site?.gumroad_email].map(clean).includes(email);
-    if (!active || !eligible || !emailMatches) return NextResponse.json({ ok: false, error: 'No active Business or Premium website access was verified.' }, { status: 403 });
-    return NextResponse.json({ ok: true, token: createVideoAccessToken({ kind: 'website-plan', slug: site.slug, plan: site.plan }), access: `${site.plan} website plan` });
+    if (!active || !eligible || !emailMatches || !siteBelongsToOwner(site, owner)) return NextResponse.json({ ok: false, error: 'No active Business or Premium website access was verified for this signed-in owner.' }, { status: 403 });
+    return NextResponse.json({ ok: true, token: createVideoAccessToken({ kind: 'website-plan', slug: site.slug, plan: site.plan, ownerId: owner.user.id }), access: `${site.plan} website plan` });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }

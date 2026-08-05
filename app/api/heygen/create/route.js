@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { verifyVideoAccessToken } from '../../../../lib/videoAccessToken';
+import { getVerifiedAdmin, getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -161,11 +162,10 @@ function getWebsiteStatus(row) {
   return String(row?.status || site.status || 'draft').toLowerCase();
 }
 
-async function checkCustomerAccess(body) {
-  const requiredCode = process.env.HEYGEN_VIDEO_ACCESS_CODE || process.env.ADMIN_PIN || '';
-  const providedCode = String(body.accessCode || '').trim();
-  const ownerOverride = Boolean(requiredCode && providedCode === String(requiredCode).trim());
-  if (ownerOverride) {
+async function checkCustomerAccess(request, body) {
+  if (body.ownerOverride === true) {
+    const admin = await getVerifiedAdmin(request);
+    if (!admin.ok) return { ok: false, status: admin.status, error: admin.error };
     return { ok: true, ownerOverride: true, plan: 'owner', limit: 9999, used: 0, remaining: 9999, website: null };
   }
 
@@ -192,47 +192,37 @@ async function checkCustomerAccess(body) {
     };
   }
 
-  const email = getEmail(body.customerEmail || body.email || body.accountEmail || '');
-  const slug = normalizeSlug(body.websiteSlug || body.slug || body.websiteName || body.subdomain || '');
-
-  if (!email && !slug) {
-    return {
-      ok: false,
-      status: 401,
-      error: 'Enter the customer email or website/subdomain connected to an active Business or Premium plan. Free and Starter plans use creative kit mode only.'
-    };
+  if (videoAccess?.kind === 'website-plan' && videoAccess.slug && videoAccess.ownerId) {
+    const owner = await getVerifiedSiteOwner(request);
+    if (!owner.ok) return { ok: false, status: owner.status, error: owner.error };
+    if (String(videoAccess.ownerId) !== String(owner.user.id)) {
+      return { ok: false, status: 403, error: 'Re-verify your website plan from your verified owner session.' };
+    }
+    const lookup = await findWebsite({ email: '', slug: videoAccess.slug });
+    if (lookup.missingSupabase) return { ok: false, status: 500, error: 'Supabase is not connected for AI video plan limits.' };
+    if (!lookup.website || !siteBelongsToOwner(lookup.website, owner)) {
+      return { ok: false, status: 403, error: 'This video pass does not belong to the signed-in website owner.' };
+    }
+    const website = lookup.website;
+    const status = getWebsiteStatus(website);
+    const plan = getWebsitePlan(website);
+    const baseLimit = planLimit(plan);
+    const bonus = Number(website.video_bonus_credits || 0);
+    const currentMonth = monthKey();
+    const used = website.video_month_key === currentMonth ? Number(website.video_usage_month || 0) : 0;
+    const totalLimit = Math.max(0, baseLimit + bonus);
+    const remaining = Math.max(0, totalLimit - used);
+    if (['paused', 'archived', 'deleted', 'inactive'].includes(status) || totalLimit <= 0 || remaining <= 0) {
+      return { ok: false, status: 403, plan, used, limit: totalLimit, remaining, error: 'This website plan does not have an available active AI video credit.' };
+    }
+    return { ok: true, ownerOverride: false, website, plan, used, limit: totalLimit, remaining, month: currentMonth };
   }
 
-  const lookup = await findWebsite({ email, slug });
-  if (lookup.missingSupabase) {
-    return { ok: false, status: 500, error: 'Supabase is not connected for AI video plan limits.' };
-  }
-  const website = lookup.website;
-  if (!website) {
-    return { ok: false, status: 404, error: 'No customer website or draft was found for that email/subdomain.' };
-  }
-
-  const status = getWebsiteStatus(website);
-  if (['paused', 'archived', 'deleted', 'inactive'].includes(status)) {
-    return { ok: false, status: 403, error: `This website is ${status}. AI video generation is locked until the plan is active.` };
-  }
-
-  const plan = getWebsitePlan(website);
-  const baseLimit = planLimit(plan);
-  const bonus = Number(website.video_bonus_credits || 0);
-  const currentMonth = monthKey();
-  const used = website.video_month_key === currentMonth ? Number(website.video_usage_month || 0) : 0;
-  const totalLimit = Math.max(0, baseLimit + bonus);
-  const remaining = Math.max(0, totalLimit - used);
-
-  if (totalLimit <= 0) {
-    return { ok: false, status: 403, plan, used, limit: totalLimit, remaining: 0, error: 'Real HeyGen video is not included with this plan. Use the creative kit, or upgrade to Business or Premium.' };
-  }
-  if (remaining <= 0) {
-    return { ok: false, status: 403, plan, used, limit: totalLimit, remaining: 0, error: `This ${plan} plan has used all real AI video credits for ${currentMonth}. Owner testing mode can bypass customer credits when the correct owner access code is entered.` };
-  }
-
-  return { ok: true, ownerOverride: false, website, plan, used, limit: totalLimit, remaining, month: currentMonth };
+  return {
+    ok: false,
+    status: 401,
+    error: 'Verify your active website plan from your secure owner session, or use a Gumroad license key.'
+  };
 }
 
 async function incrementUsage(access, heygenPayload) {
@@ -287,7 +277,7 @@ export async function POST(request) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const access = await checkCustomerAccess(body);
+    const access = await checkCustomerAccess(request, body);
     if (!access.ok) {
       return NextResponse.json({ ok: false, ...access }, { status: access.status || 403 });
     }

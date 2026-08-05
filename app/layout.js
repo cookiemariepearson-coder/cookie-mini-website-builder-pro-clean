@@ -15,8 +15,24 @@ import './admin-warm-refresh.css';
 import CookieAiAssistant from '../components/CookieAiAssistant';
 
 export const metadata = {
-  title: 'Cookie Mini Website Builder Pro',
-  description: 'Build, publish, and grow simple business websites.'
+  metadataBase: new URL('https://www.cookiesdigitalcreations.com'),
+  title: {
+    default: 'Cookie Mini Website Builder Pro',
+    template: '%s | Cookie Mini Website Builder Pro'
+  },
+  description: 'Build, publish, and grow simple business websites.',
+  robots: { index: true, follow: true },
+  openGraph: {
+    type: 'website',
+    siteName: 'Cookie Mini Website Builder Pro',
+    title: 'Cookie Mini Website Builder Pro',
+    description: 'Build, publish, and grow simple business websites.'
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Cookie Mini Website Builder Pro',
+    description: 'Build, publish, and grow simple business websites.'
+  }
 };
 
 export default function RootLayout({ children }) {

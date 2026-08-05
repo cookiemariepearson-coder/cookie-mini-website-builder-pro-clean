@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Nav from '../../lib/Nav';
 
+const SITE_OWNER_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
+
 function clean(value = '') {
   return String(value || '').trim();
 }
@@ -93,7 +95,6 @@ export default function VideoStudioPage() {
   const [copied, setCopied] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [websiteSlug, setWebsiteSlug] = useState('');
-  const [accessCode, setAccessCode] = useState('');
   const [smartKit, setSmartKit] = useState(null);
   const [working, setWorking] = useState('');
   const [status, setStatus] = useState('');
@@ -114,7 +115,10 @@ export default function VideoStudioPage() {
     setAccessMessage('Verifying access...');
     const response = await fetch('/api/video-access/activate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(mode === 'license' ? {} : { Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}` })
+      },
       body: JSON.stringify(mode === 'license' ? { licenseKey } : { email: customerEmail, slug: websiteSlug })
     });
     const data = await response.json();
@@ -192,10 +196,13 @@ export default function VideoStudioPage() {
     try {
       const response = await fetch('/api/heygen/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessKind === 'website-plan' ? { Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}` } : {})
+        },
         body: JSON.stringify({
           businessName: biz, promo, audience, videoType, platform, style, length, voice,
-          customerEmail, websiteSlug, accessCode,
+          customerEmail, websiteSlug,
           accessToken,
           script: kit.Script,
           captions: kit.Captions,
@@ -348,7 +355,7 @@ export default function VideoStudioPage() {
           ) : <div className="realVideoBoxFriendly">
             <div className="studioSectionHeading"><span className="studioStepNumber">3</span><div><h2>Generate the real video</h2><p>This step uses a video credit. The planning kit above does not.</p></div></div>
             <div className="videoAccessExplainer">
-              <div><strong>Business or Premium customer?</strong><span>Enter the email or website name connected to your active website plan.</span></div>
+              <div><strong>Business or Premium customer?</strong><span>Verify with the secure email sign-in connected to your active website plan.</span></div>
               <div><strong>No included video credits?</strong><span>You can still copy or download the complete kit and use it in your preferred video editor.</span></div>
             </div>
             <div className="row">
@@ -361,11 +368,6 @@ export default function VideoStudioPage() {
                 <input name="video-website-name" autoComplete="off" value={websiteSlug} onChange={e => setWebsiteSlug(e.target.value)} placeholder="Example: my-business" />
               </div>
             </div>
-            <details className="ownerAccessDetails">
-              <summary>Owner or special-purchase access only</summary>
-              <p>Most website-plan customers can leave this closed. Enter a code only if Cookie Digital Creations gave you one.</p>
-              <div className="field"><label>Special access code</label><input type="password" value={accessCode} onChange={e => setAccessCode(e.target.value)} autoComplete="off" /></div>
-            </details>
             <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working)}>
               {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
             </button>
