@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
+import { getVerifiedSiteOwner, siteBelongsToEmail } from '../../../../lib/siteOwnerAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,9 +8,11 @@ function clean(value = '') { return String(value || '').trim().toLowerCase(); }
 
 export async function POST(request) {
   try {
+    const owner = await getVerifiedSiteOwner(request);
+    if (!owner.ok) return NextResponse.json({ ok: false, verified: false, error: owner.error }, { status: owner.status });
     const body = await request.json();
     const slug = clean(body.slug);
-    const email = clean(body.email);
+    const email = owner.email;
     const expected = clean(body.plan);
     if (!slug && !email) return NextResponse.json({ ok: false, verified: false, error: 'Missing website or purchase email.' }, { status: 400 });
 
@@ -20,8 +23,11 @@ export async function POST(request) {
     if (error) throw error;
     const website = data?.[0];
     if (!website) return NextResponse.json({ ok: true, verified: false, pending: true, error: 'The Gumroad purchase has not matched this website yet.' });
+    if (!siteBelongsToEmail(website, owner.email)) {
+      return NextResponse.json({ ok: false, verified: false, error: 'This website belongs to a different verified email.' }, { status: 403 });
+    }
 
-    const emailMatches = !email || [website.customer_email, website.gumroad_email].map(clean).includes(email);
+    const emailMatches = [website.customer_email, website.gumroad_email].map(clean).includes(email);
     const active = clean(website.subscription_status) === 'active' && clean(website.access_status) === 'active';
     const planMatches = expected === 'extra'
       ? clean(website.extra_page_subscription_status) === 'active'

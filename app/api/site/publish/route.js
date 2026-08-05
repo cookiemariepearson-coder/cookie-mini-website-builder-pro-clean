@@ -30,14 +30,27 @@ export async function POST(req) {
     const slug = requestedSlug && !placeholderSlugs.has(requestedSlug)
       ? requestedSlug
       : slugify(site.draftName || site.businessName || 'my-website');
-    const plan = site.plan || 'free';
-    const monthly = plan === 'premium' ? 50 : plan === 'business' ? 30 : plan === 'starter' ? 19 : 0;
+    const requestedPlan = site.plan || 'free';
+    const paidPlans = new Set(['starter', 'business', 'premium']);
     const supabase = getSupabaseAdmin();
     const { data: existing, error: lookupError } = await supabase.from('websites').select('*').eq('slug', slug).maybeSingle();
     if (lookupError) throw lookupError;
     if (existing && !siteBelongsToEmail(existing, owner.email)) {
       return NextResponse.json({ ok: false, error: 'That website address already belongs to a different verified email. Choose another business or website name.' }, { status: 403 });
     }
+
+    if (paidPlans.has(requestedPlan)) {
+      const paidAccess = existing
+        && String(existing.plan || '').toLowerCase() === requestedPlan
+        && String(existing.subscription_status || '').toLowerCase() === 'active'
+        && String(existing.access_status || '').toLowerCase() === 'active';
+      if (!paidAccess) {
+        return NextResponse.json({ ok: false, error: 'Your paid plan is not confirmed yet. Complete checkout and wait for payment confirmation before publishing.' }, { status: 402 });
+      }
+    }
+
+    const plan = paidPlans.has(requestedPlan) ? requestedPlan : 'free';
+    const monthly = plan === 'premium' ? 50 : plan === 'business' ? 30 : plan === 'starter' ? 19 : 0;
 
     const protectedSite = { ...site, slug, customerEmail: owner.email, status: 'published' };
     const row = {

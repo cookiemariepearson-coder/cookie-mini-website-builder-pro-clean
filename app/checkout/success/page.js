@@ -101,7 +101,7 @@ export default function CheckoutSuccess() {
       if (paidParam && paidParam !== 'free') {
         const verificationResponse = await fetch('/api/checkout/verify', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: ownerAuthHeaders(),
           body: JSON.stringify({
             slug,
             email: saved.customerEmail || saved.email || '',
