@@ -1,10 +1,23 @@
 import { NextResponse } from 'next/server';
+import { createHash, timingSafeEqual } from 'crypto';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
 
 function normalize(value) {
   return String(value || '').trim();
+}
+
+function safeEqual(left = '', right = '') {
+  const a = Buffer.from(String(left));
+  const b = Buffer.from(String(right));
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+function isAuthorizedWebhook(req) {
+  const configured = String(process.env.GUMROAD_WEBHOOK_SECRET || '').trim();
+  const provided = new URL(req.url).searchParams.get('token') || '';
+  return Boolean(configured) && safeEqual(provided, configured);
 }
 
 function slugify(value) {
@@ -137,6 +150,9 @@ export async function POST(req) {
   const receivedAt = new Date().toISOString();
   let payload = {};
   try {
+    if (!isAuthorizedWebhook(req)) {
+      return NextResponse.json({ ok: false, error: 'Unauthorized webhook.' }, { status: 401 });
+    }
     payload = await parseRequest(req);
     const supabase = getSupabaseAdmin();
     const resource = normalize(payload.resource_name || payload.resource || payload.event || resourceFromQuery || 'sale');
@@ -147,7 +163,9 @@ export async function POST(req) {
     const saleId = normalize(payload.sale_id || payload.id || payload.order_id || payload.purchase_id);
     const subscriptionId = normalize(payload.subscription_id || payload.subscription || payload.subscriber_id);
     const productId = normalize(payload.product_id || payload.product_permalink || payload.permalink);
-    const eventKey = normalize(payload.event_id || payload.webhook_id || `${resource}:${saleId || subscriptionId || email || 'unknown'}:${receivedAt}`);
+    const eventKey = normalize(payload.event_id || payload.webhook_id) || createHash('sha256')
+      .update(JSON.stringify({ resource, saleId, subscriptionId, email, productId, payload }))
+      .digest('hex');
 
     let matched = await findWebsite(supabase, { slug, email });
     let action = 'logged_only_no_matching_website';

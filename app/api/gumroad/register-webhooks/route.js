@@ -19,12 +19,16 @@ export async function POST(req) {
     if (!token) {
       return NextResponse.json({ ok:false, error:'Missing GUMROAD_ACCESS_TOKEN in Vercel.' }, { status:400 });
     }
+    const webhookSecret = String(process.env.GUMROAD_WEBHOOK_SECRET || '').trim();
+    if (!webhookSecret) {
+      return NextResponse.json({ ok:false, error:'Missing GUMROAD_WEBHOOK_SECRET in Vercel.' }, { status:400 });
+    }
 
     const results = [];
     for (const resource of RESOURCES) {
       const form = new URLSearchParams();
       form.set('resource_name', resource);
-      form.set('post_url', `${baseUrl(req)}/api/gumroad/webhook?resource=${resource}`);
+      form.set('post_url', `${baseUrl(req)}/api/gumroad/webhook?resource=${resource}&token=${encodeURIComponent(webhookSecret)}`);
       const response = await fetch('https://api.gumroad.com/v2/resource_subscriptions', {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/x-www-form-urlencoded' },
