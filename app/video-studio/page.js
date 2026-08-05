@@ -244,7 +244,7 @@ export default function VideoStudioPage() {
             <strong>{accessToken ? '✓ AI Video Studio unlocked' : 'Unlock AI Video Studio'}</strong>
             <p>{accessMessage}</p>
             {accessKind === 'standalone' && <p><strong>$5 standalone access:</strong> Your purchase includes the complete planning kit and one real video generated through this website.</p>}
-            {!accessToken && <>
+            {(!accessToken || accessKind === 'website-plan') && <>
               <div className="row">
                 <div className="field"><label>Business/Premium customer email</label><input value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for the website plan" /></div>
                 <div className="field"><label>Website name or subdomain</label><input value={websiteSlug} onChange={e => setWebsiteSlug(e.target.value)} placeholder="Example: my-business" /></div>
