@@ -142,6 +142,13 @@ test('website and standalone video access remain server verified', async () => {
   assert.match(studio, /href="\/checkout\/ai-video">Buy \$5 Standalone AI Video Access/);
   assert.match(studio, /href="\/customer\?return=video-studio">Secure Website-Plan Sign-In/);
   assert.match(studio, /href="\/video-studio\/results">View Video Results/);
+  assert.doesNotMatch(studio, /if \(!accessToken\) \{\s*setStatus\('Unlock AI Video Studio before creating the AI-powered Smart Video Kit/);
+  assert.match(studio, /response\.status === 401 \|\| response\.status === 403/);
+  assert.match(studio, /View Existing Video Results/);
+  const videoKit = await source('app/api/video-kit/route.js');
+  assert.doesNotMatch(videoKit, /if \(!access\) return NextResponse/);
+  assert.match(videoCreate, /const access = await checkCustomerAccess\(request, body\)/);
+  assert.ok(videoCreate.indexOf('const access = await checkCustomerAccess(request, body)') < videoCreate.indexOf("fetch('https://api.heygen.com/v3/video-agents'"));
   const videoCheckout = await source('app/checkout/ai-video/page.js');
   assert.doesNotMatch(videoCheckout, /target="_blank"/);
 });

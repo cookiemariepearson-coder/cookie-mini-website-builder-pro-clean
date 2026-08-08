@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import crypto from 'crypto';
 import { readFile } from 'node:fs/promises';
 import { verifyVideoAccessToken } from '../lib/videoAccessToken.js';
-import { authorizeVideoResultAccess, standaloneVideoSlug, videoJobBelongsToAccess } from '../lib/videoResultAccess.js';
+import { authorizeVideoResultAccess, filterAuthorizedVideoJobs, standaloneVideoSlug, videoJobBelongsToAccess } from '../lib/videoResultAccess.js';
 
 async function source(path) {
   return readFile(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -11,9 +11,22 @@ async function source(path) {
 
 test('Customer A standalone video cannot be listed with Customer B email', () => {
   const accessA = { kind: 'standalone', saleId: 'sale-a', email: 'customer-a@example.com' };
-  assert.equal(authorizeVideoResultAccess({ access: accessA, requestedEmail: 'customer-a@example.com', requireIdentity: true }).ok, true);
-  assert.deepEqual(authorizeVideoResultAccess({ access: accessA, requestedEmail: 'customer-b@example.com', requireIdentity: true }), { ok: false, status: 403 });
+  const authorizedA = authorizeVideoResultAccess({ access: accessA, requestedEmail: 'customer-a@example.com', requireIdentity: true });
+  const jobs = [{ id: 'video-a', website_slug: standaloneVideoSlug('sale-a'), customer_email: 'customer-a@example.com' }];
+  assert.deepEqual(filterAuthorizedVideoJobs(jobs, { access: accessA, authorized: authorizedA, requestedEmail: 'customer-a@example.com' }).map(job => job.id), ['video-a']);
+  assert.deepEqual(filterAuthorizedVideoJobs(jobs, { access: accessA, authorized: authorizedA, requestedEmail: 'customer-b@example.com' }), []);
   assert.deepEqual(authorizeVideoResultAccess({ access: accessA, requireIdentity: true }), { ok: false, status: 403 });
+});
+
+test('legacy results email works only inside the already verified Gumroad sale namespace', () => {
+  const accessA = { kind: 'standalone', saleId: 'sale-a', email: 'purchase-a@example.com' };
+  const authorizedA = authorizeVideoResultAccess({ access: accessA, requestedEmail: 'saved-results@example.com', requireIdentity: true });
+  const jobs = [
+    { id: 'video-a', website_slug: standaloneVideoSlug('sale-a'), customer_email: 'saved-results@example.com' },
+    { id: 'video-b', website_slug: standaloneVideoSlug('sale-b'), customer_email: 'saved-results@example.com' }
+  ];
+  assert.deepEqual(filterAuthorizedVideoJobs(jobs, { access: accessA, authorized: authorizedA, requestedEmail: 'saved-results@example.com' }).map(job => job.id), ['video-a']);
+  assert.deepEqual(filterAuthorizedVideoJobs(jobs, { access: accessA, authorized: authorizedA, requestedEmail: 'unknown@example.com' }), []);
 });
 
 test('website video access is bound to the signed-in owner, email, and website slug', () => {
@@ -55,6 +68,8 @@ test('video endpoints enforce server ownership and never disclose provider media
     source('app/api/heygen/create/route.js')
   ]);
   assert.match(jobs, /requireIdentity: true/);
+  assert.match(jobs, /filterAuthorizedVideoJobs/);
+  assert.match(jobs, /customer_email/);
   assert.match(jobs, /video_available: Boolean\(video_url\)/);
   assert.match(status, /select=id,website_slug,heygen_session_id,heygen_video_id/);
   assert.doesNotMatch(status, /String\(body\.videoId/);
@@ -62,5 +77,6 @@ test('video endpoints enforce server ownership and never disclose provider media
   assert.match(media, /X-Content-Type-Options/);
   assert.doesNotMatch(results, /Copy Video Link/);
   assert.match(results, /\/api\/heygen\/media\?jobId=/);
+  assert.match(results, /Verify Gumroad Purchase & Find Videos/);
   assert.doesNotMatch(create, /heygenSessionUrl:/);
 });

@@ -8,6 +8,13 @@ const SITE_OWNER_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
 function normalizeInput(value) {
   return String(value || '').trim();
 }
+function accessPayload(token = '') {
+  try {
+    const data = String(token).split('.')[0];
+    const normalized = data.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(window.atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='))) || {};
+  } catch { return {}; }
+}
 function thumbnailUrl(job) { return job.thumbnail_url || job.thumbnailUrl || ''; }
 function videoId(job) { return job.heygen_video_id || job.videoId || ''; }
 function sessionId(job) { return job.heygen_session_id || job.sessionId || ''; }
@@ -44,6 +51,8 @@ export default function VideoResultsPage() {
   const [accessToken, setAccessToken] = useState('');
   const [mediaUrls, setMediaUrls] = useState({});
   const [loadingMediaId, setLoadingMediaId] = useState('');
+  const [licenseKey, setLicenseKey] = useState('');
+  const [verifying, setVerifying] = useState('');
   const sortedJobs = useMemo(() => sortJobs(jobs), [jobs]);
 
   async function searchVideos(inputEmail = email, inputSlug = slug, token = accessToken) {
@@ -75,9 +84,10 @@ export default function VideoResultsPage() {
   }
 
   useEffect(() => {
-    setAccessToken(localStorage.getItem(VIDEO_ACCESS_TOKEN_KEY) || '');
+    const savedAccessToken = localStorage.getItem(VIDEO_ACCESS_TOKEN_KEY) || '';
+    setAccessToken(savedAccessToken);
     const q = new URLSearchParams(window.location.search);
-    const initialEmail = q.get('email') || '';
+    const initialEmail = q.get('email') || accessPayload(savedAccessToken).email || '';
     const initialSlug = q.get('slug') || '';
     if (initialEmail) setEmail(initialEmail);
     if (initialSlug) setSlug(initialSlug);
@@ -87,6 +97,42 @@ export default function VideoResultsPage() {
       searchVideos(initialEmail, initialSlug, token);
     }
   }, []);
+
+  async function activateResultsAccess(mode) {
+    if (mode === 'license' && !normalizeInput(licenseKey)) {
+      setMessage('Paste the Gumroad license key from the AI Video purchase receipt first.');
+      return;
+    }
+    if (mode === 'plan' && !normalizeInput(email) && !normalizeInput(slug)) {
+      setMessage('Enter the verified website email or subdomain first.');
+      return;
+    }
+    setVerifying(mode);
+    setMessage('Verifying your video access...');
+    try {
+      const response = await fetch('/api/video-access/activate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(mode === 'plan' ? { Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}` } : {})
+        },
+        body: JSON.stringify(mode === 'license' ? { licenseKey } : { email, slug })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) throw new Error(data.error || 'Video access could not be verified.');
+      localStorage.setItem(VIDEO_ACCESS_TOKEN_KEY, data.token);
+      setAccessToken(data.token);
+      const verifiedEmail = data.email || email;
+      if (data.email) setEmail(data.email);
+      setMessage('Access verified. Loading videos that belong to this purchase or website...');
+      await searchVideos(verifiedEmail, mode === 'license' ? '' : slug, data.token);
+    } catch (error) {
+      setJobs([]);
+      setMessage(error.message || 'Video access could not be verified.');
+    } finally {
+      setVerifying('');
+    }
+  }
 
   function mediaHeaders() {
     return {
@@ -186,7 +232,13 @@ export default function VideoResultsPage() {
         <div className="field"><label>Email</label><input value={email} onChange={e => setEmail(e.target.value)} placeholder="customer@email.com" autoComplete="off" /></div>
         <div className="field"><label>Website name or subdomain</label><input value={slug} onChange={e => setSlug(e.target.value)} placeholder="my-business-name" autoComplete="off" /></div>
       </div>
-      <div className="navRow"><button className="btn" onClick={() => searchVideos()} disabled={loading}>{loading ? 'Searching...' : 'Find My Videos'}</button><a className="btn dark" href="/video-studio">Create Another Video</a><a className="btn light" href="/customer">My Website</a></div>
+      <div className="field"><label>Gumroad AI Video license key</label><input value={licenseKey} onChange={event => setLicenseKey(event.target.value)} placeholder="Paste the license key from your receipt" autoComplete="off" /></div>
+      <div className="navRow">
+        <button className="btn" onClick={() => searchVideos()} disabled={loading}>{loading ? 'Searching...' : 'Find My Videos'}</button>
+        <button className="btn dark" type="button" onClick={() => activateResultsAccess('license')} disabled={Boolean(verifying)}>{verifying === 'license' ? 'Verifying Purchase...' : 'Verify Gumroad Purchase & Find Videos'}</button>
+        <button className="btn light" type="button" onClick={() => activateResultsAccess('plan')} disabled={Boolean(verifying)}>{verifying === 'plan' ? 'Verifying Website...' : 'Verify Website Plan & Find Videos'}</button>
+        <a className="btn dark" href="/video-studio">Create Another Video</a><a className="btn light" href="/customer?return=video-studio">Secure Website Sign-In</a>
+      </div>
       <div className="notice" role="status" aria-live="polite">{message}</div>
     </section>
 

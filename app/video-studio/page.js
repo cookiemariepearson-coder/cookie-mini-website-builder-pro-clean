@@ -104,6 +104,7 @@ export default function VideoStudioPage() {
   const [accessKind, setAccessKind] = useState('');
   const [licenseKey, setLicenseKey] = useState('');
   const [accessMessage, setAccessMessage] = useState('Unlock with your active Business/Premium website or your $5 Gumroad license key.');
+  const [generationDenied, setGenerationDenied] = useState(false);
 
   useEffect(() => {
     try {
@@ -144,6 +145,7 @@ export default function VideoStudioPage() {
     if (!data.ok) { setAccessMessage(data.error || 'Access could not be verified.'); return; }
     setAccessToken(data.token);
     setAccessKind(readAccessKind(data.token));
+    setGenerationDenied(false);
     if (data.email) setCustomerEmail(data.email);
     try { localStorage.setItem('cookieVideoAccessToken', data.token); } catch {}
     setAccessMessage(`Access verified: ${data.access}.`);
@@ -230,6 +232,11 @@ export default function VideoStudioPage() {
       });
       const data = await response.json();
       if (!response.ok || !data.ok) {
+        if (response.status === 401 || response.status === 403) {
+          setGenerationDenied(true);
+          setStatus(`${data.error || 'No available video entitlement was verified.'} Your planning kit remains saved. Verify another eligible website plan or use the $5 AI Video purchase option.`);
+          return;
+        }
         if (data.providerCreditRequired) {
           setStatus(data.error);
           return;
@@ -393,7 +400,7 @@ export default function VideoStudioPage() {
             <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working)}>
               {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
             </button>
-            {!accessToken && <div className="navRow"><Link className="btn dark" href="/checkout/ai-video">Buy $5 AI Video Access</Link><Link className="btn light" href="/customer?return=video-studio">Verify Eligible Website Plan</Link></div>}
+            {(!accessToken || generationDenied) && <div className="navRow"><Link className="btn dark" href="/checkout/ai-video">Buy $5 AI Video Access</Link><Link className="btn light" href="/customer?return=video-studio">Verify Eligible Website Plan</Link><Link className="btn light" href="/video-studio/results">View Existing Video Results</Link></div>}
           </div>}
         </section>
       </main>

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyVideoAccessToken } from '../../../../lib/videoAccessToken';
 import { getVerifiedSiteOwner } from '../../../../lib/siteOwnerAuth';
-import { authorizeVideoResultAccess } from '../../../../lib/videoResultAccess';
+import { authorizeVideoResultAccess, filterAuthorizedVideoJobs, normalizeVideoEmail } from '../../../../lib/videoResultAccess';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -27,6 +27,7 @@ export async function GET(request) {
   if (!access) return NextResponse.json({ ok: false, error: 'Unlock AI Video Studio to view saved video results.' }, { status: 401 });
 
   const url = new URL(request.url);
+  const requestedEmail = normalizeVideoEmail(url.searchParams.get('email') || '');
   let owner = null;
   if (access.kind === 'website-plan') {
     owner = await getVerifiedSiteOwner(request);
@@ -35,13 +36,13 @@ export async function GET(request) {
   const authorized = authorizeVideoResultAccess({
     access,
     owner,
-    requestedEmail: url.searchParams.get('email') || '',
+    requestedEmail,
     requestedSlug: url.searchParams.get('slug') || '',
     requireIdentity: true
   });
   if (!authorized.ok) return NextResponse.json({ ok: false, error: 'No videos found for this verified access.' }, { status: authorized.status });
 
-  const safeColumns = 'id,website_slug,business_name,status,video_type,platform,plan,video_url,thumbnail_url,duration,failure_code,failure_message,created_at,checked_at,updated_at';
+  const safeColumns = 'id,website_slug,customer_email,business_name,status,video_type,platform,plan,video_url,thumbnail_url,duration,failure_code,failure_message,created_at,checked_at,updated_at';
   const path = `heygen_video_jobs?select=${safeColumns}&website_slug=eq.${encodeURIComponent(authorized.slug)}&order=created_at.desc&limit=30`;
   const result = await supabaseGet(path);
 
@@ -54,7 +55,8 @@ export async function GET(request) {
     return NextResponse.json({ ok: false, error: 'Video results could not be loaded. Please try again shortly.' }, { status: result.status || 500 });
   }
 
-  const jobs = (Array.isArray(result.data) ? result.data : []).map(({ video_url, thumbnail_url, ...job }) => ({
+  const authorizedRows = filterAuthorizedVideoJobs(result.data, { access, authorized, requestedEmail });
+  const jobs = authorizedRows.map(({ video_url, thumbnail_url, customer_email, ...job }) => ({
     ...job,
     video_available: Boolean(video_url),
     thumbnail_available: Boolean(thumbnail_url)
