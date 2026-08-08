@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import Nav from '../../lib/Nav';
 
 const SITE_OWNER_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
@@ -252,6 +253,7 @@ export default function VideoStudioPage() {
               <button className="btn" type="button" onClick={() => activateAccess('plan')}>Verify Website Plan</button>
               <div className="field"><label>$5 Gumroad license key</label><input value={licenseKey} onChange={e => setLicenseKey(e.target.value)} placeholder="Paste the license key from your Gumroad receipt" /></div>
               <button className="btn dark" type="button" onClick={() => activateAccess('license')}>Verify Gumroad Purchase</button>
+              <Link className="btn light" href="/checkout/ai-video">Buy $5 Standalone AI Video Access</Link>
             </>}
           </div>
           <div className="studioSteps" aria-label="AI Video Studio steps">

@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../../lib/supabaseAdmin';
 import { rateLimit, rateLimitResponse } from '../../../../../lib/rateLimit.mjs';
-
-function safeReturnPath(value = '') {
-  const path = String(value || '').trim();
-  if (path === '/builder' || path === '/customer') return path;
-  if (/^\/customer\/edit\/[a-z0-9-]+$/.test(path)) return path;
-  return '/customer';
-}
+import { safeCustomerReturnPath } from '../../../../../lib/commerceConfig.mjs';
 
 export async function POST(req) {
   try {
@@ -21,7 +15,7 @@ export async function POST(req) {
     if (!ipLimited.ok || !emailLimited.ok) return rateLimitResponse(!ipLimited.ok ? ipLimited : emailLimited, 'Please wait before requesting another sign-in email. You can also check your spam folder.');
 
     const origin = new URL(req.url).origin;
-    const returnPath = safeReturnPath(body.returnPath);
+    const returnPath = safeCustomerReturnPath(body.returnPath);
     const redirectTo = `${origin}/customer/auth/callback?return=${encodeURIComponent(returnPath)}`;
     const supabase = getSupabaseAdmin();
     const { error } = await supabase.auth.signInWithOtp({

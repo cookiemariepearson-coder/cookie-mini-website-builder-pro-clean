@@ -1,7 +1,7 @@
 'use client';
 
 import Nav from '../../../lib/Nav';
-import { cleanCheckoutUrl } from '../../../lib/checkoutRedirect';
+import { cleanCheckoutUrl } from '../../../lib/commerceConfig.mjs';
 
 export default function AiVideoCheckoutPage() {
   const checkoutUrl = cleanCheckoutUrl(process.env.NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL || '');
@@ -34,7 +34,7 @@ export default function AiVideoCheckoutPage() {
                 Continue to Secure Gumroad Checkout — $5
               </a>
             ) : (
-              <div className="notice error">The $5 Gumroad checkout link still needs to be added in Vercel as <strong>NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL</strong>.</div>
+              <div className="notice error">Secure AI Video checkout is temporarily unavailable. Please try again shortly or contact support.</div>
             )}
 
             <a className="btn dark" href="/video-studio">

@@ -3,13 +3,7 @@
 import { Children, cloneElement, isValidElement, useEffect, useId, useMemo, useState } from 'react';
 import SitePreview from '../../lib/SitePreview.js';
 import { createDefaultSite, templateLibrary, getTemplate, pageOptions, plans, slugify, sectionPrompts, normalizeSelectedPagesForPlan, planAllowsMedia, planAllowsAiVideo, planSectionLimit, customerActionLimit, customerActionTypes, normalizeCustomerActions } from '../../lib/siteDefaults';
-
-const checkout = {
-  starter: '/checkout/starter',
-  business: '/checkout/business',
-  premium: '/checkout/premium',
-  extra: '/checkout/extra'
-};
+import { websiteCheckoutRoute } from '../../lib/commerceConfig.mjs';
 
 const DRAFT_KEY = 'cookieDraftSite';
 const LAST_STEP_KEY = 'cookieBuilderStep';
@@ -149,11 +143,14 @@ export default function Builder() {
   const [isSaving, setIsSaving] = useState(false);
   const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
   const [isSmallBuilderScreen, setIsSmallBuilderScreen] = useState(false);
+  const [pendingCheckout, setPendingCheckout] = useState('');
   const tmpl = useMemo(() => getTemplate(site.typeKey, site.styleKey), [site.typeKey, site.styleKey]);
 
   useEffect(() => {
     async function restore() {
       const params = new URLSearchParams(window.location.search);
+      const requestedCheckout = websiteCheckoutRoute(params.get('checkout')) ? params.get('checkout') : '';
+      if (requestedCheckout) setPendingCheckout(requestedCheckout);
       const draftSlug = normalizeSlug(params.get('draft') || params.get('slug') || '');
       if (draftSlug && draftSlug !== 'my-website') {
         setSaveMessage('Opening saved draft...');
@@ -163,7 +160,7 @@ export default function Builder() {
           });
           const data = await res.json();
           if (data.ok && data.site) {
-            const merged = mergeDefaults(data.site);
+            const merged = mergeDefaults({ ...data.site, ...(requestedCheckout ? { plan: requestedCheckout } : {}) });
             setSite(merged);
             localStorage.setItem(DRAFT_KEY, JSON.stringify(merged));
             localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftSlugFor(merged));
@@ -179,14 +176,26 @@ export default function Builder() {
       const saved = safeParse(localStorage.getItem(DRAFT_KEY));
       const savedStep = Number(localStorage.getItem(LAST_STEP_KEY || 0));
       if (saved) {
-        setSite(mergeDefaults(saved));
+        setSite(mergeDefaults({ ...saved, ...(requestedCheckout ? { plan: requestedCheckout } : {}) }));
         localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftSlugFor(saved));
         if (!Number.isNaN(savedStep)) setStep(Math.min(4, Math.max(0, savedStep)));
         setSaveMessage('Draft restored from this browser.');
+      } else if (requestedCheckout) {
+        setSite(current => mergeDefaults({ ...current, plan: requestedCheckout }));
       }
     }
     restore();
   }, []);
+
+  useEffect(() => {
+    if (!pendingCheckout || site.plan !== pendingCheckout || !ownerAccessToken()) return;
+    setPendingCheckout('');
+    window.history.replaceState({}, document.title, '/builder?verified=1');
+    setMessage(`Email verified. Continuing to the ${plans[pendingCheckout]?.label || 'selected plan'} checkout...`);
+    checkoutPlan();
+    // checkoutPlan saves the verified owner's draft before opening checkout.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingCheckout, site.plan]);
 
   useEffect(() => {
     function checkSize() {
@@ -534,7 +543,7 @@ export default function Builder() {
     if (!ownerAccessToken()) {
       persistLocal('Draft saved before secure email verification.');
       setMessage('Verify your email before checkout so the paid website belongs securely to you.');
-      setTimeout(() => { window.location.href = '/customer?return=builder'; }, 700);
+      setTimeout(() => { window.location.href = `/customer?return=builder&checkout=${encodeURIComponent(site.plan)}`; }, 700);
       return;
     }
     const incompleteActions = missingActionLinks(site);
@@ -552,7 +561,7 @@ export default function Builder() {
       setMessage(error.message || 'Secure online draft save failed. Checkout was not opened.');
       return;
     }
-    const url = checkout[site.plan];
+    const url = websiteCheckoutRoute(site.plan);
     if (!url) { setMessage('Checkout route missing.'); return; }
     window.location.href = url;
   }

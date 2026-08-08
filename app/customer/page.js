@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Nav from '../../lib/Nav';
+import { builderCheckoutReturnPath } from '../../lib/commerceConfig.mjs';
 
 const ROOT = 'cookiesdigitalcreations.com';
 const DRAFT_KEY = 'cookieDraftSite';
@@ -107,7 +108,10 @@ export default function Customer() {
     setLinkSending(true);
     setMsg('Sending your secure sign-in link...');
     try {
-      const returnPath = new URLSearchParams(window.location.search).get('return') === 'builder' ? '/builder' : '/customer';
+      const params = new URLSearchParams(window.location.search);
+      const returnPath = params.get('return') === 'builder'
+        ? builderCheckoutReturnPath(params.get('checkout'))
+        : '/customer';
       const res = await fetch('/api/auth/site-owner/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

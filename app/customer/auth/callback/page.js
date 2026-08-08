@@ -1,15 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { safeCustomerReturnPath } from '../../../../lib/commerceConfig.mjs';
 
 const AUTH_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
-
-function safeReturnPath(value = '') {
-  const path = String(value || '').trim();
-  if (path === '/builder' || path === '/customer') return path;
-  if (/^\/customer\/edit\/[a-z0-9-]+$/.test(path)) return path;
-  return '/customer';
-}
 
 export default function CustomerAuthCallback() {
   const [message, setMessage] = useState('Verifying your secure email link...');
@@ -18,7 +12,7 @@ export default function CustomerAuthCallback() {
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     const token = hash.get('access_token');
     const error = hash.get('error_description') || hash.get('error');
-    const returnPath = safeReturnPath(new URLSearchParams(window.location.search).get('return'));
+    const returnPath = safeCustomerReturnPath(new URLSearchParams(window.location.search).get('return'));
 
     if (error || !token) {
       setMessage(error || 'This secure sign-in link is invalid or expired. Return to My Website and request a new link.');
