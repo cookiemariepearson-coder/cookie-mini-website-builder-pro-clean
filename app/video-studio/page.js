@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Nav from '../../lib/Nav';
 
 const SITE_OWNER_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
+const VIDEO_PLAN_KEY = 'cookiePendingVideoPlan';
 
 function clean(value = '') {
   return String(value || '').trim();
@@ -109,8 +110,25 @@ export default function VideoStudioPage() {
       const savedToken = localStorage.getItem('cookieVideoAccessToken') || '';
       setAccessToken(savedToken);
       setAccessKind(readAccessKind(savedToken));
+      const savedPlan = JSON.parse(localStorage.getItem(VIDEO_PLAN_KEY) || 'null');
+      if (savedPlan && typeof savedPlan === 'object') {
+        setBiz(clean(savedPlan.biz));
+        setPromo(clean(savedPlan.promo));
+        setAudience(clean(savedPlan.audience) || 'local customers');
+        setVideoType(clean(savedPlan.videoType) || 'Business Promo');
+        setPlatform(clean(savedPlan.platform) || 'TikTok / Reels');
+        setStyle(clean(savedPlan.style) || 'Professional');
+        setLength(clean(savedPlan.length) || '15 seconds');
+        setVoice(clean(savedPlan.voice) || 'Warm female voice');
+      }
     } catch {}
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(VIDEO_PLAN_KEY, JSON.stringify({ biz, promo, audience, videoType, platform, style, length, voice, savedAt: Date.now() }));
+    } catch {}
+  }, [biz, promo, audience, videoType, platform, style, length, voice]);
 
   async function activateAccess(mode) {
     setAccessMessage('Verifying access...');
@@ -155,10 +173,6 @@ export default function VideoStudioPage() {
   }
 
   async function generateSmartKit() {
-    if (!accessToken) {
-      setStatus('Unlock AI Video Studio before creating the AI-powered Smart Video Kit.');
-      return;
-    }
     if (!clean(biz) || !clean(promo)) {
       setStatus('Enter the business name and what you are promoting first.');
       return;
@@ -186,6 +200,10 @@ export default function VideoStudioPage() {
   async function generateVideo() {
     if (!clean(biz) || !clean(promo)) {
       setStatus('Enter the business name and what you are promoting first.');
+      return;
+    }
+    if (!accessToken) {
+      setStatus('Your planning kit is saved. Verify an eligible website plan or buy the $5 standalone AI Video access before real video generation.');
       return;
     }
     if (accessKind === 'standalone' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean(customerEmail))) {
@@ -375,6 +393,7 @@ export default function VideoStudioPage() {
             <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working)}>
               {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
             </button>
+            {!accessToken && <div className="navRow"><Link className="btn dark" href="/checkout/ai-video">Buy $5 AI Video Access</Link><Link className="btn light" href="/customer?return=video-studio">Verify Eligible Website Plan</Link></div>}
           </div>}
         </section>
       </main>

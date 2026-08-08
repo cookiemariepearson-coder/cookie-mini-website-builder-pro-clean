@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Nav from '../../lib/Nav';
-import { customerReturnPath } from '../../lib/commerceConfig.mjs';
+import { PENDING_CHECKOUT_STORAGE_KEY, createPendingCheckoutIntent, customerReturnPath, pendingCheckoutReturnPath } from '../../lib/commerceConfig.mjs';
 
 const ROOT = 'cookiesdigitalcreations.com';
 const DRAFT_KEY = 'cookieDraftSite';
@@ -51,7 +51,14 @@ export default function Customer() {
     async function restoreSecureSession() {
       const token = localStorage.getItem(AUTH_TOKEN_KEY) || '';
       const params = new URLSearchParams(window.location.search);
-      const requestedReturnPath = customerReturnPath(params.get('return'), params.get('checkout'));
+      const queryReturnPath = customerReturnPath(params.get('return'), params.get('checkout'), params.get('draft'));
+      const requestedReturnPath = queryReturnPath !== '/customer'
+        ? queryReturnPath
+        : pendingCheckoutReturnPath(localStorage.getItem(PENDING_CHECKOUT_STORAGE_KEY));
+      if (queryReturnPath.startsWith('/builder?checkout=')) {
+        const intent = createPendingCheckoutIntent(params.get('checkout'), params.get('draft'));
+        if (intent) localStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify(intent));
+      }
       if (!token) {
         if (requestedReturnPath !== '/customer') {
           setMsg(requestedReturnPath.startsWith('/builder')
@@ -120,7 +127,10 @@ export default function Customer() {
     setMsg('Sending your secure sign-in link...');
     try {
       const params = new URLSearchParams(window.location.search);
-      const returnPath = customerReturnPath(params.get('return'), params.get('checkout'));
+      const queryReturnPath = customerReturnPath(params.get('return'), params.get('checkout'), params.get('draft'));
+      const returnPath = queryReturnPath !== '/customer'
+        ? queryReturnPath
+        : pendingCheckoutReturnPath(localStorage.getItem(PENDING_CHECKOUT_STORAGE_KEY));
       const res = await fetch('/api/auth/site-owner/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

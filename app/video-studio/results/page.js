@@ -8,12 +8,11 @@ const SITE_OWNER_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
 function normalizeInput(value) {
   return String(value || '').trim();
 }
-function videoUrl(job) { return job.video_url || job.videoUrl || ''; }
 function thumbnailUrl(job) { return job.thumbnail_url || job.thumbnailUrl || ''; }
 function videoId(job) { return job.heygen_video_id || job.videoId || ''; }
 function sessionId(job) { return job.heygen_session_id || job.sessionId || ''; }
 function statusLabel(job) {
-  if (videoUrl(job)) return 'completed';
+  if (job.video_available || job.videoAvailable) return 'completed';
   const status = String(job.status || 'processing').toLowerCase();
   if (['completed', 'ready', 'done', 'success'].includes(status)) return 'completed';
   if (['failed', 'error'].includes(status)) return 'failed';
@@ -43,6 +42,8 @@ export default function VideoResultsPage() {
   const [loading, setLoading] = useState(false);
   const [refreshingId, setRefreshingId] = useState('');
   const [accessToken, setAccessToken] = useState('');
+  const [mediaUrls, setMediaUrls] = useState({});
+  const [loadingMediaId, setLoadingMediaId] = useState('');
   const sortedJobs = useMemo(() => sortJobs(jobs), [jobs]);
 
   async function searchVideos(inputEmail = email, inputSlug = slug, token = accessToken) {
@@ -61,8 +62,10 @@ export default function VideoResultsPage() {
       });
       const data = await res.json().catch(() => ({ ok: false, error: 'Could not read server response.' }));
       if (!res.ok || !data.ok) throw new Error(data.error || 'Could not load videos.');
+      Object.values(mediaUrls).forEach(url => URL.revokeObjectURL(url));
+      setMediaUrls({});
       setJobs(data.jobs || []);
-      setMessage(data.jobs?.length ? `Found ${data.jobs.length} video result(s). Completed videos are shown first.` : 'No HeyGen video results found yet for that email or website.');
+      setMessage(data.jobs?.length ? `Found ${data.jobs.length} video result(s). Completed videos are shown first.` : 'No videos found for this verified access.');
     } catch (error) {
       setJobs([]);
       setMessage(error.message || 'Could not load video results.');
@@ -85,6 +88,57 @@ export default function VideoResultsPage() {
     }
   }, []);
 
+  function mediaHeaders() {
+    return {
+      'X-Video-Access-Token': accessToken,
+      Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}`
+    };
+  }
+
+  async function fetchVideoBlob(job) {
+    const response = await fetch(`/api/heygen/media?jobId=${encodeURIComponent(job.id)}`, { headers: mediaHeaders() });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || 'The video could not be loaded.');
+    }
+    return response.blob();
+  }
+
+  async function viewVideo(job) {
+    if (!job.id || mediaUrls[job.id]) return;
+    setLoadingMediaId(job.id);
+    setMessage('Loading your protected video...');
+    try {
+      const blob = await fetchVideoBlob(job);
+      const objectUrl = URL.createObjectURL(blob);
+      setMediaUrls(current => ({ ...current, [job.id]: objectUrl }));
+      setMessage('Your video is ready to watch or download.');
+    } catch (error) {
+      setMessage(error.message || 'The video could not be loaded.');
+    } finally {
+      setLoadingMediaId('');
+    }
+  }
+
+  async function downloadVideo(job) {
+    setLoadingMediaId(job.id);
+    setMessage('Preparing your protected MP4 download...');
+    try {
+      const blob = await fetchVideoBlob(job);
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = `cookie-video-${job.id}.mp4`;
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      setMessage('Your MP4 download is ready.');
+    } catch (error) {
+      setMessage(error.message || 'The MP4 could not be downloaded.');
+    } finally {
+      setLoadingMediaId('');
+    }
+  }
+
   async function refreshJob(job) {
     const key = job.id || sessionId(job) || videoId(job);
     if (!key) return;
@@ -105,20 +159,17 @@ export default function VideoResultsPage() {
       setJobs(current => current.map(item => {
         const itemKey = item.id || sessionId(item) || videoId(item);
         if (itemKey !== key) return item;
-        const readyUrl = data.videoUrl || videoUrl(item);
         return {
           ...item,
-          status: readyUrl ? 'completed' : (data.status || item.status || 'processing'),
-          heygen_session_id: data.sessionId || sessionId(item),
-          heygen_video_id: data.videoId || videoId(item),
-          video_url: readyUrl,
-          thumbnail_url: data.thumbnailUrl || thumbnailUrl(item),
+          status: data.videoAvailable ? 'completed' : (data.status || item.status || 'processing'),
+          video_available: Boolean(data.videoAvailable || item.video_available),
+          thumbnail_available: Boolean(data.thumbnailAvailable || item.thumbnail_available),
           failure_code: data.failureCode || item.failure_code || null,
           failure_message: data.failureMessage || item.failure_message || null,
           checked_at: new Date().toISOString()
         };
       }));
-      setMessage(data.videoUrl ? 'Video is ready and was updated on your site.' : 'Video is still processing. Check again soon.');
+      setMessage(data.videoAvailable ? 'Video is ready and was updated on your site.' : 'Video is still processing. Check again soon.');
     } catch (error) {
       setMessage(error.message || 'Could not refresh video status.');
     } finally {
@@ -145,7 +196,7 @@ export default function VideoResultsPage() {
       <div className="cardGrid">
         {sortedJobs.map(job => {
           const key = job.id || sessionId(job) || videoId(job) || job.created_at;
-          const ready = Boolean(videoUrl(job));
+          const ready = Boolean(job.video_available || job.videoAvailable);
           const thumb = thumbnailUrl(job);
           return <article className="card" key={key}>
             <span className="kicker">{statusText(job)}</span>
@@ -155,8 +206,8 @@ export default function VideoResultsPage() {
             {!ready && <button className="btn" onClick={() => refreshJob(job)} disabled={refreshingId === key}>{refreshingId === key ? 'Refreshing...' : 'Refresh Video Status'}</button>}
             {thumb && <img src={thumb} alt="Video thumbnail" style={{ width: '100%', borderRadius: 16, margin: '10px 0' }} />}
             {ready ? <div>
-              <video src={videoUrl(job)} controls style={{ width: '100%', borderRadius: 16, margin: '10px 0' }} />
-              <div className="navRow"><a className="btn" href={videoUrl(job)} target="_blank" rel="noreferrer">Download MP4</a><button className="btn light" onClick={() => navigator.clipboard.writeText(videoUrl(job))}>Copy Video Link</button></div>
+              {mediaUrls[job.id] ? <video src={mediaUrls[job.id]} controls style={{ width: '100%', borderRadius: 16, margin: '10px 0' }} /> : <button className="btn" type="button" onClick={() => viewVideo(job)} disabled={loadingMediaId === job.id}>{loadingMediaId === job.id ? 'Loading Video...' : 'View Video'}</button>}
+              <div className="navRow"><button className="btn" type="button" onClick={() => downloadVideo(job)} disabled={loadingMediaId === job.id}>Download MP4</button></div>
             </div> : <p className="notice">This video may still be processing. Click <strong>Refresh Video Status</strong>. If it was created yesterday and still says processing, refresh once to update the saved result.</p>}
             {job.failure_message && <p className="notice danger"><strong>HeyGen message:</strong> {job.failure_message}</p>}
             <small>Created: {job.created_at ? new Date(job.created_at).toLocaleString() : '—'}</small>

@@ -3,7 +3,7 @@
 import { Children, cloneElement, isValidElement, useEffect, useId, useMemo, useState } from 'react';
 import SitePreview from '../../lib/SitePreview.js';
 import { createDefaultSite, templateLibrary, getTemplate, pageOptions, plans, slugify, sectionPrompts, normalizeSelectedPagesForPlan, planAllowsMedia, planAllowsAiVideo, planSectionLimit, customerActionLimit, customerActionTypes, normalizeCustomerActions } from '../../lib/siteDefaults';
-import { websiteCheckoutRoute } from '../../lib/commerceConfig.mjs';
+import { PENDING_CHECKOUT_STORAGE_KEY, createPendingCheckoutIntent, websiteCheckoutRoute } from '../../lib/commerceConfig.mjs';
 
 const DRAFT_KEY = 'cookieDraftSite';
 const LAST_STEP_KEY = 'cookieBuilderStep';
@@ -458,7 +458,11 @@ export default function Builder() {
       body: JSON.stringify({ site: draft })
     });
     const data = await res.json();
-    if (!data.ok) throw new Error(data.error || 'Online draft save failed.');
+    if (!data.ok) {
+      const error = new Error(data.error || 'Online draft save failed.');
+      error.status = res.status;
+      throw error;
+    }
     if (!quiet) setSaveMessage(`Draft saved online. Find it later from My Website using your email or this name: ${data.slug}. ${nowStamp()}`);
     return data;
   }
@@ -540,10 +544,15 @@ export default function Builder() {
   }
 
   async function checkoutPlan() {
+    const draftSlug = draftSlugFor(site);
+    const checkoutIntent = createPendingCheckoutIntent(site.plan, draftSlug);
+    if (checkoutIntent) {
+      try { localStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify(checkoutIntent)); } catch {}
+    }
     if (!ownerAccessToken()) {
       persistLocal('Draft saved before secure email verification.');
       setMessage('Verify your email before checkout so the paid website belongs securely to you.');
-      setTimeout(() => { window.location.href = `/customer?return=builder&checkout=${encodeURIComponent(site.plan)}`; }, 700);
+      setTimeout(() => { window.location.href = `/customer?return=builder&checkout=${encodeURIComponent(site.plan)}&draft=${encodeURIComponent(draftSlug)}`; }, 700);
       return;
     }
     const incompleteActions = missingActionLinks(site);
@@ -558,11 +567,18 @@ export default function Builder() {
     try {
       await saveDraftOnline(draft, true);
     } catch (error) {
+      if (error.status === 401) {
+        try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
+        setMessage('Your secure session expired. Re-verify your email to continue this checkout.');
+        setTimeout(() => { window.location.href = `/customer?return=builder&checkout=${encodeURIComponent(site.plan)}&draft=${encodeURIComponent(draft.slug)}`; }, 700);
+        return;
+      }
       setMessage(error.message || 'Secure online draft save failed. Checkout was not opened.');
       return;
     }
     const url = websiteCheckoutRoute(site.plan);
     if (!url) { setMessage('Checkout route missing.'); return; }
+    try { localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY); } catch {}
     window.location.href = url;
   }
 

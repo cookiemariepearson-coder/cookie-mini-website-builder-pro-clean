@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
 import { verifyVideoAccessToken } from '../../../../lib/videoAccessToken';
 import { getVerifiedSiteOwner } from '../../../../lib/siteOwnerAuth';
+import { authorizeVideoResultAccess, videoJobBelongsToAccess } from '../../../../lib/videoResultAccess';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -78,24 +78,24 @@ export async function POST(request) {
     }
 
     const body = await request.json().catch(() => ({}));
-    let sessionId = String(body.sessionId || '').trim();
-    let videoId = String(body.videoId || '').trim();
+    let sessionId = '';
+    let videoId = '';
     const jobId = String(body.jobId || '').trim();
     const access = verifyVideoAccessToken(request.headers.get('x-video-access-token') || '');
     if (!access || !jobId) return NextResponse.json({ ok: false, error: 'Unlock AI Video Studio to refresh a saved video.' }, { status: 401 });
-    let allowedSlug = '';
-    if (access.kind === 'standalone' && access.saleId) {
-      allowedSlug = `standalone-${crypto.createHash('sha256').update(String(access.saleId)).digest('hex').slice(0, 24)}`;
-    } else if (access.kind === 'website-plan' && access.slug && access.ownerId) {
-      const owner = await getVerifiedSiteOwner(request);
+    let owner = null;
+    if (access.kind === 'website-plan') {
+      owner = await getVerifiedSiteOwner(request);
       if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
-      if (String(access.ownerId) !== String(owner.user.id)) return NextResponse.json({ ok: false, error: 'Re-verify this website plan from your secure owner session.' }, { status: 403 });
-      allowedSlug = String(access.slug);
     }
-    if (!allowedSlug) return NextResponse.json({ ok: false, error: 'This video access pass is no longer valid. Verify access again.' }, { status: 403 });
-    const stored = await supabaseGet(`heygen_video_jobs?id=eq.${encodeURIComponent(jobId)}&select=id,website_slug&limit=1`);
+    const authorized = authorizeVideoResultAccess({ access, owner });
+    if (!authorized.ok) return NextResponse.json({ ok: false, error: 'This video access pass is no longer valid. Verify access again.' }, { status: authorized.status });
+    const allowedSlug = authorized.slug;
+    const stored = await supabaseGet(`heygen_video_jobs?id=eq.${encodeURIComponent(jobId)}&select=id,website_slug,heygen_session_id,heygen_video_id&limit=1`);
     if (!stored.ok || !Array.isArray(stored.data) || !stored.data[0]) return NextResponse.json({ ok: false, error: 'Saved video was not found.' }, { status: 404 });
-    if (String(stored.data[0].website_slug || '') !== allowedSlug) return NextResponse.json({ ok: false, error: 'This saved video does not belong to your access pass.' }, { status: 403 });
+    if (!videoJobBelongsToAccess(stored.data[0].website_slug, allowedSlug)) return NextResponse.json({ ok: false, error: 'This saved video does not belong to your access pass.' }, { status: 403 });
+    sessionId = String(stored.data[0].heygen_session_id || '').trim();
+    videoId = String(stored.data[0].heygen_video_id || '').trim();
     let sessionData = null;
 
     if (sessionId && !videoId) {
@@ -112,7 +112,7 @@ export async function POST(request) {
     }
 
     if (!videoId) {
-      return NextResponse.json({ ok: true, status: sessionData?.status || 'generating', sessionId, videoId: null, videoUrl: null, message: 'Video is still generating. Check again soon.' });
+      return NextResponse.json({ ok: true, status: sessionData?.status || 'generating', videoAvailable: false, message: 'Video is still generating. Check again soon.' });
     }
 
     const videoResponse = await fetch(`https://api.heygen.com/v3/videos/${encodeURIComponent(videoId)}`, {
@@ -134,13 +134,15 @@ export async function POST(request) {
       jobId: jobId || null,
       videoId: video.id || videoId,
       videoUrl: readyUrl,
+      videoAvailable: Boolean(readyUrl),
       thumbnailUrl: video.thumbnail_url || video.thumbnailUrl || null,
       duration: video.duration || null,
       failureCode: video.failure_code || video.failureCode || null,
       failureMessage: video.failure_message || video.failureMessage ? 'The video provider could not complete this video. Please contact support if retrying does not help.' : null
     };
     await updateStoredJob({ jobId, sessionId, videoId, result });
-    return NextResponse.json(result);
+    const { videoUrl: _videoUrl, sessionId: _sessionId, videoId: _videoId, thumbnailUrl: _thumbnailUrl, ...safeResult } = result;
+    return NextResponse.json({ ...safeResult, thumbnailAvailable: Boolean(result.thumbnailUrl) });
   } catch (error) {
     console.error('[heygen-status] request failed', { message: error?.message || String(error) });
     return NextResponse.json({ ok: false, error: 'Video results could not be refreshed. Please try again shortly.' }, { status: 500 });

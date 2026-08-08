@@ -250,8 +250,8 @@ async function saveVideoJob(access, body, heygenPayload, prompt) {
   const slug = normalizeSlug(body.websiteSlug || body.slug || body.websiteName || body.subdomain || '');
   const row = {
     website_id: access.website?.id || null,
-    customer_email: email || access.customerEmail || access.website?.email || access.website?.customer_email || null,
-    website_slug: access.usageKey || slug || access.website?.slug || null,
+    customer_email: access.customerEmail || access.website?.customer_email || access.website?.email || email || null,
+    website_slug: access.usageKey || access.website?.slug || slug || null,
     business_name: cleanText(body.businessName, 'Your Business', 160),
     prompt,
     status: heygenPayload.status || 'generating',
@@ -324,10 +324,7 @@ export async function POST(request) {
     return NextResponse.json({
       ok: true,
       status: payload.status || 'generating',
-      sessionId,
-      videoId,
       jobId: savedJob?.id || null,
-      prompt,
       plan: access.plan,
       ownerOverride: access.ownerOverride,
       videoUsage: {
@@ -337,8 +334,7 @@ export async function POST(request) {
         month: monthKey()
       },
       usageWarning: usageUpdate.ok ? null : 'Video was sent to HeyGen, but usage tracking could not be updated. Run the Supabase AI video migration if needed.',
-      resultsDashboard: '/video-studio/results',
-      heygenSessionUrl: sessionId ? `https://app.heygen.com/video-agent/${sessionId}` : null,
+      resultsDashboard: '/video-studio/results'
     });
   } catch (error) {
     console.error('[heygen-create] request failed', { message: error?.message || String(error) });

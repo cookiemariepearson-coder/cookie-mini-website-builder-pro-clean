@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { safeCustomerReturnPath } from '../../../../lib/commerceConfig.mjs';
+import { PENDING_CHECKOUT_STORAGE_KEY, resolveCustomerContinuation } from '../../../../lib/commerceConfig.mjs';
 
 const AUTH_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
 
@@ -12,7 +12,10 @@ export default function CustomerAuthCallback() {
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     const token = hash.get('access_token');
     const error = hash.get('error_description') || hash.get('error');
-    const returnPath = safeCustomerReturnPath(new URLSearchParams(window.location.search).get('return'));
+    const returnPath = resolveCustomerContinuation(
+      new URLSearchParams(window.location.search).get('return'),
+      localStorage.getItem(PENDING_CHECKOUT_STORAGE_KEY)
+    );
 
     if (error || !token) {
       setMessage(error || 'This secure sign-in link is invalid or expired. Return to My Website and request a new link.');

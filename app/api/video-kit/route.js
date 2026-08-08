@@ -45,8 +45,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const access = verifyVideoAccessToken(body.accessToken);
-    if (!access) return NextResponse.json({ ok: false, error: 'Unlock AI Video Studio with an active website plan or Gumroad license key first.' }, { status: 403 });
-    const limited = rateLimit(request, { name: 'video-kit', limit: 10, windowMs: 60 * 60 * 1000, subject: access.ownerId || access.saleId || '' });
+    const limited = rateLimit(request, { name: 'video-kit', limit: 10, windowMs: 60 * 60 * 1000, subject: access?.ownerId || access?.saleId || 'planning' });
     if (!limited.ok) return rateLimitResponse(limited, 'Please wait before creating another AI video kit.');
     const businessName = clean(body.businessName, 160);
     const promo = clean(body.promo, 400);

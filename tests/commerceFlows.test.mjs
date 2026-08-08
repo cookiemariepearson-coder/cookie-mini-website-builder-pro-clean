@@ -7,7 +7,11 @@ import {
   WEBSITE_CHECKOUTS,
   builderCheckoutReturnPath,
   cleanCheckoutUrl,
+  createPendingCheckoutIntent,
   customerReturnPath,
+  parsePendingCheckoutIntent,
+  pendingCheckoutReturnPath,
+  resolveCustomerContinuation,
   safeCustomerReturnPath,
   websiteCheckoutRoute
 } from '../lib/commerceConfig.mjs';
@@ -53,6 +57,19 @@ test('selected paid plan survives email verification without allowing an open re
   assert.equal(safeCustomerReturnPath('/video-studio'), '/video-studio');
 });
 
+test('real paid-plan browser sequence survives a callback that loses its return query', () => {
+  const now = Date.parse('2026-08-08T16:00:00Z');
+  const selected = createPendingCheckoutIntent('business', 'cookies-kitchen', now);
+  const browserStorage = JSON.stringify(selected);
+
+  assert.deepEqual(parsePendingCheckoutIntent(browserStorage, now + 60_000), selected);
+  assert.equal(customerReturnPath('builder', 'business', 'cookies-kitchen'), '/builder?checkout=business&draft=cookies-kitchen');
+  assert.equal(resolveCustomerContinuation('', browserStorage, now + 60_000), '/builder?checkout=business&draft=cookies-kitchen');
+  assert.equal(resolveCustomerContinuation('/customer', browserStorage, now + 60_000), '/builder?checkout=business&draft=cookies-kitchen');
+  assert.equal(pendingCheckoutReturnPath(browserStorage, now + (3 * 60 * 60 * 1000)), '/customer');
+  assert.equal(resolveCustomerContinuation('https://attacker.example', browserStorage, now + 60_000), '/builder?checkout=business&draft=cookies-kitchen');
+});
+
 test('valid restored customer sessions continue instead of terminating at the dashboard', async () => {
   const [customer, authRequest, callback] = await Promise.all([
     source('app/customer/page.js'),
@@ -60,9 +77,12 @@ test('valid restored customer sessions continue instead of terminating at the da
     source('app/customer/auth/callback/page.js')
   ]);
   assert.match(customer, /window\.location\.replace\(requestedReturnPath\)/);
-  assert.match(customer, /customerReturnPath\(params\.get\('return'\), params\.get\('checkout'\)\)/);
+  assert.match(customer, /PENDING_CHECKOUT_STORAGE_KEY/);
+  assert.match(customer, /pendingCheckoutReturnPath/);
+  assert.match(customer, /params\.get\('draft'\)/);
   assert.match(authRequest, /safeCustomerReturnPath\(body\.returnPath\)/);
-  assert.match(callback, /safeCustomerReturnPath/);
+  assert.match(callback, /resolveCustomerContinuation/);
+  assert.match(callback, /PENDING_CHECKOUT_STORAGE_KEY/);
 });
 
 test('Contact Us is publicly reachable from persistent navigation and homepage footer', async () => {
