@@ -73,7 +73,8 @@ export async function POST(request) {
   try {
     const apiKey = process.env.HEYGEN_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ ok: false, error: 'HEYGEN_API_KEY is missing in Vercel Environment Variables.' }, { status: 500 });
+      console.error('[heygen-status] provider configuration missing');
+      return NextResponse.json({ ok: false, error: 'Video results are temporarily unavailable. Please contact hello@cookiesdigitalcreations.com.' }, { status: 503 });
     }
 
     const body = await request.json().catch(() => ({}));
@@ -103,14 +104,15 @@ export async function POST(request) {
       });
       const sessionJson = await readJson(sessionResponse);
       if (!sessionResponse.ok) {
-        return NextResponse.json({ ok: false, error: sessionJson?.error?.message || 'Could not check HeyGen session.', detail: sessionJson }, { status: sessionResponse.status });
+        console.error('[heygen-status] session lookup failed', { status: sessionResponse.status, code: sessionJson?.error?.code || '' });
+        return NextResponse.json({ ok: false, error: 'The video provider could not check this video yet. Please try again shortly.' }, { status: sessionResponse.status });
       }
       sessionData = sessionJson?.data || sessionJson || {};
       videoId = sessionData.video_id || sessionData.videoId || videoId;
     }
 
     if (!videoId) {
-      return NextResponse.json({ ok: true, status: sessionData?.status || 'generating', sessionId, videoId: null, videoUrl: null, message: 'Video is still generating. Check again soon.', session: sessionData });
+      return NextResponse.json({ ok: true, status: sessionData?.status || 'generating', sessionId, videoId: null, videoUrl: null, message: 'Video is still generating. Check again soon.' });
     }
 
     const videoResponse = await fetch(`https://api.heygen.com/v3/videos/${encodeURIComponent(videoId)}`, {
@@ -119,7 +121,8 @@ export async function POST(request) {
     const videoJson = await readJson(videoResponse);
 
     if (!videoResponse.ok) {
-      return NextResponse.json({ ok: false, error: videoJson?.error?.message || 'Could not check HeyGen video.', detail: videoJson }, { status: videoResponse.status });
+      console.error('[heygen-status] video lookup failed', { status: videoResponse.status, code: videoJson?.error?.code || '' });
+      return NextResponse.json({ ok: false, error: 'The video provider could not check this video yet. Please try again shortly.' }, { status: videoResponse.status });
     }
 
     const video = videoJson?.data || videoJson || {};
@@ -134,13 +137,12 @@ export async function POST(request) {
       thumbnailUrl: video.thumbnail_url || video.thumbnailUrl || null,
       duration: video.duration || null,
       failureCode: video.failure_code || video.failureCode || null,
-      failureMessage: video.failure_message || video.failureMessage || null,
-      session: sessionData,
-      raw: videoJson
+      failureMessage: video.failure_message || video.failureMessage ? 'The video provider could not complete this video. Please contact support if retrying does not help.' : null
     };
     await updateStoredJob({ jobId, sessionId, videoId, result });
     return NextResponse.json(result);
   } catch (error) {
-    return NextResponse.json({ ok: false, error: error?.message || 'Unexpected HeyGen status error.' }, { status: 500 });
+    console.error('[heygen-status] request failed', { message: error?.message || String(error) });
+    return NextResponse.json({ ok: false, error: 'Video results could not be refreshed. Please try again shortly.' }, { status: 500 });
   }
 }

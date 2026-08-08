@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { createVideoAccessToken } from '../../../../lib/videoAccessToken';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
+import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,9 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const licenseKey = String(body.licenseKey || '').trim();
+    const subject = licenseKey ? `license:${licenseKey.slice(-12)}` : `plan:${clean(body.email || body.slug)}`;
+    const limited = rateLimit(request, { name: 'video-access', limit: 10, windowMs: 15 * 60 * 1000, subject });
+    if (!limited.ok) return rateLimitResponse(limited, 'Please wait before verifying access again.');
     if (licenseKey) {
       const result = await verifyLicense(licenseKey);
       if (!result.valid) return NextResponse.json({ ok: false, error: 'That license key could not be verified as an active AI Video Studio purchase.' }, { status: 403 });
@@ -50,6 +54,7 @@ export async function POST(request) {
     if (!active || !eligible || !emailMatches || !siteBelongsToOwner(site, owner)) return NextResponse.json({ ok: false, error: 'No active Business or Premium website access was verified for this signed-in owner.' }, { status: 403 });
     return NextResponse.json({ ok: true, token: createVideoAccessToken({ kind: 'website-plan', slug: site.slug, plan: site.plan, ownerId: owner.user.id }), access: `${site.plan} website plan` });
   } catch (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    console.error('[video-access] verification failed', { message: error?.message || String(error) });
+    return NextResponse.json({ ok: false, error: 'Video access could not be verified right now. Please try again shortly.' }, { status: 500 });
   }
 }

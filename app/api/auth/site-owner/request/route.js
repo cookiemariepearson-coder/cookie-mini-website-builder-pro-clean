@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../../lib/supabaseAdmin';
+import { rateLimit, rateLimitResponse } from '../../../../../lib/rateLimit.mjs';
 
 function safeReturnPath(value = '') {
   const path = String(value || '').trim();
@@ -15,6 +16,9 @@ export async function POST(req) {
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
       return NextResponse.json({ ok: false, error: 'Enter a valid email address.' }, { status: 400 });
     }
+    const ipLimited = rateLimit(req, { name: 'customer-auth-ip', limit: 10, windowMs: 15 * 60 * 1000 });
+    const emailLimited = rateLimit(req, { name: 'customer-auth-email', limit: 5, windowMs: 15 * 60 * 1000, subject: email });
+    if (!ipLimited.ok || !emailLimited.ok) return rateLimitResponse(!ipLimited.ok ? ipLimited : emailLimited, 'Please wait before requesting another sign-in email. You can also check your spam folder.');
 
     const origin = new URL(req.url).origin;
     const returnPath = safeReturnPath(body.returnPath);

@@ -42,6 +42,7 @@ export async function POST(request) {
       error: verified ? '' : 'Payment confirmation is still pending. Your draft remains saved; refresh this page after Gumroad finishes updating access.'
     });
   } catch (error) {
-    return NextResponse.json({ ok: false, verified: false, error: error.message }, { status: 500 });
+    console.error('[checkout-verify] verification failed', { message: error?.message || String(error) });
+    return NextResponse.json({ ok: false, verified: false, error: 'Payment confirmation could not be checked right now. Your draft remains saved; please try again shortly.' }, { status: 500 });
   }
 }

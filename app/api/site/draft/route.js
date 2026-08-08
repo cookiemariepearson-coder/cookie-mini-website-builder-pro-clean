@@ -3,12 +3,11 @@ import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { slugify } from '../../../../lib/siteDefaults';
 import { sendAdminNotification } from '../../../../lib/adminNotifications';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
+import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
+import { validateSiteMedia } from '../../../../lib/mediaValidation.mjs';
 
 function friendlyError(message='') {
-  if (message.includes('site') && message.includes('schema cache')) {
-    return "Draft saved in browser, but online draft needs the site column. Run supabase/builder_draft_site_column_migration.sql in the Website Builder Supabase project.";
-  }
-  return message;
+  return 'The online draft could not be saved. Your browser copy is still available; please try again shortly.';
 }
 
 export async function POST(req) {
@@ -16,8 +15,13 @@ export async function POST(req) {
     const owner = await getVerifiedSiteOwner(req);
     if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
 
+    const limited = rateLimit(req, { name: 'site-draft', limit: 30, windowMs: 15 * 60 * 1000, subject: owner.user.id });
+    if (!limited.ok) return rateLimitResponse(limited, 'Please wait a few minutes before saving this draft again.');
+
     const body = await req.json();
     const site = body.site || body;
+    const mediaCheck = validateSiteMedia(site);
+    if (!mediaCheck.ok) return NextResponse.json({ ok: false, error: mediaCheck.error }, { status: 400 });
     const slug = slugify(site.slug || site.businessName);
     const supabase = getSupabaseAdmin();
     const { data: existing, error: lookupError } = await supabase.from('websites').select('*').eq('slug', slug).maybeSingle();
@@ -44,6 +48,7 @@ export async function POST(req) {
     await sendAdminNotification({ subject: `Draft saved: ${row.business_name || slug}`, event: 'Website draft saved', slug, businessName: row.business_name, customerEmail: row.customer_email, details: `Plan: ${row.plan}` });
     return NextResponse.json({ ok: true, slug });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: friendlyError(e.message) }, { status: 500 });
+    console.error('[site-draft] save failed', { message: e?.message || String(e) });
+    return NextResponse.json({ ok: false, error: friendlyError() }, { status: 500 });
   }
 }

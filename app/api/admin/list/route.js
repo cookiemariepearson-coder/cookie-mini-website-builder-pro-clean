@@ -14,6 +14,7 @@ export async function POST(req) {
     if (error) throw error;
     return NextResponse.json({ ok: true, sites: data || [] });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
+    console.error('[admin-list] load failed', { message: e?.message || String(e) });
+    return NextResponse.json({ ok: false, error: 'Admin website records could not be loaded.' }, { status: 500 });
   }
 }

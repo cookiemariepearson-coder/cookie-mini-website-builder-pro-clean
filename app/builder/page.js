@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Children, cloneElement, isValidElement, useEffect, useId, useMemo, useState } from 'react';
 import SitePreview from '../../lib/SitePreview.js';
 import { createDefaultSite, templateLibrary, getTemplate, pageOptions, plans, slugify, sectionPrompts, normalizeSelectedPagesForPlan, planAllowsMedia, planAllowsAiVideo, planSectionLimit, customerActionLimit, customerActionTypes, normalizeCustomerActions } from '../../lib/siteDefaults';
 
@@ -45,6 +45,14 @@ function normalizeSlug(input = '') {
 
 function nowStamp() {
   return new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function safeUploadName(value = '') {
+  return (String(value || '').split(/[\\/]/).pop() || 'Uploaded image')
+    .replace(/[\u0000-\u001f\u007f<>"'`]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 100) || 'Uploaded image';
 }
 
 function draftSlugFor(draft = {}) {
@@ -105,7 +113,9 @@ function getStyle(typeKey, styleKey) {
 }
 
 async function compressImage(file, maxSize = 900, quality = 0.68) {
-  if (!file || !file.type?.startsWith('image/')) throw new Error('Please upload an image file.');
+  const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+  if (!file || !allowedTypes.has(file.type)) throw new Error('Upload a JPEG, PNG, or WebP image. SVG, GIF, video, and other files are not supported.');
+  if (file.size > 8 * 1024 * 1024) throw new Error('That image is larger than 8 MB. Choose a smaller image.');
   const dataUrl = await new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
@@ -118,6 +128,9 @@ async function compressImage(file, maxSize = 900, quality = 0.68) {
     image.onerror = reject;
     image.src = dataUrl;
   });
+  if (!img.width || !img.height || img.width > 6000 || img.height > 6000 || img.width * img.height > 24000000) {
+    throw new Error('That image has dimensions that are too large. Use an image no larger than 6000 pixels per side and 24 megapixels.');
+  }
   const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(img.width * scale));
@@ -682,7 +695,7 @@ export default function Builder() {
                   <Field label="Section style"><select value={site.sectionShape || 'cards'} onChange={e => updateDesign({ sectionShape: e.target.value })}><option value="cards">Clean cards</option><option value="floating">Floating 3D cards</option><option value="boxed">Boxed sections</option></select></Field>
                 </div>
                 {planAllowsMedia(site.plan) ? <>
-                  <Field label="Upload hero image / website visual"><input type="file" accept="image/*" onChange={e => e.target.files?.[0] && uploadHero(e.target.files[0])} />{site.heroImage && <button className="btn dark" onClick={() => update({ heroImage: '' })}>Remove Uploaded Image</button>}</Field>
+                  <Field label="Upload hero image / website visual"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => e.target.files?.[0] && uploadHero(e.target.files[0])} /><small>JPEG, PNG, or WebP; up to 8 MB and 6000 pixels per side.</small>{site.heroImage && <button className="btn dark" onClick={() => update({ heroImage: '' })}>Remove Uploaded Image</button>}</Field>
                   <Field label="Video or media link for this website"><input placeholder="https://youtube.com/... or TikTok/Instagram/Vimeo link" value={site.heroMediaLink || ''} onChange={e => update({ heroMediaLink: e.target.value })} /></Field>
                 </> : <div className="notice"><strong>Image/video uploads are not included on the Free Launch Page.</strong><br />Starter Pro, Business, and Premium unlock image uploads and video/media links.</div>}
                 <NavRow back={back} next={next} />
@@ -801,7 +814,16 @@ export default function Builder() {
 }
 
 function Field({ label, help, children }) {
-  return <div className="field"><label>{label}</label>{help && <small>{help}</small>}{children}</div>;
+  const fieldId = useId();
+  let connected = false;
+  const labelledChildren = Children.map(children, child => {
+    if (!connected && isValidElement(child) && ['input', 'select', 'textarea'].includes(child.type)) {
+      connected = true;
+      return cloneElement(child, { id: child.props.id || fieldId });
+    }
+    return child;
+  });
+  return <div className="field"><label htmlFor={fieldId}>{label}</label>{help && <small>{help}</small>}{labelledChildren}</div>;
 }
 
 function NavRow({ back, next }) {
@@ -939,10 +961,14 @@ function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
   }, [site.pages, quick.section]);
 
   function setMedia(next) { update({ media: next }); }
-  function addImageSlot(section = firstSelectedMediaSection) { if (ensureMediaSection?.(section) === false) return; setMedia([...media, { kind: 'image', url: '', title: '', section }]); }
-  function addLinkSlot(section = firstSelectedMediaSection) { if (ensureMediaSection?.(section) === false) return; setMedia([...media, { kind: 'link', url: '', title: '', section }]); }
+  function hasRoom() { if (media.length >= 20) { setSaveMessage('A website can include up to 20 media items. Remove one before adding another.'); return false; } return true; }
+  function uploadedImageCount() { return media.filter(item => item?.kind === 'image' && String(item.url || '').startsWith('data:image/')).length + (String(site.heroImage || '').startsWith('data:image/') ? 1 : 0); }
+  function addImageSlot(section = firstSelectedMediaSection) { if (!hasRoom() || ensureMediaSection?.(section) === false) return; setMedia([...media, { kind: 'image', url: '', title: '', section }]); }
+  function addLinkSlot(section = firstSelectedMediaSection) { if (!hasRoom() || ensureMediaSection?.(section) === false) return; setMedia([...media, { kind: 'link', url: '', title: '', section }]); }
   function addQuickLink() {
+    if (!hasRoom()) return;
     if (!quick.url.trim()) { setSaveMessage('Paste a media/video link first.'); return; }
+    try { const parsed = new URL(quick.url.trim()); if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error(); } catch { setSaveMessage('Enter a complete media link beginning with https:// or http://.'); return; }
     if (ensureMediaSection?.(quick.section) === false) { setSaveMessage(`Select ${quick.section} as a website section before adding media, or remove another section if this plan is at its limit.`); return; }
     setMedia([...media, { kind: 'link', url: quick.url.trim(), title: quick.title || 'Media link', section: quick.section }]);
     setQuick({ ...quick, title: '', url: '' });
@@ -958,8 +984,9 @@ function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
   async function uploadMedia(index, file) {
     setSaveMessage('Preparing gallery image...');
     try {
+      if (uploadedImageCount() >= 12 && !String(media[index]?.url || '').startsWith('data:image/')) throw new Error('A website can include up to 12 uploaded images. Remove one before adding another.');
       const image = await compressImage(file, 560, 0.60);
-      updateItem(index, { kind: 'image', url: image, title: media[index]?.title || file.name });
+      updateItem(index, { kind: 'image', url: image, title: media[index]?.title || safeUploadName(file.name) });
       setSaveMessage('Gallery image added. Click Save Draft to keep it online.');
     } catch (e) {
       setSaveMessage(e.message || 'Gallery image upload failed.');
@@ -968,9 +995,11 @@ function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
   async function uploadQuick(file) {
     setSaveMessage('Preparing uploaded image...');
     try {
+      if (!hasRoom()) return;
+      if (uploadedImageCount() >= 12) throw new Error('A website can include up to 12 uploaded images. Remove one before adding another.');
       const image = await compressImage(file, 560, 0.60);
       if (ensureMediaSection?.(quick.section) === false) { setSaveMessage(`The image was not added because ${quick.section} is not selected and this plan is at its section limit.`); return; }
-      setMedia([...media, { kind: 'image', url: image, title: quick.title || file.name, section: quick.section }]);
+      setMedia([...media, { kind: 'image', url: image, title: quick.title || safeUploadName(file.name), section: quick.section }]);
       setQuick({ ...quick, title: '' });
       setSaveMessage('Image added to media section.');
     } catch (e) {
@@ -989,7 +1018,7 @@ function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
         <Field label="Title"><input placeholder="Example: Menu photo, portfolio video, product image" value={quick.title} onChange={e => setQuick({ ...quick, title: e.target.value })} /></Field>
         <Field label="Show in section"><select value={quick.section} onChange={e => setQuick({ ...quick, section: e.target.value })}>{sections.map(p => <option key={p}>{p}</option>)}</select></Field>
       </div>
-      <Field label="Upload image to this section"><input type="file" accept="image/*" onChange={e => e.target.files?.[0] && uploadQuick(e.target.files[0])} /></Field>
+      <Field label="Upload image to this section"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => e.target.files?.[0] && uploadQuick(e.target.files[0])} /><small>JPEG, PNG, or WebP; up to 8 MB and 6000 pixels per side.</small></Field>
       <div className="row">
         <Field label="Or paste video/media link"><input placeholder="https://youtube.com/..." value={quick.url} onChange={e => setQuick({ ...quick, url: e.target.value })} /></Field>
         <div className="field mediaButtonField"><label>&nbsp;</label><button className="btn dark" onClick={addQuickLink}>Add Media Link</button></div>
@@ -1009,7 +1038,7 @@ function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
         </div>
         <Field label="Media type"><select value={item.kind || 'link'} onChange={e => updateItem(index, { kind: e.target.value, url: '' })}><option value="image">Uploaded image</option><option value="link">Video/social/media link</option></select></Field>
         {item.kind === 'image' ? (
-          <Field label="Upload image"><input type="file" accept="image/*" onChange={e => e.target.files?.[0] && uploadMedia(index, e.target.files[0])} />{item.url && <img className="miniMediaPreview" src={item.url} alt={item.title || 'media preview'} />}</Field>
+          <Field label="Upload image"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => e.target.files?.[0] && uploadMedia(index, e.target.files[0])} /><small>JPEG, PNG, or WebP; up to 8 MB and 6000 pixels per side.</small>{item.url && <img className="miniMediaPreview" src={item.url} alt={item.title || 'media preview'} />}</Field>
         ) : (
           <Field label="Video/social/media URL"><input placeholder="https://youtube.com/..." value={item.url || ''} onChange={e => updateItem(index, { url: e.target.value })} /></Field>
         )}

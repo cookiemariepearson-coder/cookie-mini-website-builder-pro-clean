@@ -136,7 +136,7 @@ export default function VideoResultsPage() {
         <div className="field"><label>Website name or subdomain</label><input value={slug} onChange={e => setSlug(e.target.value)} placeholder="my-business-name" autoComplete="off" /></div>
       </div>
       <div className="navRow"><button className="btn" onClick={() => searchVideos()} disabled={loading}>{loading ? 'Searching...' : 'Find My Videos'}</button><a className="btn dark" href="/video-studio">Create Another Video</a><a className="btn light" href="/customer">My Website</a></div>
-      <div className="notice">{message}</div>
+      <div className="notice" role="status" aria-live="polite">{message}</div>
     </section>
 
     <section className="dashboard" style={{ marginTop: 22 }}>

@@ -24,6 +24,7 @@ export async function POST(req) {
     await sendAdminNotification({ subject: `Admin updated: ${slug}`, event: 'Owner/admin website update', slug, details: `Changed: ${Object.keys(updates || {}).join(', ')}` });
     return NextResponse.json({ ok: true });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
+    console.error('[admin-update] update failed', { message: e?.message || String(e) });
+    return NextResponse.json({ ok: false, error: 'The website record could not be updated.' }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -11,9 +12,6 @@ const services = {
   Premium: { setup: '$899 one-time setup', monthly: '$50/month', turnaround: '10–14 business days', checkoutEnv: 'DFY_PREMIUM_CHECKOUT_URL' },
   'Extra Page Add-On': { setup: '$125 one-time setup', monthly: '$10/month per extra page', turnaround: '3–5 business days', checkoutEnv: 'DFY_EXTRA_PAGE_CHECKOUT_URL' }
 };
-
-const recentRequests = globalThis.__cookieDfyRecentRequests || new Map();
-globalThis.__cookieDfyRecentRequests = recentRequests;
 
 function clean(value = '', max = 1200) {
   return String(value || '').replace(/[<>]/g, '').trim().slice(0, max);
@@ -51,13 +49,6 @@ async function sendEmail({ apiKey, from, to, subject, html, replyTo }) {
 
 export async function POST(request) {
   try {
-    const forwarded = request.headers.get('x-forwarded-for') || '';
-    const clientKey = forwarded.split(',')[0].trim() || 'unknown';
-    const now = Date.now();
-    const lastRequest = recentRequests.get(clientKey) || 0;
-    if (now - lastRequest < 30000) {
-      return NextResponse.json({ ok: false, error: 'Your request was already submitted. Please wait before trying again.' }, { status: 429 });
-    }
     const body = await request.json().catch(() => ({}));
     if (body.companyWebsite) return NextResponse.json({ ok: true });
 
@@ -80,7 +71,9 @@ export async function POST(request) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       return NextResponse.json({ ok: false, error: 'Enter a valid customer email address.' }, { status: 400 });
     }
-    recentRequests.set(clientKey, now);
+    const ipLimited = rateLimit(request, { name: 'done-for-you-ip', limit: 10, windowMs: 60 * 60 * 1000 });
+    const emailLimited = rateLimit(request, { name: 'done-for-you-email', limit: 5, windowMs: 60 * 60 * 1000, subject: form.email });
+    if (!ipLimited.ok || !emailLimited.ok) return rateLimitResponse(!ipLimited.ok ? ipLimited : emailLimited, 'Your request was already received. Please wait before submitting another request.');
 
     const apiKey = process.env.RESEND_API_KEY;
     const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL;
@@ -95,7 +88,6 @@ export async function POST(request) {
       return NextResponse.json({
         ok: false,
         error: 'This service checkout is not connected yet. Your request was not submitted or charged. Please contact hello@cookiesdigitalcreations.com.',
-        configurationRequired: service.checkoutEnv
       }, { status: 503 });
     }
     const requestId = `DFY-${Date.now().toString(36).toUpperCase()}`;

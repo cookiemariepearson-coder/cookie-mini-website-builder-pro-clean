@@ -38,5 +38,8 @@ export async function GET(req) {
     }
 
     return NextResponse.json({ ok:true, row:data, site: fallbackSite(data) });
-  } catch(e) { return NextResponse.json({ ok:false,error:e.message }, { status:500 }); }
+  } catch(e) {
+    console.error('[site-get] load failed', { message: e?.message || String(e) });
+    return NextResponse.json({ ok:false,error:'The website could not be loaded right now. Please refresh and try again.' }, { status:500 });
+  }
 }

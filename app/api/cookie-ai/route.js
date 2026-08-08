@@ -5,6 +5,7 @@ import {
   getKnowledgeText,
   getPageHelper
 } from '../../../lib/cookieAiKnowledge';
+import { rateLimit, rateLimitResponse } from '../../../lib/rateLimit.mjs';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -137,6 +138,8 @@ async function callOpenAI({ apiKey, model, messages }) {
 
 export async function POST(req) {
   try {
+    const limited = rateLimit(req, { name: 'cookie-ai', limit: 20, windowMs: 10 * 60 * 1000 });
+    if (!limited.ok) return rateLimitResponse(limited, 'Cookie AI has received several requests. Please wait a few minutes and try again.');
     const body = await req.json().catch(() => ({}));
     const userMessage = clean(body.message || body.question || '');
     const pagePath = clean(body.pagePath || body.pathname || '', 300);

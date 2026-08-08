@@ -330,8 +330,8 @@ export default function VideoStudioPage() {
             {kit[tab]}
           </pre>
 
-          {copied && <div className="notice success">{copied}</div>}
-          {status && <div className="notice success studioStatus">{status}</div>}
+          {copied && <div className="notice success" role="status" aria-live="polite">{copied}</div>}
+          {status && <div className="notice success studioStatus" role="status" aria-live="polite">{status}</div>}
 
           <div className="navRow">
             <button className="btn" onClick={() => copyText(kit[tab], tab)}>Copy {tab}</button>

@@ -80,6 +80,7 @@ export async function POST(req) {
 
     return NextResponse.json({ ok: true, sites });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: e.message }, { status: 500 });
+    console.error('[site-search] lookup failed', { message: e?.message || String(e) });
+    return NextResponse.json({ ok: false, error: 'Saved websites could not be searched right now. Please try again shortly.' }, { status: 500 });
   }
 }

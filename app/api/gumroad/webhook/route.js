@@ -213,6 +213,7 @@ export async function POST(req) {
 
     return NextResponse.json({ ok: true, action, matchedSlug: matched?.slug || null });
   } catch (error) {
+    console.error('[gumroad-webhook] processing failed', { resource: resourceFromQuery || 'unknown', message: error?.message || String(error) });
     // Return 200 so Gumroad does not keep retrying a malformed event forever.
     try {
       const supabase = getSupabaseAdmin();
@@ -224,6 +225,6 @@ export async function POST(req) {
         processed_at: new Date().toISOString()
       });
     } catch {}
-    return NextResponse.json({ ok: false, error: error.message }, { status: 200 });
+    return NextResponse.json({ ok: false, error: 'Webhook event could not be processed.' }, { status: 200 });
   }
 }

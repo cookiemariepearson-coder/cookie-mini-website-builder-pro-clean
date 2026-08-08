@@ -26,6 +26,7 @@ export async function POST(req) {
     if (error) throw error;
     return NextResponse.json({ ok:true });
   } catch (error) {
-    return NextResponse.json({ ok:false, error:error.message }, { status:500 });
+    console.error('[admin-subscriptions] manual update failed', { message: error?.message || String(error) });
+    return NextResponse.json({ ok:false, error:'The subscription record could not be updated.' }, { status:500 });
   }
 }

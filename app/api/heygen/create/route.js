@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { verifyVideoAccessToken } from '../../../../lib/videoAccessToken';
 import { getVerifiedAdmin, getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
+import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -273,7 +274,8 @@ export async function POST(request) {
   try {
     const apiKey = process.env.HEYGEN_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ ok: false, error: 'HEYGEN_API_KEY is missing in Vercel Environment Variables.' }, { status: 500 });
+      console.error('[heygen-create] provider configuration missing');
+      return NextResponse.json({ ok: false, error: 'Video generation is temporarily unavailable. Please contact hello@cookiesdigitalcreations.com.' }, { status: 503 });
     }
 
     const body = await request.json().catch(() => ({}));
@@ -281,6 +283,8 @@ export async function POST(request) {
     if (!access.ok) {
       return NextResponse.json({ ok: false, ...access }, { status: access.status || 403 });
     }
+    const limited = rateLimit(request, { name: 'heygen-create', limit: 6, windowMs: 60 * 60 * 1000, subject: access.website?.id || access.usageKey || '' });
+    if (!limited.ok) return rateLimitResponse(limited, 'Please wait before starting another video. A video already in progress can be checked from Video Results.');
 
     const prompt = buildHeyGenPrompt(body);
 
@@ -304,9 +308,8 @@ export async function POST(request) {
         ok: false,
         error: insufficientCredits
           ? 'Video generation is temporarily unavailable because the Cookie Digital Creations HeyGen API account needs more provider credits. Your website or standalone video credit was not used. Please try again later or contact hello@cookiesdigitalcreations.com.'
-          : providerMessage || 'HeyGen video request failed.',
-        providerCreditRequired: insufficientCredits,
-        detail: data
+          : 'The video provider could not start this video. Your video credit was not used; please try again shortly.',
+        providerCreditRequired: insufficientCredits
       }, { status: insufficientCredits ? 503 : heygenResponse.status });
     }
 
@@ -336,9 +339,9 @@ export async function POST(request) {
       usageWarning: usageUpdate.ok ? null : 'Video was sent to HeyGen, but usage tracking could not be updated. Run the Supabase AI video migration if needed.',
       resultsDashboard: '/video-studio/results',
       heygenSessionUrl: sessionId ? `https://app.heygen.com/video-agent/${sessionId}` : null,
-      raw: data
     });
   } catch (error) {
-    return NextResponse.json({ ok: false, error: error?.message || 'Unexpected HeyGen create error.' }, { status: 500 });
+    console.error('[heygen-create] request failed', { message: error?.message || String(error) });
+    return NextResponse.json({ ok: false, error: 'The video could not be started. Your credit was not used; please try again shortly.' }, { status: 500 });
   }
 }

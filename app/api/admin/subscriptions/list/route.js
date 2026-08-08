@@ -17,6 +17,7 @@ export async function POST(req) {
     if (eError) throw eError;
     return NextResponse.json({ ok:true, websites:websites || [], events:events || [] });
   } catch (error) {
-    return NextResponse.json({ ok:false, error:error.message }, { status:500 });
+    console.error('[admin-subscriptions] load failed', { message: error?.message || String(error) });
+    return NextResponse.json({ ok:false, error:'Subscription records could not be loaded.' }, { status:500 });
   }
 }

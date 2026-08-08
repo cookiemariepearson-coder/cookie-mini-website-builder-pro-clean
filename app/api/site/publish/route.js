@@ -3,24 +3,24 @@ import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { slugify } from '../../../../lib/siteDefaults';
 import { sendAdminNotification } from '../../../../lib/adminNotifications';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
+import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
+import { validateSiteMedia } from '../../../../lib/mediaValidation.mjs';
 
 function friendlyError(message='') {
-  if (message.includes('site') && message.includes('schema cache')) {
-    return "Missing database field: run supabase/builder_draft_site_column_migration.sql in the Website Builder Supabase project, then wait one minute and try publishing again.";
-  }
-  if (message.includes('relation') && message.includes('websites')) {
-    return "The websites table was not found. Run supabase/clean_websites_schema.sql first in the Website Builder Supabase project.";
-  }
-  return message;
+  return 'The website could not be published right now. Your draft remains saved; please try again shortly.';
 }
 
 export async function POST(req) {
   try {
     const owner = await getVerifiedSiteOwner(req);
     if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
+    const limited = rateLimit(req, { name: 'site-publish', limit: 20, windowMs: 15 * 60 * 1000, subject: owner.user.id });
+    if (!limited.ok) return rateLimitResponse(limited, 'Please wait a few minutes before publishing again.');
 
     const body = await req.json();
     const site = body.site || body;
+    const mediaCheck = validateSiteMedia(site);
+    if (!mediaCheck.ok) return NextResponse.json({ ok: false, error: mediaCheck.error }, { status: 400 });
     const businessSlug = slugify(site.businessName || site.draftName || '');
     if (!businessSlug || ['my-business-name', 'my-website', 'published-website'].includes(businessSlug)) {
       return NextResponse.json({ ok: false, error: 'Add a real business or website name before publishing. This creates a unique website address.' }, { status: 400 });
@@ -70,6 +70,7 @@ export async function POST(req) {
     await sendAdminNotification({ subject: `Website published: ${row.business_name || slug}`, event: 'Website published', slug, businessName: row.business_name, customerEmail: row.customer_email, details: `Plan: ${row.plan}` });
     return NextResponse.json({ ok: true, slug, url: `https://${slug}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'cookiesdigitalcreations.com'}` });
   } catch (e) {
-    return NextResponse.json({ ok: false, error: friendlyError(e.message) }, { status: 500 });
+    console.error('[site-publish] publish failed', { message: e?.message || String(e) });
+    return NextResponse.json({ ok: false, error: friendlyError() }, { status: 500 });
   }
 }

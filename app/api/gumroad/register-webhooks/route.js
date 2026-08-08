@@ -17,11 +17,13 @@ export async function POST(req) {
     if (!admin.ok) return NextResponse.json({ ok:false, error:admin.error }, { status:admin.status });
     const token = process.env.GUMROAD_ACCESS_TOKEN;
     if (!token) {
-      return NextResponse.json({ ok:false, error:'Missing GUMROAD_ACCESS_TOKEN in Vercel.' }, { status:400 });
+      console.error('[gumroad-register] access configuration missing');
+      return NextResponse.json({ ok:false, error:'Gumroad webhook registration is not configured.' }, { status:503 });
     }
     const webhookSecret = String(process.env.GUMROAD_WEBHOOK_SECRET || '').trim();
     if (!webhookSecret) {
-      return NextResponse.json({ ok:false, error:'Missing GUMROAD_WEBHOOK_SECRET in Vercel.' }, { status:400 });
+      console.error('[gumroad-register] signing configuration missing');
+      return NextResponse.json({ ok:false, error:'Gumroad webhook registration is not configured.' }, { status:503 });
     }
 
     const results = [];
@@ -39,6 +41,7 @@ export async function POST(req) {
     }
     return NextResponse.json({ ok:true, results });
   } catch (error) {
-    return NextResponse.json({ ok:false, error:error.message }, { status:500 });
+    console.error('[gumroad-register] registration failed', { message: error?.message || String(error) });
+    return NextResponse.json({ ok:false, error:'Gumroad webhooks could not be registered.' }, { status:500 });
   }
 }

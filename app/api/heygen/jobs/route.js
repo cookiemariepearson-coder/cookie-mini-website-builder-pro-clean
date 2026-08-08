@@ -55,11 +55,18 @@ export async function GET(request) {
   }
   if (!slug) return NextResponse.json({ ok: false, error: 'This video access pass is no longer valid. Verify access again.' }, { status: 403 });
 
-  const path = `heygen_video_jobs?select=*&website_slug=eq.${encodeURIComponent(slug)}&order=created_at.desc&limit=30`;
+  const safeColumns = 'id,website_slug,business_name,status,heygen_session_id,heygen_video_id,video_type,platform,plan,video_url,thumbnail_url,duration,failure_code,failure_message,created_at,checked_at,updated_at';
+  const path = `heygen_video_jobs?select=${safeColumns}&website_slug=eq.${encodeURIComponent(slug)}&order=created_at.desc&limit=30`;
   const result = await supabaseGet(path);
 
-  if (result.missing) return NextResponse.json({ ok: false, error: 'Supabase is not connected.' }, { status: 500 });
-  if (!result.ok) return NextResponse.json({ ok: false, error: 'Could not load video results. Run the HeyGen video results migration if needed.', detail: result.data }, { status: result.status || 500 });
+  if (result.missing) {
+    console.error('[heygen-jobs] storage configuration missing');
+    return NextResponse.json({ ok: false, error: 'Video results are temporarily unavailable. Please try again shortly.' }, { status: 503 });
+  }
+  if (!result.ok) {
+    console.error('[heygen-jobs] storage lookup failed', { status: result.status });
+    return NextResponse.json({ ok: false, error: 'Video results could not be loaded. Please try again shortly.' }, { status: result.status || 500 });
+  }
 
   return NextResponse.json({ ok: true, jobs: Array.isArray(result.data) ? result.data : [] });
 }

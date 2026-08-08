@@ -216,7 +216,7 @@ export default function CookieAiAssistant() {
             <span>Ask naturally. I can help with the next step, wording, plans, or buttons.</span>
           </div>
 
-          <button className="cookieAiDetailsToggle" type="button" onClick={() => setShowDetails(value => !value)}>
+          <button className="cookieAiDetailsToggle" type="button" aria-expanded={showDetails} onClick={() => setShowDetails(value => !value)}>
             {showDetails ? 'Hide details' : 'Add business details for better answers'}
           </button>
           {showDetails && <div className="cookieAiLeadFields">
@@ -232,7 +232,7 @@ export default function CookieAiAssistant() {
             ))}
           </div>
 
-          <div className="cookieAiMessages" ref={scrollRef}>
+          <div className="cookieAiMessages" ref={scrollRef} role="log" aria-live="polite" aria-relevant="additions text">
             {messages.map((message, index) => (
               <div className={`cookieAiBubble ${message.role === 'assistant' ? 'assistant' : 'user'}`} key={`${message.role}-${index}`}>
                 {message.content}
@@ -262,7 +262,7 @@ export default function CookieAiAssistant() {
           <footer className="cookieAiFooter">
             <span>For billing or account help, use Contact Us.</span>
             <div>
-              {copied && <em>{copied}</em>}
+              {copied && <em role="status" aria-live="polite">{copied}</em>}
               <button type="button" onClick={copyLastAnswer}>Copy</button>
               <button type="button" onClick={clearChat}>Clear</button>
             </div>
@@ -270,7 +270,7 @@ export default function CookieAiAssistant() {
         </section>
       )}
 
-      <button className="cookieAiLauncher" type="button" onClick={() => setOpen(value => !value)} aria-label="Open Cookie AI Assistant">
+      <button className="cookieAiLauncher" type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} aria-label={open ? 'Close Cookie AI Assistant' : 'Open Cookie AI Assistant'}>
         <span>💬</span>
         <strong>Ask Cookie AI</strong>
       </button>

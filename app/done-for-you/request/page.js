@@ -89,7 +89,7 @@ export default function DoneForYouRequestPage() {
           <Link className="btn light" href="/done-for-you">Back to Services</Link>
           <button className="btn dark" type="button" data-cookie-ai-open="Help me choose a Done-for-You website service.">Ask Cookie AI First</button>
         </div>
-        {status && <div className={`notice ${status.includes('could not') || status.includes('failed') ? 'error' : ''}`}>{status}</div>}
+        {status && <div className={`notice ${status.includes('could not') || status.includes('failed') ? 'error' : ''}`} role={status.includes('could not') || status.includes('failed') ? 'alert' : 'status'} aria-live="polite">{status}</div>}
         <p className="requestNote">Paid services continue to secure checkout after the request is received. Your build turnaround begins after payment and all required content are received.</p>
       </form>
     </main>
