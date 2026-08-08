@@ -30,7 +30,7 @@ export default function AiVideoCheckoutPage() {
 
           <div className="navRow checkoutSuccessActions">
             {checkoutUrl ? (
-              <a className="btn aiStudioSuccessBtn" href={checkoutUrl} target="_blank" rel="noreferrer">
+              <a className="btn aiStudioSuccessBtn" href={checkoutUrl}>
                 Continue to Secure Gumroad Checkout — $5
               </a>
             ) : (

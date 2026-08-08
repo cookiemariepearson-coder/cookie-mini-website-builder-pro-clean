@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Nav from '../../lib/Nav';
-import { builderCheckoutReturnPath } from '../../lib/commerceConfig.mjs';
+import { customerReturnPath } from '../../lib/commerceConfig.mjs';
 
 const ROOT = 'cookiesdigitalcreations.com';
 const DRAFT_KEY = 'cookieDraftSite';
@@ -50,7 +50,14 @@ export default function Customer() {
   useEffect(() => {
     async function restoreSecureSession() {
       const token = localStorage.getItem(AUTH_TOKEN_KEY) || '';
+      const params = new URLSearchParams(window.location.search);
+      const requestedReturnPath = customerReturnPath(params.get('return'), params.get('checkout'));
       if (!token) {
+        if (requestedReturnPath !== '/customer') {
+          setMsg(requestedReturnPath.startsWith('/builder')
+            ? 'Verify your email to continue to the selected paid-plan checkout. Your plan and browser draft are preserved.'
+            : 'Verify your email to continue to AI Video Studio with your website plan.');
+        }
         setAuthLoading(false);
         return;
       }
@@ -62,6 +69,10 @@ export default function Customer() {
         if (data.ok) {
           setVerifiedEmail(data.email);
           setEmail(data.email);
+          if (requestedReturnPath !== '/customer') {
+            window.location.replace(requestedReturnPath);
+            return;
+          }
           if (new URLSearchParams(window.location.search).get('verified') === '1') {
             setMsg('Email verified. You can now find and manage websites saved with this email.');
           }
@@ -109,9 +120,7 @@ export default function Customer() {
     setMsg('Sending your secure sign-in link...');
     try {
       const params = new URLSearchParams(window.location.search);
-      const returnPath = params.get('return') === 'builder'
-        ? builderCheckoutReturnPath(params.get('checkout'))
-        : '/customer';
+      const returnPath = customerReturnPath(params.get('return'), params.get('checkout'));
       const res = await fetch('/api/auth/site-owner/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
 import { cleanCheckoutUrl, DFY_CHECKOUT_ENV_BY_SERVICE } from '../../../../lib/commerceConfig.mjs';
+import { sendResendEmail } from '../../../../lib/resendEmail.mjs';
+import { createCustomerRequest, updateCustomerRequest } from '../../../../lib/customerRequestStore.mjs';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -20,17 +22,6 @@ function clean(value = '', max = 1200) {
 
 function escapeHtml(value = '') {
   return clean(value, 5000).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
-async function sendEmail({ apiKey, from, to, subject, html, replyTo }) {
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [to], subject, html, reply_to: replyTo })
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data?.message || `Email delivery failed (${response.status}).`);
-  return data;
 }
 
 export async function POST(request) {
@@ -73,6 +64,27 @@ export async function POST(request) {
       console.error('[done-for-you] checkout URL missing or invalid', { plan, environmentVariable: service.checkoutEnv });
     }
     const requestId = `DFY-${Date.now().toString(36).toUpperCase()}`;
+    const storedRequest = await createCustomerRequest({
+      request_id: requestId,
+      request_type: 'done-for-you',
+      service: plan,
+      customer_name: form.name,
+      business_name: form.business,
+      business_type: form.businessType,
+      customer_email: form.email,
+      phone: form.phone || null,
+      preferred_contact: form.contact,
+      customer_action: form.customerAction,
+      details: form.details,
+      checkout_required: Boolean(service.checkoutEnv),
+      checkout_configured: Boolean(checkoutUrl),
+      notification_status: 'pending'
+    });
+    if (!storedRequest.ok) {
+      console.error(JSON.stringify({ level: 'error', event: 'customer_request_storage_failed', requestId, requestType: 'done-for-you', status: storedRequest.status, configurationMissing: Boolean(storedRequest.missing) }));
+    } else {
+      console.log(JSON.stringify({ level: 'info', event: 'customer_request_stored', requestId, requestType: 'done-for-you' }));
+    }
     const safe = Object.fromEntries(Object.entries(form).map(([key, value]) => [key, escapeHtml(value)]));
     const checkoutBlock = checkoutUrl
       ? `<p><a href="${escapeHtml(checkoutUrl)}" style="display:inline-block;padding:13px 20px;background:#f28a1e;color:#20172f;text-decoration:none;border-radius:999px;font-weight:800">Continue to secure checkout</a></p><p>Your place in the build schedule is confirmed after payment is completed.</p>`
@@ -91,24 +103,46 @@ export async function POST(request) {
       <p><strong>Customer action:</strong> ${safe.customerAction}</p>
       <p><strong>Website details:</strong><br>${safe.details.replace(/\n/g, '<br>')}</p>`;
 
-    await Promise.all([
-      sendEmail({
+    let adminNotification;
+    let customerNotification;
+    try {
+      [adminNotification, customerNotification] = await Promise.all([
+      sendResendEmail({
         apiKey,
         from,
         to: adminEmail,
         replyTo: form.email,
+        notification: 'dfy-admin',
+        requestId,
+        idempotencyKey: `dfy-admin-${requestId}`,
         subject: `Done-for-You request: ${plan} — ${form.business}`,
         html: `<h2>New Done-for-You Website Request</h2>${detailRows}<p><strong>Checkout configured:</strong> ${checkoutUrl ? 'Yes' : 'No'}</p>`
       }),
-      sendEmail({
+      sendResendEmail({
         apiKey,
         from,
         to: form.email,
         replyTo: adminEmail,
+        notification: 'dfy-customer',
+        requestId,
+        idempotencyKey: `dfy-customer-${requestId}`,
         subject: `We received your ${plan} website request`,
         html: `<h2>Thank you, ${safe.name}!</h2><p>Cookie Digital Creations received your Done-for-You website request.</p>${detailRows}<h3>What happens next</h3>${nextSteps}${checkoutBlock}<p>Questions? Reply to this email or contact hello@cookiesdigitalcreations.com.</p>`
       })
-    ]);
+      ]);
+      if (storedRequest.ok) await updateCustomerRequest(requestId, {
+        notification_status: 'accepted',
+        admin_provider_message_id: adminNotification.id || null,
+        customer_provider_message_id: customerNotification.id || null,
+        notification_error: null
+      });
+    } catch (emailError) {
+      if (storedRequest.ok) await updateCustomerRequest(requestId, {
+        notification_status: 'rejected',
+        notification_error: String(emailError?.message || 'Provider rejected notification').slice(0, 500)
+      });
+      throw emailError;
+    }
 
     return NextResponse.json({
       ok: true,
@@ -116,6 +150,8 @@ export async function POST(request) {
       checkoutUrl,
       checkoutRequired: Boolean(service.checkoutEnv),
       checkoutConfigured: Boolean(checkoutUrl),
+      notificationsAccepted: Boolean(adminNotification.accepted && customerNotification.accepted),
+      requestStored: Boolean(storedRequest.ok),
       turnaround: service.turnaround
     });
   } catch (error) {

@@ -41,12 +41,12 @@ export default function DoneForYouRequestPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) throw new Error(data.error || 'Request failed.');
       if (data.checkoutRequired && data.checkoutConfigured && data.checkoutUrl) {
-        setStatus(`Request ${data.requestId} received. A confirmation email was sent. Opening secure checkout...`);
+        setStatus(`Request ${data.requestId} received. Email notifications were accepted for delivery. Opening secure checkout...`);
         setTimeout(() => window.location.assign(data.checkoutUrl), 1400);
       } else if (data.checkoutRequired) {
-        setStatus(`Request ${data.requestId} received. Secure checkout is temporarily unavailable, so Cookie Digital Creations will contact you with the correct payment step. You were not charged.`);
+        setStatus(`Request ${data.requestId} received. Email notifications were accepted for delivery. Secure checkout is temporarily unavailable, so Cookie Digital Creations will contact you with the correct payment step. You were not charged.`);
       } else {
-        setStatus(`Request ${data.requestId} received. A confirmation email with next steps was sent to ${form.email}.`);
+        setStatus(`Request ${data.requestId} received. A confirmation email with next steps was accepted for delivery to ${form.email}.`);
       }
     } catch (error) {
       setStatus(error.message || 'The request could not be sent. Please try again.');

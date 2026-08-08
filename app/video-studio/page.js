@@ -251,10 +251,12 @@ export default function VideoStudioPage() {
                 <div className="field"><label>Website name or subdomain</label><input value={websiteSlug} onChange={e => setWebsiteSlug(e.target.value)} placeholder="Example: my-business" /></div>
               </div>
               <button className="btn" type="button" onClick={() => activateAccess('plan')}>Verify Website Plan</button>
+              <Link className="btn light" href="/customer?return=video-studio">Secure Website-Plan Sign-In</Link>
               <div className="field"><label>$5 Gumroad license key</label><input value={licenseKey} onChange={e => setLicenseKey(e.target.value)} placeholder="Paste the license key from your Gumroad receipt" /></div>
               <button className="btn dark" type="button" onClick={() => activateAccess('license')}>Verify Gumroad Purchase</button>
               <Link className="btn light" href="/checkout/ai-video">Buy $5 Standalone AI Video Access</Link>
             </>}
+            <div className="navRow"><Link className="btn light" href="/video-studio/results">View Video Results</Link></div>
           </div>
           <div className="studioSteps" aria-label="AI Video Studio steps">
             <div><span className="studioStepNumber">1</span><strong>Describe it</strong><span>Tell us about the business and promotion.</span></div>

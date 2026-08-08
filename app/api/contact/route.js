@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { rateLimit, rateLimitResponse } from '../../../lib/rateLimit.mjs';
+import { sendResendEmail } from '../../../lib/resendEmail.mjs';
+import { createCustomerRequest, updateCustomerRequest } from '../../../lib/customerRequestStore.mjs';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -39,24 +41,37 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'The contact form is temporarily unavailable. Please email hello@cookiesdigitalcreations.com.' }, { status: 503 });
     }
 
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from,
-        to: [to],
-        reply_to: form.email,
-        subject: `Mini Builder support: ${form.website || form.name}`,
-        html: `<h2>Cookie Mini Website Builder support request</h2><p><strong>Name:</strong> ${escapeHtml(form.name)}<br><strong>Email:</strong> ${escapeHtml(form.email)}<br><strong>Website:</strong> ${escapeHtml(form.website || 'Not provided')}</p><p><strong>Message:</strong><br>${escapeHtml(form.message).replace(/\n/g, '<br>')}</p>`
-      })
+    const requestId = `SUP-${Date.now().toString(36).toUpperCase()}`;
+    const storedRequest = await createCustomerRequest({
+      request_id: requestId,
+      request_type: 'contact',
+      service: 'Mini Builder support',
+      customer_name: form.name,
+      business_name: form.website || null,
+      customer_email: form.email,
+      details: form.message,
+      notification_status: 'pending'
     });
-    if (!response.ok) {
-      const provider = await response.json().catch(() => ({}));
-      console.error('[contact] email delivery failed', { status: response.status, code: provider?.name || provider?.code || '' });
-      return NextResponse.json({ ok: false, error: 'Your message could not be sent. Please email hello@cookiesdigitalcreations.com.' }, { status: 502 });
+    if (!storedRequest.ok) console.error(JSON.stringify({ level: 'error', event: 'customer_request_storage_failed', requestId, requestType: 'contact', status: storedRequest.status, configurationMissing: Boolean(storedRequest.missing) }));
+    try {
+      const notification = await sendResendEmail({
+        apiKey,
+        from,
+        to,
+        replyTo: form.email,
+        notification: 'contact-admin',
+        requestId,
+        idempotencyKey: `contact-admin-${requestId}`,
+        subject: `Mini Builder support: ${form.website || form.name}`,
+        html: `<h2>Cookie Mini Website Builder support request</h2><p><strong>Request:</strong> ${requestId}</p><p><strong>Name:</strong> ${escapeHtml(form.name)}<br><strong>Email:</strong> ${escapeHtml(form.email)}<br><strong>Website:</strong> ${escapeHtml(form.website || 'Not provided')}</p><p><strong>Message:</strong><br>${escapeHtml(form.message).replace(/\n/g, '<br>')}</p>`
+      });
+      if (storedRequest.ok) await updateCustomerRequest(requestId, { notification_status: 'accepted', admin_provider_message_id: notification.id || null, notification_error: null });
+    } catch (emailError) {
+      if (storedRequest.ok) await updateCustomerRequest(requestId, { notification_status: 'rejected', notification_error: String(emailError?.message || 'Provider rejected notification').slice(0, 500) });
+      throw emailError;
     }
 
-    return NextResponse.json({ ok: true, message: 'Your message was sent. Cookie Digital Creations will reply by email.' });
+    return NextResponse.json({ ok: true, requestId, message: `Your support request ${requestId} was accepted for email delivery. Cookie Digital Creations will reply by email.` });
   } catch (error) {
     console.error('[contact] submission failed', { message: error?.message || String(error) });
     return NextResponse.json({ ok: false, error: 'Your message could not be sent. Please email hello@cookiesdigitalcreations.com.' }, { status: 500 });
