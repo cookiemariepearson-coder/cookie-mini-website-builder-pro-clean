@@ -40,6 +40,7 @@ test('central commerce configuration maps every approved customer checkout path'
 
 test('checkout URLs are normalized safely and dangerous destinations are rejected', () => {
   assert.equal(cleanCheckoutUrl('cookiepearson.gumroad.com/l/starter'), 'https://cookiepearson.gumroad.com/l/starter');
+  assert.equal(cleanCheckoutUrl('https://cookiepearson.gumroad.com/l/aivideostudio'), 'https://cookiepearson.gumroad.com/l/aivideostudio');
   assert.equal(cleanCheckoutUrl('javascript:alert(1)'), '');
   assert.equal(cleanCheckoutUrl('data:text/html,unsafe'), '');
 });
@@ -159,8 +160,14 @@ test('website and standalone video access remain server verified', async () => {
   assert.match(videoCreate, /const access = await checkCustomerAccess\(request, body\)/);
   assert.ok(videoCreate.indexOf('const access = await checkCustomerAccess(request, body)') < videoCreate.indexOf("fetch('https://api.heygen.com/v3/video-agents'"));
   assert.match(videoCheckout, /NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL/);
+  assert.match(videoCheckout, /href=\{checkoutUrl\}/);
+  assert.doesNotMatch(videoCheckout, /new URLSearchParams|localStorage|getSupabaseAdmin/);
   assert.match(videoCheckout, /Continue to Secure Gumroad Checkout — \$5/);
   assert.match(videoCheckout, /href="\/video-studio\?activate=1">\s*Return to AI Video Studio &amp; Verify License/);
+  assert.match(videoCheckout, /If Gumroad cannot complete your payment, review your billing country and postal code, turn off any VPN/);
+  assert.match(videoCheckout, /href="\/video-studio">Resume Saved Plan/);
+  assert.match(videoCheckout, /mailto:support@gumroad.com\?subject=AI%20Video%20checkout%20payment%20help/);
+  assert.match(videoCheckout, /mailto:hello@cookiesdigitalcreations.com\?subject=AI%20Video%20product%20or%20Builder%20help/);
   assert.doesNotMatch(videoCheckout, /target="_blank"/);
   assert.match(homepage, /href="\/checkout\/ai-video">Start AI Video Studio/);
   assert.match(checkoutSuccess, /href="\/video-studio\?activate=1">Open AI Video Studio &amp; Verify License/);
