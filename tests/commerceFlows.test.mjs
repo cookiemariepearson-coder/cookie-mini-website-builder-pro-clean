@@ -153,11 +153,13 @@ test('website and standalone video access remain server verified', async () => {
   assert.match(accessPanel, /data-testid="video-top-actions">/);
   assert.match(accessPanel, /href="\/checkout\/ai-video">Purchase Now/);
   assert.match(accessPanel, /href="#video-plan-details">Resume Saved Plan/);
+  assert.match(accessPanel, /data-testid="video-access-verification"/);
+  assert.match(studio, /fetch\('\/api\/video-access\/status'/);
   assert.doesNotMatch(accessPanel, /View Video Results/);
   assert.match(studio, /href="\/customer\?return=video-studio">Secure Website-Plan Sign-In/);
   assert.match(studio, /Verify License/);
   assert.equal((studio.match(/data-testid="video-generation-actions"/g) || []).length, 2);
-  assert.equal((studio.match(/disabled=\{Boolean\(working\) \|\| !accessToken\}/g) || []).length, 2);
+  assert.equal((studio.match(/\sdisabled=\{Boolean\(working\) \|\| !canGenerate\}/g) || []).length, 2);
   assert.equal((studio.match(/href="\/video-studio\/results">View Video Results/g) || []).length, 2);
   assert.doesNotMatch(studio, /if \(!accessToken\) \{\s*setStatus\('Unlock AI Video Studio before creating the AI-powered Smart Video Kit/);
   assert.match(studio, /response\.status === 401 \|\| response\.status === 403/);

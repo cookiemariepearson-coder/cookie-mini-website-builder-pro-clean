@@ -188,6 +188,8 @@
 .realVideoBox{margin-top:22px;padding:22px;border:2px solid #f0a21f;border-radius:24px;background:linear-gradient(135deg,#fffaf3,#f6edff)}
 .realVideoBox h2{margin:7px 0}.realVideoBox p{color:#5d5068}
 .videoGenerateBtn{width:100%;font-size:17px;padding:16px}
+.videoGenerateBtn:disabled,.videoGenerateBtn[aria-disabled="true"]{background:#d9d3dc;color:#61586a;opacity:1;box-shadow:none;filter:grayscale(1);cursor:not-allowed;border:2px solid #bcb3c3}
+.generationLockedHelp{margin:12px 0 0;color:#5d5068;font-weight:800;line-height:1.45}
 .navBrandLogo{width:62px;height:62px;display:block;flex:0 0 62px;object-fit:contain;border-radius:14px;background:white;box-shadow:0 8px 20px #0003}
 .nav .logo span{line-height:1.15}
 @media(max-width:560px){.navBrandLogo{width:50px;height:50px;flex-basis:50px}.nav .logo span{font-size:15px}}

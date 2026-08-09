@@ -4,6 +4,7 @@ import { verifyVideoAccessToken } from '../../../../lib/videoAccessToken';
 import { getVerifiedAdmin, getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
 import { standaloneIdentityMatches, standaloneVideoSlugFromAccess } from '../../../../lib/videoResultAccess';
+import { configuredVideoLimits, websiteVideoEntitlement } from '../../../../lib/videoEntitlement.mjs';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -22,15 +23,6 @@ function generationRequestKey(scope = '', requestId = '') {
   return crypto.createHash('sha256').update(`${scope}:${id}`).digest('hex');
 }
 
-function normalizePlan(value) {
-  const raw = String(value || '').toLowerCase();
-  if (raw.includes('premium')) return 'premium';
-  if (raw.includes('business')) return 'business';
-  if (raw.includes('starter')) return 'starter';
-  if (raw.includes('free')) return 'free';
-  return 'free';
-}
-
 function normalizeSlug(value) {
   let input = String(value || '').trim().toLowerCase();
   if (!input) return '';
@@ -47,16 +39,6 @@ function normalizeSlug(value) {
 function getEmail(value) {
   const email = String(value || '').trim().toLowerCase();
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : '';
-}
-
-function planLimit(plan) {
-  const limits = {
-    free: 0,
-    starter: Number(process.env.HEYGEN_STARTER_MONTHLY_LIMIT || 0),
-    business: Number(process.env.HEYGEN_BUSINESS_MONTHLY_LIMIT || 1),
-    premium: Number(process.env.HEYGEN_PREMIUM_MONTHLY_LIMIT || 3)
-  };
-  return Number.isFinite(limits[plan]) ? limits[plan] : 0;
 }
 
 function buildHeyGenPrompt(input) {
@@ -159,25 +141,6 @@ async function findWebsite({ email, slug }) {
   return { website: null };
 }
 
-function getSiteObject(row) {
-  if (!row) return {};
-  if (row.site && typeof row.site === 'object') return row.site;
-  if (typeof row.site === 'string') {
-    try { return JSON.parse(row.site); } catch { return {}; }
-  }
-  return {};
-}
-
-function getWebsitePlan(row) {
-  const site = getSiteObject(row);
-  return normalizePlan(row?.plan || row?.billing_plan || row?.subscription_plan || site.plan || site.selectedPlan || site.packageName || site.package || 'free');
-}
-
-function getWebsiteStatus(row) {
-  const site = getSiteObject(row);
-  return String(row?.status || site.status || 'draft').toLowerCase();
-}
-
 async function checkCustomerAccess(request, body) {
   if (body.ownerOverride === true) {
     const admin = await getVerifiedAdmin(request);
@@ -232,20 +195,13 @@ async function checkCustomerAccess(request, body) {
       return { ok: false, status: 403, error: 'This video pass does not belong to the signed-in website owner.' };
     }
     const website = lookup.website;
-    const status = getWebsiteStatus(website);
-    const plan = getWebsitePlan(website);
-    const baseLimit = planLimit(plan);
-    const bonus = Number(website.video_bonus_credits || 0);
-    const currentMonth = monthKey();
-    const used = website.video_month_key === currentMonth ? Number(website.video_usage_month || 0) : 0;
-    const totalLimit = Math.max(0, baseLimit + bonus);
-    const remaining = Math.max(0, totalLimit - used);
-    if (['paused', 'archived', 'deleted', 'inactive'].includes(status) || totalLimit <= 0 || remaining <= 0) {
-      return { ok: false, status: 403, plan, used, limit: totalLimit, remaining, error: 'This website plan does not have an available active AI video credit.' };
+    const entitlement = websiteVideoEntitlement(website, { limits: configuredVideoLimits(process.env) });
+    if (!entitlement.generationAllowed) {
+      return { ok: false, status: 403, plan: entitlement.plan, used: entitlement.used, limit: entitlement.limit, remaining: entitlement.remaining, error: 'This website plan does not have an available active AI video credit.' };
     }
     const requestKey = generationRequestKey(`website:${website.id}`, body.requestId);
     if (!requestKey) return { ok: false, status: 400, error: 'This video request could not be validated. Refresh the page and try again.' };
-    return { ok: true, ownerOverride: false, website, plan, used, limit: totalLimit, remaining, month: currentMonth, requestKey };
+    return { ok: true, ownerOverride: false, website, plan: entitlement.plan, used: entitlement.used, limit: entitlement.limit, remaining: entitlement.remaining, month: entitlement.month, requestKey };
   }
 
   return {

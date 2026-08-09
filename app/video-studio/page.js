@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Nav from '../../lib/Nav';
+import { VIDEO_ENTITLEMENT_STATE, generationIsAuthorized } from '../../lib/videoEntitlement.mjs';
 
 const SITE_OWNER_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
 const VIDEO_PLAN_KEY = 'cookiePendingVideoPlan';
@@ -10,20 +11,6 @@ const VIDEO_CUSTOMER_EMAIL_KEY = 'cookieVerifiedVideoEmail';
 
 function clean(value = '') {
   return String(value || '').trim();
-}
-
-function readAccessKind(token = '') {
-  try {
-    const data = String(token).split('.')[0];
-    if (!data) return '';
-    const normalized = data.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-    const payload = JSON.parse(window.atob(padded));
-    if (!payload?.kind || !payload?.exp || payload.exp < Date.now()) return '';
-    return payload.kind;
-  } catch {
-    return '';
-  }
 }
 
 function makeKit({ biz, promo, audience, videoType, platform, style, length, voice }) {
@@ -106,24 +93,61 @@ export default function VideoStudioPage() {
   const [accessToken, setAccessToken] = useState('');
   const [accessKind, setAccessKind] = useState('');
   const [licenseKey, setLicenseKey] = useState('');
-  const [accessMessage, setAccessMessage] = useState('Unlock with your active Business/Premium website or your $5 Gumroad license key.');
+  const [accessMessage, setAccessMessage] = useState('Your AI Video plan is ready. Purchase or verify access before generating a real video.');
+  const [entitlement, setEntitlement] = useState({ serverVerified: false, state: VIDEO_ENTITLEMENT_STATE.PLANNING, generationAllowed: false, remaining: 0, limit: 0, used: 0 });
   const [generationDenied, setGenerationDenied] = useState(false);
   const [planStorageReady, setPlanStorageReady] = useState(false);
   const licenseInputRef = useRef(null);
   const generationRequestRef = useRef('');
+  const canGenerate = Boolean(accessToken) && generationIsAuthorized(entitlement);
+
+  function applyServerEntitlement(data, token) {
+    const next = {
+      serverVerified: data.verified === true,
+      state: data.state || VIDEO_ENTITLEMENT_STATE.INVALID,
+      generationAllowed: data.generationAllowed === true,
+      remaining: Number(data.remaining || 0),
+      limit: Number(data.limit || 0),
+      used: Number(data.used || 0),
+      plan: data.plan || '',
+      kind: data.kind || ''
+    };
+    setEntitlement(next);
+    setAccessToken(next.serverVerified && token ? token : '');
+    setAccessKind(next.serverVerified ? next.kind : '');
+    setGenerationDenied(!generationIsAuthorized(next));
+    setAccessMessage(data.message || data.error || 'Purchase or verify access before generating a real video.');
+  }
+
+  async function checkStoredAccess(savedToken) {
+    if (!savedToken) return;
+    setEntitlement(current => ({ ...current, state: VIDEO_ENTITLEMENT_STATE.CHECKING, generationAllowed: false }));
+    setAccessMessage('Checking saved video access securely...');
+    try {
+      const response = await fetch('/api/video-access/status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}`
+        },
+        body: JSON.stringify({ accessToken: savedToken })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) {
+        applyServerEntitlement({ ...data, verified: false, generationAllowed: false }, '');
+        return;
+      }
+      applyServerEntitlement(data, savedToken);
+    } catch {
+      applyServerEntitlement({ verified: false, state: VIDEO_ENTITLEMENT_STATE.ERROR, generationAllowed: false, error: 'Video access could not be checked right now. Your saved plan is still available.' }, '');
+    }
+  }
 
   useEffect(() => {
     try {
       const savedToken = localStorage.getItem('cookieVideoAccessToken') || '';
-      const savedKind = readAccessKind(savedToken);
-      if (savedKind) {
-        setAccessToken(savedToken);
-        setAccessKind(savedKind);
-        const savedEmail = clean(localStorage.getItem(VIDEO_CUSTOMER_EMAIL_KEY) || '');
-        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(savedEmail)) setCustomerEmail(savedEmail);
-      } else if (savedToken) {
-        localStorage.removeItem('cookieVideoAccessToken');
-      }
+      const savedEmail = clean(localStorage.getItem(VIDEO_CUSTOMER_EMAIL_KEY) || '');
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(savedEmail)) setCustomerEmail(savedEmail);
       let savedPlan = null;
       try { savedPlan = JSON.parse(localStorage.getItem(VIDEO_PLAN_KEY) || 'null'); } catch {}
       if (savedPlan && typeof savedPlan === 'object') {
@@ -140,6 +164,7 @@ export default function VideoStudioPage() {
         setAccessMessage('Purchase complete. Paste the Gumroad license key from your receipt, then choose Verify License. Your saved video plan is ready below.');
         window.requestAnimationFrame(() => licenseInputRef.current?.focus());
       }
+      void checkStoredAccess(savedToken);
     } catch {}
     finally { setPlanStorageReady(true); }
   }, []);
@@ -157,6 +182,7 @@ export default function VideoStudioPage() {
       return;
     }
     setAccessMessage('Verifying access...');
+    setEntitlement(current => ({ ...current, state: VIDEO_ENTITLEMENT_STATE.CHECKING, generationAllowed: false }));
     try {
       const response = await fetch('/api/video-access/activate', {
         method: 'POST',
@@ -168,18 +194,15 @@ export default function VideoStudioPage() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) throw new Error(data.error || 'Access could not be verified.');
-      setAccessToken(data.token);
-      setAccessKind(readAccessKind(data.token));
-      setGenerationDenied(false);
+      applyServerEntitlement(data, data.token);
       if (data.email) {
         setCustomerEmail(data.email);
         try { localStorage.setItem(VIDEO_CUSTOMER_EMAIL_KEY, data.email); } catch {}
       }
       setLicenseKey('');
       try { localStorage.setItem('cookieVideoAccessToken', data.token); } catch {}
-      setAccessMessage(`Access verified: ${data.access}. Generate Video is now available.`);
     } catch (error) {
-      setAccessMessage(error.message || 'Access could not be verified. Please try again.');
+      applyServerEntitlement({ verified: false, state: VIDEO_ENTITLEMENT_STATE.INVALID, generationAllowed: false, error: error.message || 'Access could not be verified. Please try again.' }, '');
     }
   }
 
@@ -236,7 +259,7 @@ export default function VideoStudioPage() {
       setStatus('Enter the business name and what you are promoting first.');
       return;
     }
-    if (!accessToken) {
+    if (!canGenerate) {
       setStatus('Your planning kit is saved. Verify an eligible website plan or buy the $5 standalone AI Video access before real video generation.');
       return;
     }
@@ -269,6 +292,7 @@ export default function VideoStudioPage() {
         if (data.generationNotStarted) generationRequestRef.current = '';
         if (response.status === 401 || response.status === 403) {
           setGenerationDenied(true);
+          setEntitlement(current => ({ ...current, state: Number(data.remaining) === 0 && current.serverVerified ? VIDEO_ENTITLEMENT_STATE.NO_CREDIT : VIDEO_ENTITLEMENT_STATE.INVALID, generationAllowed: false, remaining: Math.max(0, Number(data.remaining || 0)) }));
           setStatus(`${data.error || 'No available video entitlement was verified.'} Your planning kit remains saved. Verify another eligible website plan or use the $5 AI Video purchase option.`);
           return;
         }
@@ -278,6 +302,7 @@ export default function VideoStudioPage() {
         }
         throw new Error(data.error || 'The video could not be started.');
       }
+      setEntitlement(current => ({ ...current, state: Number(data.videoUsage?.remaining || 0) > 0 ? current.state : VIDEO_ENTITLEMENT_STATE.NO_CREDIT, generationAllowed: Number(data.videoUsage?.remaining || 0) > 0, remaining: Number(data.videoUsage?.remaining || 0), used: Number(data.videoUsage?.used || current.used) }));
       setStatus(`Video generation started successfully.${data.videoUsage?.remaining !== undefined ? ` Credits remaining: ${data.videoUsage.remaining}.` : ''} Opening your on-site Video Results...`);
       const results = new URLSearchParams();
       if (customerEmail) results.set('email', customerEmail);
@@ -302,14 +327,18 @@ export default function VideoStudioPage() {
             then create a real video if your plan includes video credits.
           </p>
           <div className="notice videoAccessPanel">
-            <strong>{accessToken ? '✓ AI Video Studio unlocked' : 'Unlock AI Video Studio'}</strong>
+            <strong>{canGenerate
+              ? `✓ ${accessKind === 'standalone' ? 'Standalone AI Video access' : 'Eligible website plan'} verified — ${entitlement.remaining} credit${entitlement.remaining === 1 ? '' : 's'} available`
+              : entitlement.state === VIDEO_ENTITLEMENT_STATE.CHECKING
+                ? 'Checking saved video access'
+                : 'Your AI Video plan is ready'}</strong>
             <p>{accessMessage}</p>
-            {accessKind === 'standalone' && <p><strong>$5 standalone access:</strong> Your purchase includes the complete planning kit and one real video generated through this website.</p>}
+            <p><strong>$5 standalone access:</strong> A verified $5 standalone license includes the complete planning kit and one real video generated through this website.</p>
             <div className="navRow" data-testid="video-top-actions">
-              {!accessToken && <Link className="btn dark" href="/checkout/ai-video">Purchase Now</Link>}
+              <Link className="btn dark" href="/checkout/ai-video">Purchase Now</Link>
               <a className="btn light" href="#video-plan-details">Resume Saved Plan</a>
             </div>
-            {(!accessToken || accessKind === 'website-plan') && <>
+            <div data-testid="video-access-verification">
               <div className="row">
                 <div className="field"><label>Business/Premium customer email</label><input value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for the website plan" /></div>
                 <div className="field"><label>Website name or subdomain</label><input value={websiteSlug} onChange={e => setWebsiteSlug(e.target.value)} placeholder="Example: my-business" /></div>
@@ -318,7 +347,7 @@ export default function VideoStudioPage() {
               <Link className="btn light" href="/customer?return=video-studio">Secure Website-Plan Sign-In</Link>
               <div className="field"><label htmlFor="video-license-key">$5 Gumroad license key</label><input ref={licenseInputRef} id="video-license-key" value={licenseKey} onChange={e => setLicenseKey(e.target.value)} placeholder="Paste the license key from your Gumroad receipt" aria-describedby="video-license-help" /><small id="video-license-help">Use the license key Gumroad provides after the standalone AI Video purchase.</small></div>
               <button className="btn dark" type="button" onClick={() => activateAccess('license')}>Verify License</button>
-            </>}
+            </div>
           </div>
           <div className="studioSteps" aria-label="AI Video Studio steps">
             <div><span className="studioStepNumber">1</span><strong>Describe it</strong><span>Tell us about the business and promotion.</span></div>
@@ -408,18 +437,19 @@ export default function VideoStudioPage() {
 
           {accessKind === 'standalone' ? (
             <div className="realVideoBoxFriendly standaloneVideoNotice">
-              <div className="studioSectionHeading"><span className="studioStepNumber">3</span><div><h2>Generate your real video</h2><p>Your $5 standalone license includes one real video.</p></div></div>
+              <div className="studioSectionHeading"><span className="studioStepNumber">3</span><div><h2>Generate your real video</h2><p>A verified $5 standalone license includes one real video.</p></div></div>
               <p>Review the planning kit above, then click Generate My Video. Your video will be created in the background and saved to the on-site Video Results page—no HeyGen visit is required.</p>
               <div className="field">
                 <label>Email for your saved video results</label>
                 <input type="email" name="standalone-video-email" autoComplete="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for your Gumroad purchase" />
               </div>
               <div className="navRow videoGenerationActions" data-testid="video-generation-actions">
-                <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working) || !accessToken}>
+                <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working) || !canGenerate} aria-disabled={Boolean(working) || !canGenerate}>
                   {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
                 </button>
                 <Link className="btn light" href="/video-studio/results">View Video Results</Link>
               </div>
+              {!canGenerate && <p className="generationLockedHelp" role="status">Purchase or verify access above before generating a real video.</p>}
             </div>
           ) : <div className="realVideoBoxFriendly">
             <div className="studioSectionHeading"><span className="studioStepNumber">3</span><div><h2>Generate the real video</h2><p>This step uses a video credit. The planning kit above does not.</p></div></div>
@@ -438,12 +468,13 @@ export default function VideoStudioPage() {
               </div>
             </div>
             <div className="navRow videoGenerationActions" data-testid="video-generation-actions">
-              <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working) || !accessToken}>
+              <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working) || !canGenerate} aria-disabled={Boolean(working) || !canGenerate}>
                 {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
               </button>
               <Link className="btn light" href="/video-studio/results">View Video Results</Link>
             </div>
-            {(!accessToken || generationDenied) && <div className="navRow"><Link className="btn dark" href="/checkout/ai-video">Purchase Now</Link><Link className="btn light" href="/customer?return=video-studio">Verify Eligible Website Plan</Link></div>}
+            {!canGenerate && <p className="generationLockedHelp" role="status">Purchase or verify access above before generating a real video.</p>}
+            {(!canGenerate || generationDenied) && <div className="navRow"><Link className="btn dark" href="/checkout/ai-video">Purchase Now</Link><Link className="btn light" href="/customer?return=video-studio">Verify Eligible Website Plan</Link></div>}
           </div>}
         </section>
       </main>
