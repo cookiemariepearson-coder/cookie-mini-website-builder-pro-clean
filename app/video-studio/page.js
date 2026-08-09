@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Nav from '../../lib/Nav';
 
@@ -17,7 +17,9 @@ function readAccessKind(token = '') {
     if (!data) return '';
     const normalized = data.replace(/-/g, '+').replace(/_/g, '/');
     const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-    return JSON.parse(window.atob(padded))?.kind || '';
+    const payload = JSON.parse(window.atob(padded));
+    if (!payload?.kind || !payload?.exp || payload.exp < Date.now()) return '';
+    return payload.kind;
   } catch {
     return '';
   }
@@ -105,12 +107,18 @@ export default function VideoStudioPage() {
   const [licenseKey, setLicenseKey] = useState('');
   const [accessMessage, setAccessMessage] = useState('Unlock with your active Business/Premium website or your $5 Gumroad license key.');
   const [generationDenied, setGenerationDenied] = useState(false);
+  const licenseInputRef = useRef(null);
 
   useEffect(() => {
     try {
       const savedToken = localStorage.getItem('cookieVideoAccessToken') || '';
-      setAccessToken(savedToken);
-      setAccessKind(readAccessKind(savedToken));
+      const savedKind = readAccessKind(savedToken);
+      if (savedKind) {
+        setAccessToken(savedToken);
+        setAccessKind(savedKind);
+      } else if (savedToken) {
+        localStorage.removeItem('cookieVideoAccessToken');
+      }
       const savedPlan = JSON.parse(localStorage.getItem(VIDEO_PLAN_KEY) || 'null');
       if (savedPlan && typeof savedPlan === 'object') {
         setBiz(clean(savedPlan.biz));
@@ -121,6 +129,10 @@ export default function VideoStudioPage() {
         setStyle(clean(savedPlan.style) || 'Professional');
         setLength(clean(savedPlan.length) || '15 seconds');
         setVoice(clean(savedPlan.voice) || 'Warm female voice');
+      }
+      if (new URLSearchParams(window.location.search).get('activate') === '1') {
+        setAccessMessage('Purchase complete. Paste the Gumroad license key from your receipt, then choose Verify License. Your saved video plan is ready below.');
+        window.requestAnimationFrame(() => licenseInputRef.current?.focus());
       }
     } catch {}
   }, []);
@@ -270,6 +282,7 @@ export default function VideoStudioPage() {
             <strong>{accessToken ? '✓ AI Video Studio unlocked' : 'Unlock AI Video Studio'}</strong>
             <p>{accessMessage}</p>
             {accessKind === 'standalone' && <p><strong>$5 standalone access:</strong> Your purchase includes the complete planning kit and one real video generated through this website.</p>}
+            {!accessToken && <div className="navRow" data-testid="video-top-purchase"><Link className="btn dark" href="/checkout/ai-video">Purchase Now</Link></div>}
             {(!accessToken || accessKind === 'website-plan') && <>
               <div className="row">
                 <div className="field"><label>Business/Premium customer email</label><input value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for the website plan" /></div>
@@ -277,11 +290,9 @@ export default function VideoStudioPage() {
               </div>
               <button className="btn" type="button" onClick={() => activateAccess('plan')}>Verify Website Plan</button>
               <Link className="btn light" href="/customer?return=video-studio">Secure Website-Plan Sign-In</Link>
-              <div className="field"><label>$5 Gumroad license key</label><input value={licenseKey} onChange={e => setLicenseKey(e.target.value)} placeholder="Paste the license key from your Gumroad receipt" /></div>
-              <button className="btn dark" type="button" onClick={() => activateAccess('license')}>Verify Gumroad Purchase</button>
-              <Link className="btn light" href="/checkout/ai-video">Buy $5 Standalone AI Video Access</Link>
+              <div className="field"><label htmlFor="video-license-key">$5 Gumroad license key</label><input ref={licenseInputRef} id="video-license-key" value={licenseKey} onChange={e => setLicenseKey(e.target.value)} placeholder="Paste the license key from your Gumroad receipt" aria-describedby="video-license-help" /><small id="video-license-help">Use the license key Gumroad provides after the standalone AI Video purchase.</small></div>
+              <button className="btn dark" type="button" onClick={() => activateAccess('license')}>Verify License</button>
             </>}
-            <div className="navRow"><Link className="btn light" href="/video-studio/results">View Video Results</Link></div>
           </div>
           <div className="studioSteps" aria-label="AI Video Studio steps">
             <div><span className="studioStepNumber">1</span><strong>Describe it</strong><span>Tell us about the business and promotion.</span></div>
@@ -377,9 +388,12 @@ export default function VideoStudioPage() {
                 <label>Email for your saved video results</label>
                 <input type="email" name="standalone-video-email" autoComplete="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for your Gumroad purchase" />
               </div>
-              <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working)}>
-                {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
-              </button>
+              <div className="navRow videoGenerationActions" data-testid="video-generation-actions">
+                <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working)}>
+                  {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
+                </button>
+                <Link className="btn light" href="/video-studio/results">View Video Results</Link>
+              </div>
             </div>
           ) : <div className="realVideoBoxFriendly">
             <div className="studioSectionHeading"><span className="studioStepNumber">3</span><div><h2>Generate the real video</h2><p>This step uses a video credit. The planning kit above does not.</p></div></div>
@@ -397,10 +411,13 @@ export default function VideoStudioPage() {
                 <input name="video-website-name" autoComplete="off" value={websiteSlug} onChange={e => setWebsiteSlug(e.target.value)} placeholder="Example: my-business" />
               </div>
             </div>
-            <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working)}>
-              {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
-            </button>
-            {(!accessToken || generationDenied) && <div className="navRow"><Link className="btn dark" href="/checkout/ai-video">Buy $5 AI Video Access</Link><Link className="btn light" href="/customer?return=video-studio">Verify Eligible Website Plan</Link><Link className="btn light" href="/video-studio/results">View Existing Video Results</Link></div>}
+            <div className="navRow videoGenerationActions" data-testid="video-generation-actions">
+              <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working)}>
+                {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
+              </button>
+              <Link className="btn light" href="/video-studio/results">View Video Results</Link>
+            </div>
+            {(!accessToken || generationDenied) && <div className="navRow"><Link className="btn dark" href="/checkout/ai-video">Purchase Now</Link><Link className="btn light" href="/customer?return=video-studio">Verify Eligible Website Plan</Link></div>}
           </div>}
         </section>
       </main>

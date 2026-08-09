@@ -37,8 +37,8 @@ export default function AiVideoCheckoutPage() {
               <div className="notice error">Secure AI Video checkout is temporarily unavailable. Please try again shortly or contact support.</div>
             )}
 
-            <a className="btn dark" href="/video-studio">
-              Already Purchased / Open Studio
+            <a className="btn dark" href="/video-studio?activate=1">
+              Return to AI Video Studio &amp; Verify License
             </a>
 
             <a className="btn light" href="/pricing">
@@ -52,7 +52,7 @@ export default function AiVideoCheckoutPage() {
 
           <div className="notice">
             <strong>After purchase:</strong><br />
-            You should be sent back to Cookie&apos;s AI Video Studio so you can start creating your video content plan.
+            Gumroad provides your license key and returns you to Cookie&apos;s confirmation page. Choose Open AI Video Studio &amp; Verify License. Your non-sensitive video plan remains saved in this browser.
           </div>
         </section>
       </main>

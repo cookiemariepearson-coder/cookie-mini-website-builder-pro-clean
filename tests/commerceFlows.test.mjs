@@ -126,11 +126,14 @@ test('DFY and Contact independently record provider acceptance and request stora
 });
 
 test('website and standalone video access remain server verified', async () => {
-  const [checkoutVerify, videoAccess, videoCreate, studio] = await Promise.all([
+  const [checkoutVerify, videoAccess, videoCreate, studio, videoCheckout, homepage, checkoutSuccess] = await Promise.all([
     source('app/api/checkout/verify/route.js'),
     source('app/api/video-access/activate/route.js'),
     source('app/api/heygen/create/route.js'),
-    source('app/video-studio/page.js')
+    source('app/video-studio/page.js'),
+    source('app/checkout/ai-video/page.js'),
+    source('app/page.js'),
+    source('app/checkout/success/page.js')
   ]);
   assert.match(checkoutVerify, /getVerifiedSiteOwner/);
   assert.match(checkoutVerify, /siteBelongsToOwner/);
@@ -139,16 +142,26 @@ test('website and standalone video access remain server verified', async () => {
   assert.match(videoCreate, /verifyVideoAccessToken/);
   assert.match(videoCreate, /async function incrementUsage/);
   assert.match(videoCreate, /video_usage_month/);
-  assert.match(studio, /href="\/checkout\/ai-video">Buy \$5 Standalone AI Video Access/);
+  const accessPanel = studio.slice(studio.indexOf('<div className="notice videoAccessPanel">'), studio.indexOf('<div className="studioSteps"'));
+  assert.match(accessPanel, /data-testid="video-top-purchase"><Link className="btn dark" href="\/checkout\/ai-video">Purchase Now/);
+  assert.doesNotMatch(accessPanel, /View Video Results/);
   assert.match(studio, /href="\/customer\?return=video-studio">Secure Website-Plan Sign-In/);
-  assert.match(studio, /href="\/video-studio\/results">View Video Results/);
+  assert.match(studio, /Verify License/);
+  assert.equal((studio.match(/data-testid="video-generation-actions"/g) || []).length, 2);
+  assert.equal((studio.match(/href="\/video-studio\/results">View Video Results/g) || []).length, 2);
   assert.doesNotMatch(studio, /if \(!accessToken\) \{\s*setStatus\('Unlock AI Video Studio before creating the AI-powered Smart Video Kit/);
   assert.match(studio, /response\.status === 401 \|\| response\.status === 403/);
-  assert.match(studio, /View Existing Video Results/);
+  assert.match(studio, /localStorage\.setItem\(VIDEO_PLAN_KEY/);
+  assert.match(studio, /localStorage\.getItem\(VIDEO_PLAN_KEY/);
+  assert.match(studio, /get\('activate'\) === '1'/);
   const videoKit = await source('app/api/video-kit/route.js');
   assert.doesNotMatch(videoKit, /if \(!access\) return NextResponse/);
   assert.match(videoCreate, /const access = await checkCustomerAccess\(request, body\)/);
   assert.ok(videoCreate.indexOf('const access = await checkCustomerAccess(request, body)') < videoCreate.indexOf("fetch('https://api.heygen.com/v3/video-agents'"));
-  const videoCheckout = await source('app/checkout/ai-video/page.js');
+  assert.match(videoCheckout, /NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL/);
+  assert.match(videoCheckout, /Continue to Secure Gumroad Checkout — \$5/);
+  assert.match(videoCheckout, /href="\/video-studio\?activate=1">\s*Return to AI Video Studio &amp; Verify License/);
   assert.doesNotMatch(videoCheckout, /target="_blank"/);
+  assert.match(homepage, /href="\/checkout\/ai-video">Start AI Video Studio/);
+  assert.match(checkoutSuccess, /href="\/video-studio\?activate=1">Open AI Video Studio &amp; Verify License/);
 });
