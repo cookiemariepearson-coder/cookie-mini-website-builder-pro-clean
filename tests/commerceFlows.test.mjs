@@ -150,7 +150,9 @@ test('website and standalone video access remain server verified', async () => {
   assert.match(videoCreate, /async function incrementUsage/);
   assert.match(videoCreate, /video_usage_month/);
   const accessPanel = studio.slice(studio.indexOf('<div className="notice videoAccessPanel">'), studio.indexOf('<div className="studioSteps"'));
-  assert.match(accessPanel, /data-testid="video-top-purchase"><Link className="btn dark" href="\/checkout\/ai-video">Purchase Now/);
+  assert.match(accessPanel, /data-testid="video-top-actions">/);
+  assert.match(accessPanel, /href="\/checkout\/ai-video">Purchase Now/);
+  assert.match(accessPanel, /href="#video-plan-details">Resume Saved Plan/);
   assert.doesNotMatch(accessPanel, /View Video Results/);
   assert.match(studio, /href="\/customer\?return=video-studio">Secure Website-Plan Sign-In/);
   assert.match(studio, /Verify License/);
@@ -178,6 +180,7 @@ test('website and standalone video access remain server verified', async () => {
   assert.match(videoCheckout, /href="\/video-studio\?activate=1">\s*Return to AI Video Studio &amp; Verify License/);
   assert.match(videoCheckout, /If Gumroad cannot complete your payment, review your billing country and postal code, turn off any VPN/);
   assert.match(videoCheckout, /href="\/video-studio">Resume Saved Plan/);
+  assert.match(videoCheckout, /id="purchase-help"/);
   assert.match(videoCheckout, /mailto:support@gumroad.com\?subject=AI%20Video%20checkout%20payment%20help/);
   assert.match(videoCheckout, /mailto:hello@cookiesdigitalcreations.com\?subject=AI%20Video%20product%20or%20Builder%20help/);
   assert.doesNotMatch(videoCheckout, /target="_blank"/);

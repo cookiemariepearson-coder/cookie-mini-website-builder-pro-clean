@@ -55,7 +55,7 @@ export default function AiVideoCheckoutPage() {
             Gumroad provides your license key and returns you to Cookie&apos;s confirmation page. Choose Open AI Video Studio &amp; Verify License. Your non-sensitive video plan remains saved in this browser.
           </div>
 
-          <div className="notice gumroadPurchaseHelp">
+          <div className="notice gumroadPurchaseHelp" id="purchase-help">
             <strong>Purchase help</strong>
             <p>If Gumroad cannot complete your payment, review your billing country and postal code, turn off any VPN, and try Gumroad in an updated browser. Your unfinished AI Video plan will remain saved.</p>
             <p>Gumroad handles payment processing. Never send payment-card information to Cookies Digital Creations.</p>

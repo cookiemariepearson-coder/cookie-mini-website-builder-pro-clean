@@ -305,7 +305,10 @@ export default function VideoStudioPage() {
             <strong>{accessToken ? '✓ AI Video Studio unlocked' : 'Unlock AI Video Studio'}</strong>
             <p>{accessMessage}</p>
             {accessKind === 'standalone' && <p><strong>$5 standalone access:</strong> Your purchase includes the complete planning kit and one real video generated through this website.</p>}
-            {!accessToken && <div className="navRow" data-testid="video-top-purchase"><Link className="btn dark" href="/checkout/ai-video">Purchase Now</Link></div>}
+            <div className="navRow" data-testid="video-top-actions">
+              {!accessToken && <Link className="btn dark" href="/checkout/ai-video">Purchase Now</Link>}
+              <a className="btn light" href="#video-plan-details">Resume Saved Plan</a>
+            </div>
             {(!accessToken || accessKind === 'website-plan') && <>
               <div className="row">
                 <div className="field"><label>Business/Premium customer email</label><input value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for the website plan" /></div>
@@ -324,7 +327,7 @@ export default function VideoStudioPage() {
           </div>
         </section>
 
-        <section className="dashboard studioWorkCard">
+        <section className="dashboard studioWorkCard" id="video-plan-details">
           <div className="studioSectionHeading"><span className="studioStepNumber">1</span><div><h2>Describe your video</h2><p>Complete the details below. You can create and download the planning kit without signing in.</p></div></div>
           <div className="studioFormGrid">
             <div className="field">
