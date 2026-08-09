@@ -3,35 +3,35 @@ import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { createVideoAccessToken } from '../../../../lib/videoAccessToken';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
+import { privateLicenseSubject, verifyAiVideoLicense } from '../../../../lib/gumroadVideoLicense.mjs';
+import { standaloneVideoSlug, videoEmailHash } from '../../../../lib/videoResultAccess';
 
 export const dynamic = 'force-dynamic';
 
 function clean(value = '') { return String(value || '').trim().toLowerCase(); }
 
-async function verifyLicense(licenseKey) {
-  const productId = process.env.GUMROAD_AI_VIDEO_PRODUCT_ID || 'GE_fDgvz_GT29Fn6eSj9uw==';
-  const form = new URLSearchParams({ product_id: productId, license_key: licenseKey, increment_uses_count: 'false' });
-  const response = await fetch('https://api.gumroad.com/v2/licenses/verify', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: form });
-  const data = await response.json().catch(() => ({}));
-  const purchase = data.purchase || {};
-  const blocked = purchase.refunded || purchase.chargebacked || purchase.disputed || purchase.subscription_ended_at || purchase.cancelled_at;
-  return { valid: response.ok && data.success === true && !blocked, purchase };
-}
-
 export async function POST(request) {
   try {
     const body = await request.json();
     const licenseKey = String(body.licenseKey || '').trim();
-    const subject = licenseKey ? `license:${licenseKey.slice(-12)}` : `plan:${clean(body.email || body.slug)}`;
+    const subject = licenseKey ? privateLicenseSubject(licenseKey) : `plan:${clean(body.email || body.slug)}`;
     const limited = rateLimit(request, { name: 'video-access', limit: 10, windowMs: 15 * 60 * 1000, subject });
     if (!limited.ok) return rateLimitResponse(limited, 'Please wait before verifying access again.');
     if (licenseKey) {
-      const result = await verifyLicense(licenseKey);
+      const result = await verifyAiVideoLicense({ licenseKey, productId: process.env.GUMROAD_AI_VIDEO_PRODUCT_ID });
+      if (result.reason === 'missing_product_configuration') {
+        console.error('[video-access] AI Video product configuration missing');
+        return NextResponse.json({ ok: false, error: 'AI Video purchase verification is temporarily unavailable. Please contact hello@cookiesdigitalcreations.com.' }, { status: 503 });
+      }
       if (!result.valid) return NextResponse.json({ ok: false, error: 'That license key could not be verified as an active AI Video Studio purchase.' }, { status: 403 });
-      const purchaseEmail = clean(result.purchase.email || result.purchase.purchaser_email || '');
+      const { saleId, email: purchaseEmail } = result.identity;
       return NextResponse.json({
         ok: true,
-        token: createVideoAccessToken({ kind: 'standalone', saleId: result.purchase.sale_id || '', email: purchaseEmail }),
+        token: createVideoAccessToken({
+          kind: 'standalone',
+          namespace: standaloneVideoSlug(saleId),
+          emailHash: videoEmailHash(purchaseEmail)
+        }),
         access: 'Standalone AI Video Studio — 1 real video',
         email: purchaseEmail
       });

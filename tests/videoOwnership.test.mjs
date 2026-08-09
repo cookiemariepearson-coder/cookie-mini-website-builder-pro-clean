@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import crypto from 'crypto';
 import { readFile } from 'node:fs/promises';
 import { verifyVideoAccessToken } from '../lib/videoAccessToken.js';
-import { authorizeVideoResultAccess, filterAuthorizedVideoJobs, standaloneVideoSlug, videoJobBelongsToAccess } from '../lib/videoResultAccess.js';
+import { authorizeVideoResultAccess, filterAuthorizedVideoJobs, standaloneVideoSlug, videoEmailHash, videoJobBelongsToAccess } from '../lib/videoResultAccess.js';
 
 async function source(path) {
   return readFile(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -47,6 +47,19 @@ test('Customer A job ID remains denied to Customer B access', () => {
   assert.equal(videoJobBelongsToAccess(slugA, ''), false);
 });
 
+test('new standalone passes bind a purchase namespace to a hashed verified email', () => {
+  const accessA = {
+    kind: 'standalone',
+    namespace: standaloneVideoSlug('sale-a'),
+    emailHash: videoEmailHash('customer-a@example.com')
+  };
+  const authorized = authorizeVideoResultAccess({ access: accessA, requestedEmail: 'customer-a@example.com', requireIdentity: true });
+  const jobs = [{ id: 'video-a', website_slug: standaloneVideoSlug('sale-a'), customer_email: 'customer-a@example.com' }];
+  assert.equal(authorized.ok, true);
+  assert.deepEqual(filterAuthorizedVideoJobs(jobs, { access: accessA, authorized, requestedEmail: 'customer-a@example.com' }).map(row => row.id), ['video-a']);
+  assert.deepEqual(filterAuthorizedVideoJobs(jobs, { access: accessA, authorized, requestedEmail: 'customer-b@example.com' }), []);
+});
+
 test('unsigned, invalid, and expired video access passes are denied', () => {
   const previous = process.env.VIDEO_ACCESS_SIGNING_SECRET;
   process.env.VIDEO_ACCESS_SIGNING_SECRET = 'test-only-secret';
@@ -60,12 +73,13 @@ test('unsigned, invalid, and expired video access passes are denied', () => {
 });
 
 test('video endpoints enforce server ownership and never disclose provider media URLs', async () => {
-  const [jobs, status, media, results, create] = await Promise.all([
+  const [jobs, status, media, results, create, migration] = await Promise.all([
     source('app/api/heygen/jobs/route.js'),
     source('app/api/heygen/status/route.js'),
     source('app/api/heygen/media/route.js'),
     source('app/video-studio/results/page.js'),
-    source('app/api/heygen/create/route.js')
+    source('app/api/heygen/create/route.js'),
+    source('supabase/heygen_video_results_migration.sql')
   ]);
   assert.match(jobs, /requireIdentity: true/);
   assert.match(jobs, /filterAuthorizedVideoJobs/);
@@ -79,4 +93,7 @@ test('video endpoints enforce server ownership and never disclose provider media
   assert.match(results, /\/api\/heygen\/media\?jobId=/);
   assert.match(results, /Verify Gumroad Purchase & Find Videos/);
   assert.doesNotMatch(create, /heygenSessionUrl:/);
+  assert.match(migration, /heygen_video_jobs_request_key_unique/);
+  assert.match(migration, /heygen_video_jobs_standalone_purchase_unique/);
+  assert.match(migration, /revoke all on table public\.heygen_video_jobs from anon, authenticated/i);
 });

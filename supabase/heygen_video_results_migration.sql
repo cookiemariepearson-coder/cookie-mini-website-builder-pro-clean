@@ -21,13 +21,21 @@ create table if not exists public.heygen_video_jobs (
   failure_code text,
   failure_message text,
   raw_response jsonb,
+  request_key text,
   created_at timestamptz default now(),
   checked_at timestamptz,
   updated_at timestamptz default now()
 );
+
+alter table public.heygen_video_jobs add column if not exists request_key text;
 
 create index if not exists heygen_video_jobs_email_idx on public.heygen_video_jobs(customer_email);
 create index if not exists heygen_video_jobs_slug_idx on public.heygen_video_jobs(website_slug);
 create index if not exists heygen_video_jobs_session_idx on public.heygen_video_jobs(heygen_session_id);
 create index if not exists heygen_video_jobs_video_idx on public.heygen_video_jobs(heygen_video_id);
 create index if not exists heygen_video_jobs_created_idx on public.heygen_video_jobs(created_at desc);
+create unique index if not exists heygen_video_jobs_request_key_unique on public.heygen_video_jobs(request_key) where request_key is not null;
+create unique index if not exists heygen_video_jobs_standalone_purchase_unique on public.heygen_video_jobs(website_slug) where plan = 'standalone';
+
+alter table public.heygen_video_jobs enable row level security;
+revoke all on table public.heygen_video_jobs from anon, authenticated;

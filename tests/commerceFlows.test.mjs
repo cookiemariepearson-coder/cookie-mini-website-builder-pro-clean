@@ -127,9 +127,10 @@ test('DFY and Contact independently record provider acceptance and request stora
 });
 
 test('website and standalone video access remain server verified', async () => {
-  const [checkoutVerify, videoAccess, videoCreate, studio, videoCheckout, homepage, checkoutSuccess] = await Promise.all([
+  const [checkoutVerify, videoAccess, videoLicense, videoCreate, studio, videoCheckout, homepage, checkoutSuccess] = await Promise.all([
     source('app/api/checkout/verify/route.js'),
     source('app/api/video-access/activate/route.js'),
+    source('lib/gumroadVideoLicense.mjs'),
     source('app/api/heygen/create/route.js'),
     source('app/video-studio/page.js'),
     source('app/checkout/ai-video/page.js'),
@@ -138,7 +139,11 @@ test('website and standalone video access remain server verified', async () => {
   ]);
   assert.match(checkoutVerify, /getVerifiedSiteOwner/);
   assert.match(checkoutVerify, /siteBelongsToOwner/);
-  assert.match(videoAccess, /api\.gumroad\.com\/v2\/licenses\/verify/);
+  assert.match(videoLicense, /api\.gumroad\.com\/v2\/licenses\/verify/);
+  assert.match(videoLicense, /increment_uses_count: 'false'/);
+  assert.match(videoAccess, /process\.env\.GUMROAD_AI_VIDEO_PRODUCT_ID/);
+  assert.match(videoAccess, /emailHash: videoEmailHash\(purchaseEmail\)/);
+  assert.doesNotMatch(videoAccess, /saleId\s*:/);
   assert.match(videoAccess, /createVideoAccessToken/);
   assert.match(videoCreate, /verifyVideoAccessToken/);
   assert.match(videoCreate, /async function incrementUsage/);
@@ -154,11 +159,16 @@ test('website and standalone video access remain server verified', async () => {
   assert.match(studio, /response\.status === 401 \|\| response\.status === 403/);
   assert.match(studio, /localStorage\.setItem\(VIDEO_PLAN_KEY/);
   assert.match(studio, /localStorage\.getItem\(VIDEO_PLAN_KEY/);
+  assert.match(studio, /if \(!planStorageReady\) return/);
   assert.match(studio, /get\('activate'\) === '1'/);
   const videoKit = await source('app/api/video-kit/route.js');
   assert.doesNotMatch(videoKit, /if \(!access\) return NextResponse/);
   assert.match(videoCreate, /const access = await checkCustomerAccess\(request, body\)/);
   assert.ok(videoCreate.indexOf('const access = await checkCustomerAccess(request, body)') < videoCreate.indexOf("fetch('https://api.heygen.com/v3/video-agents'"));
+  assert.match(videoCreate, /status: 'submitting'/);
+  assert.match(videoCreate, /request_key/);
+  assert.match(videoCreate, /generationNotStarted: true/);
+  assert.ok(videoCreate.indexOf("status: 'submitting'") < videoCreate.indexOf("fetch('https://api.heygen.com/v3/video-agents'"));
   assert.match(videoCheckout, /NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL/);
   assert.match(videoCheckout, /href=\{checkoutUrl\}/);
   assert.doesNotMatch(videoCheckout, /new URLSearchParams|localStorage|getSupabaseAdmin/);

@@ -4,6 +4,7 @@ import Nav from '../../../lib/Nav';
 
 const VIDEO_ACCESS_TOKEN_KEY = 'cookieVideoAccessToken';
 const SITE_OWNER_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
+const VIDEO_CUSTOMER_EMAIL_KEY = 'cookieVerifiedVideoEmail';
 
 function normalizeInput(value) {
   return String(value || '').trim();
@@ -87,7 +88,7 @@ export default function VideoResultsPage() {
     const savedAccessToken = localStorage.getItem(VIDEO_ACCESS_TOKEN_KEY) || '';
     setAccessToken(savedAccessToken);
     const q = new URLSearchParams(window.location.search);
-    const initialEmail = q.get('email') || accessPayload(savedAccessToken).email || '';
+    const initialEmail = q.get('email') || localStorage.getItem(VIDEO_CUSTOMER_EMAIL_KEY) || accessPayload(savedAccessToken).email || '';
     const initialSlug = q.get('slug') || '';
     if (initialEmail) setEmail(initialEmail);
     if (initialSlug) setSlug(initialSlug);
@@ -123,7 +124,10 @@ export default function VideoResultsPage() {
       localStorage.setItem(VIDEO_ACCESS_TOKEN_KEY, data.token);
       setAccessToken(data.token);
       const verifiedEmail = data.email || email;
-      if (data.email) setEmail(data.email);
+      if (data.email) {
+        setEmail(data.email);
+        localStorage.setItem(VIDEO_CUSTOMER_EMAIL_KEY, data.email);
+      }
       setMessage('Access verified. Loading videos that belong to this purchase or website...');
       await searchVideos(verifiedEmail, mode === 'license' ? '' : slug, data.token);
     } catch (error) {

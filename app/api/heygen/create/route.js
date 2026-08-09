@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { verifyVideoAccessToken } from '../../../../lib/videoAccessToken';
 import { getVerifiedAdmin, getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
+import { standaloneIdentityMatches, standaloneVideoSlugFromAccess } from '../../../../lib/videoResultAccess';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -13,6 +14,12 @@ function cleanText(value, fallback = '', max = 1200) {
 
 function monthKey(date = new Date()) {
   return date.toISOString().slice(0, 7);
+}
+
+function generationRequestKey(scope = '', requestId = '') {
+  const id = String(requestId || '').trim();
+  if (!scope || !/^[a-f0-9-]{20,80}$/i.test(id)) return '';
+  return crypto.createHash('sha256').update(`${scope}:${id}`).digest('hex');
 }
 
 function normalizePlan(value) {
@@ -126,6 +133,14 @@ async function supabasePost(path, row) {
   return { ok: res.ok, status: res.status, data };
 }
 
+async function supabaseDelete(path) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return { ok: false, missing: true };
+  const res = await fetch(`${url}/rest/v1/${path}`, { method: 'DELETE', headers: supabaseHeaders() });
+  return { ok: res.ok, status: res.status };
+}
+
 async function findWebsite({ email, slug }) {
   if (slug) {
     const result = await supabaseGet(`websites?slug=eq.${encodeURIComponent(slug)}&select=*&limit=1`);
@@ -167,16 +182,27 @@ async function checkCustomerAccess(request, body) {
   if (body.ownerOverride === true) {
     const admin = await getVerifiedAdmin(request);
     if (!admin.ok) return { ok: false, status: admin.status, error: admin.error };
-    return { ok: true, ownerOverride: true, plan: 'owner', limit: 9999, used: 0, remaining: 9999, website: null };
+    const requestKey = generationRequestKey(`owner:${admin.email || 'admin'}`, body.requestId);
+    if (!requestKey) return { ok: false, status: 400, error: 'This video request could not be validated. Refresh the page and try again.' };
+    return { ok: true, ownerOverride: true, plan: 'owner', limit: 9999, used: 0, remaining: 9999, website: null, requestKey };
   }
 
   const videoAccess = verifyVideoAccessToken(body.accessToken || '');
-  if (videoAccess?.kind === 'standalone' && videoAccess.saleId) {
-    const usageKey = `standalone-${crypto.createHash('sha256').update(String(videoAccess.saleId)).digest('hex').slice(0, 24)}`;
-    const prior = await supabaseGet(`heygen_video_jobs?website_slug=eq.${encodeURIComponent(usageKey)}&select=id,status&limit=1`);
+  if (videoAccess?.kind === 'standalone') {
+    const usageKey = standaloneVideoSlugFromAccess(videoAccess);
+    const customerEmail = getEmail(body.customerEmail || '');
+    if (!usageKey || !standaloneIdentityMatches(videoAccess, customerEmail)) {
+      return { ok: false, status: 403, error: 'Use the verified Gumroad purchase email connected to this video access.' };
+    }
+    const requestKey = generationRequestKey(usageKey, body.requestId);
+    if (!requestKey) return { ok: false, status: 400, error: 'This video request could not be validated. Refresh the page and try again.' };
+    const prior = await supabaseGet(`heygen_video_jobs?website_slug=eq.${encodeURIComponent(usageKey)}&select=id,status,request_key&limit=1`);
     if (prior.missing) return { ok: false, status: 500, error: 'Supabase is not connected for standalone video usage.' };
     if (!prior.ok) return { ok: false, status: prior.status || 500, error: 'Standalone video usage could not be checked.' };
     if (Array.isArray(prior.data) && prior.data.length) {
+      if (prior.data[0].request_key === requestKey) {
+        return { ok: true, existingJob: prior.data[0], plan: 'standalone', used: 1, limit: 1, remaining: 0, usageKey, customerEmail };
+      }
       return { ok: false, status: 403, plan: 'standalone', used: 1, limit: 1, remaining: 0, error: 'The real video included with this $5 license has already been used. Open Video Results to watch or download it.' };
     }
     return {
@@ -188,8 +214,9 @@ async function checkCustomerAccess(request, body) {
       used: 0,
       remaining: 1,
       website: null,
-      customerEmail: getEmail(videoAccess.email || ''),
-      usageKey
+      customerEmail,
+      usageKey,
+      requestKey
     };
   }
 
@@ -216,7 +243,9 @@ async function checkCustomerAccess(request, body) {
     if (['paused', 'archived', 'deleted', 'inactive'].includes(status) || totalLimit <= 0 || remaining <= 0) {
       return { ok: false, status: 403, plan, used, limit: totalLimit, remaining, error: 'This website plan does not have an available active AI video credit.' };
     }
-    return { ok: true, ownerOverride: false, website, plan, used, limit: totalLimit, remaining, month: currentMonth };
+    const requestKey = generationRequestKey(`website:${website.id}`, body.requestId);
+    if (!requestKey) return { ok: false, status: 400, error: 'This video request could not be validated. Refresh the page and try again.' };
+    return { ok: true, ownerOverride: false, website, plan, used, limit: totalLimit, remaining, month: currentMonth, requestKey };
   }
 
   return {
@@ -261,13 +290,38 @@ async function saveVideoJob(access, body, heygenPayload, prompt) {
     platform: cleanText(body.platform, 'TikTok / Reels', 120),
     owner_override: Boolean(access.ownerOverride),
     plan: access.plan || null,
-    raw_response: heygenPayload
+    raw_response: heygenPayload,
+    request_key: access.requestKey || null
   };
   try {
     const inserted = await supabasePost('heygen_video_jobs', row);
     if (inserted.ok && Array.isArray(inserted.data) && inserted.data[0]) return inserted.data[0];
   } catch {}
   return null;
+}
+
+async function updateReservedVideoJob(jobId, heygenPayload) {
+  const sessionId = heygenPayload.session_id || heygenPayload.sessionId || null;
+  const videoId = heygenPayload.video_id || heygenPayload.videoId || null;
+  return supabasePatch(`heygen_video_jobs?id=eq.${encodeURIComponent(jobId)}`, {
+    status: heygenPayload.status || 'generating',
+    heygen_session_id: sessionId,
+    heygen_video_id: videoId,
+    raw_response: heygenPayload,
+    updated_at: new Date().toISOString()
+  });
+}
+
+function existingGenerationResponse(access, job) {
+  return NextResponse.json({
+    ok: true,
+    status: job?.status || 'processing',
+    jobId: job?.id || null,
+    plan: access.plan,
+    duplicatePrevented: true,
+    videoUsage: { used: access.used, limit: access.limit, remaining: access.remaining, month: monthKey() },
+    resultsDashboard: '/video-studio/results'
+  });
 }
 
 export async function POST(request) {
@@ -283,10 +337,24 @@ export async function POST(request) {
     if (!access.ok) {
       return NextResponse.json({ ok: false, ...access }, { status: access.status || 403 });
     }
+    if (access.existingJob) return existingGenerationResponse(access, access.existingJob);
+    const existingRequest = await supabaseGet(`heygen_video_jobs?request_key=eq.${encodeURIComponent(access.requestKey)}&select=id,status&limit=1`);
+    if (existingRequest.ok && Array.isArray(existingRequest.data) && existingRequest.data[0]) {
+      return existingGenerationResponse(access, existingRequest.data[0]);
+    }
     const limited = rateLimit(request, { name: 'heygen-create', limit: 6, windowMs: 60 * 60 * 1000, subject: access.website?.id || access.usageKey || '' });
     if (!limited.ok) return rateLimitResponse(limited, 'Please wait before starting another video. A video already in progress can be checked from Video Results.');
 
     const prompt = buildHeyGenPrompt(body);
+    const reservedJob = await saveVideoJob(access, body, { status: 'submitting' }, prompt);
+    if (!reservedJob) {
+      const concurrent = await supabaseGet(access.standalonePass
+        ? `heygen_video_jobs?website_slug=eq.${encodeURIComponent(access.usageKey)}&select=id,status&limit=1`
+        : `heygen_video_jobs?request_key=eq.${encodeURIComponent(access.requestKey)}&select=id,status&limit=1`);
+      if (concurrent.ok && Array.isArray(concurrent.data) && concurrent.data[0]) return existingGenerationResponse(access, concurrent.data[0]);
+      console.error('[heygen-create] generation reservation failed');
+      return NextResponse.json({ ok: false, error: 'The video could not be safely queued. No video credit was used; please try again shortly.' }, { status: 503 });
+    }
 
     const heygenResponse = await fetch('https://api.heygen.com/v3/video-agents', {
       method: 'POST',
@@ -302,6 +370,8 @@ export async function POST(request) {
     try { data = JSON.parse(responseText); } catch { data = { raw: responseText }; }
 
     if (!heygenResponse.ok) {
+      const released = await supabaseDelete(`heygen_video_jobs?id=eq.${encodeURIComponent(reservedJob.id)}`);
+      if (!released.ok) console.error('[heygen-create] failed reservation cleanup', { status: released.status || 500 });
       const providerMessage = data?.error?.message || data?.message || '';
       const insufficientCredits = heygenResponse.status === 402 || /insufficient.*credits|credits required/i.test(providerMessage);
       return NextResponse.json({
@@ -309,22 +379,21 @@ export async function POST(request) {
         error: insufficientCredits
           ? 'Video generation is temporarily unavailable because the Cookie Digital Creations HeyGen API account needs more provider credits. Your website or standalone video credit was not used. Please try again later or contact hello@cookiesdigitalcreations.com.'
           : 'The video provider could not start this video. Your video credit was not used; please try again shortly.',
-        providerCreditRequired: insufficientCredits
+        providerCreditRequired: insufficientCredits,
+        generationNotStarted: true
       }, { status: insufficientCredits ? 503 : heygenResponse.status });
     }
 
     const payload = data?.data || data || {};
+    const savedJob = await updateReservedVideoJob(reservedJob.id, payload);
     const usageUpdate = await incrementUsage(access, payload);
-    const sessionId = payload.session_id || payload.sessionId || null;
-    const videoId = payload.video_id || payload.videoId || null;
-    const savedJob = await saveVideoJob(access, body, payload, prompt);
     const nextUsed = access.ownerOverride ? 0 : (access.used + 1);
     const nextRemaining = access.ownerOverride ? 9999 : Math.max(0, access.limit - nextUsed);
 
     return NextResponse.json({
       ok: true,
       status: payload.status || 'generating',
-      jobId: savedJob?.id || null,
+      jobId: reservedJob.id,
       plan: access.plan,
       ownerOverride: access.ownerOverride,
       videoUsage: {
@@ -333,7 +402,7 @@ export async function POST(request) {
         remaining: nextRemaining,
         month: monthKey()
       },
-      usageWarning: usageUpdate.ok ? null : 'Video was sent to HeyGen, but usage tracking could not be updated. Run the Supabase AI video migration if needed.',
+      usageWarning: usageUpdate.ok && savedJob.ok ? null : 'Video was accepted by the provider, but one tracking update needs support review. Do not start another video.',
       resultsDashboard: '/video-studio/results'
     });
   } catch (error) {

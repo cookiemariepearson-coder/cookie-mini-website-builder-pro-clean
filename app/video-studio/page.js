@@ -6,6 +6,7 @@ import Nav from '../../lib/Nav';
 
 const SITE_OWNER_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
 const VIDEO_PLAN_KEY = 'cookiePendingVideoPlan';
+const VIDEO_CUSTOMER_EMAIL_KEY = 'cookieVerifiedVideoEmail';
 
 function clean(value = '') {
   return String(value || '').trim();
@@ -107,7 +108,9 @@ export default function VideoStudioPage() {
   const [licenseKey, setLicenseKey] = useState('');
   const [accessMessage, setAccessMessage] = useState('Unlock with your active Business/Premium website or your $5 Gumroad license key.');
   const [generationDenied, setGenerationDenied] = useState(false);
+  const [planStorageReady, setPlanStorageReady] = useState(false);
   const licenseInputRef = useRef(null);
+  const generationRequestRef = useRef('');
 
   useEffect(() => {
     try {
@@ -116,10 +119,13 @@ export default function VideoStudioPage() {
       if (savedKind) {
         setAccessToken(savedToken);
         setAccessKind(savedKind);
+        const savedEmail = clean(localStorage.getItem(VIDEO_CUSTOMER_EMAIL_KEY) || '');
+        if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(savedEmail)) setCustomerEmail(savedEmail);
       } else if (savedToken) {
         localStorage.removeItem('cookieVideoAccessToken');
       }
-      const savedPlan = JSON.parse(localStorage.getItem(VIDEO_PLAN_KEY) || 'null');
+      let savedPlan = null;
+      try { savedPlan = JSON.parse(localStorage.getItem(VIDEO_PLAN_KEY) || 'null'); } catch {}
       if (savedPlan && typeof savedPlan === 'object') {
         setBiz(clean(savedPlan.biz));
         setPromo(clean(savedPlan.promo));
@@ -135,32 +141,46 @@ export default function VideoStudioPage() {
         window.requestAnimationFrame(() => licenseInputRef.current?.focus());
       }
     } catch {}
+    finally { setPlanStorageReady(true); }
   }, []);
 
   useEffect(() => {
+    if (!planStorageReady) return;
     try {
       localStorage.setItem(VIDEO_PLAN_KEY, JSON.stringify({ biz, promo, audience, videoType, platform, style, length, voice, savedAt: Date.now() }));
     } catch {}
-  }, [biz, promo, audience, videoType, platform, style, length, voice]);
+  }, [planStorageReady, biz, promo, audience, videoType, platform, style, length, voice]);
 
   async function activateAccess(mode) {
+    if (mode === 'license' && !clean(licenseKey)) {
+      setAccessMessage('Paste the Gumroad license key from your AI Video purchase receipt first.');
+      return;
+    }
     setAccessMessage('Verifying access...');
-    const response = await fetch('/api/video-access/activate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(mode === 'license' ? {} : { Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}` })
-      },
-      body: JSON.stringify(mode === 'license' ? { licenseKey } : { email: customerEmail, slug: websiteSlug })
-    });
-    const data = await response.json();
-    if (!data.ok) { setAccessMessage(data.error || 'Access could not be verified.'); return; }
-    setAccessToken(data.token);
-    setAccessKind(readAccessKind(data.token));
-    setGenerationDenied(false);
-    if (data.email) setCustomerEmail(data.email);
-    try { localStorage.setItem('cookieVideoAccessToken', data.token); } catch {}
-    setAccessMessage(`Access verified: ${data.access}.`);
+    try {
+      const response = await fetch('/api/video-access/activate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(mode === 'license' ? {} : { Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}` })
+        },
+        body: JSON.stringify(mode === 'license' ? { licenseKey } : { email: customerEmail, slug: websiteSlug })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) throw new Error(data.error || 'Access could not be verified.');
+      setAccessToken(data.token);
+      setAccessKind(readAccessKind(data.token));
+      setGenerationDenied(false);
+      if (data.email) {
+        setCustomerEmail(data.email);
+        try { localStorage.setItem(VIDEO_CUSTOMER_EMAIL_KEY, data.email); } catch {}
+      }
+      setLicenseKey('');
+      try { localStorage.setItem('cookieVideoAccessToken', data.token); } catch {}
+      setAccessMessage(`Access verified: ${data.access}. Generate Video is now available.`);
+    } catch (error) {
+      setAccessMessage(error.message || 'Access could not be verified. Please try again.');
+    }
   }
 
   const starterKit = useMemo(
@@ -225,6 +245,7 @@ export default function VideoStudioPage() {
       return;
     }
     setWorking('video');
+    if (!generationRequestRef.current) generationRequestRef.current = window.crypto.randomUUID();
     setStatus('Sending your finished video plan to the AI video generator...');
     try {
       const response = await fetch('/api/heygen/create', {
@@ -237,6 +258,7 @@ export default function VideoStudioPage() {
           businessName: biz, promo, audience, videoType, platform, style, length, voice,
           customerEmail, websiteSlug,
           accessToken,
+          requestId: generationRequestRef.current,
           script: kit.Script,
           captions: kit.Captions,
           videoPrompt: kit['Video Prompt']
@@ -244,6 +266,7 @@ export default function VideoStudioPage() {
       });
       const data = await response.json();
       if (!response.ok || !data.ok) {
+        if (data.generationNotStarted) generationRequestRef.current = '';
         if (response.status === 401 || response.status === 403) {
           setGenerationDenied(true);
           setStatus(`${data.error || 'No available video entitlement was verified.'} Your planning kit remains saved. Verify another eligible website plan or use the $5 AI Video purchase option.`);
