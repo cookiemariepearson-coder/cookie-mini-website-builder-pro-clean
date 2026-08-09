@@ -1,10 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  APPROVED_AI_VIDEO_PRODUCT_ID,
   privateLicenseSubject,
   verifyAiVideoLicense,
   videoPurchaseIdentity
 } from '../lib/gumroadVideoLicense.mjs';
+
+test('approved AI Video product fallback remains the proven Gumroad product', () => {
+  assert.equal(APPROVED_AI_VIDEO_PRODUCT_ID, 'GE_fDgvz_GT29Fn6eSj9uw==');
+});
 
 function response({ ok = true, status = 200, data = {} } = {}) {
   return { ok, status, async json() { return data; } };

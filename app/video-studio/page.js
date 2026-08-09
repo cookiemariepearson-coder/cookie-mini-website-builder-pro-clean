@@ -412,7 +412,7 @@ export default function VideoStudioPage() {
                 <input type="email" name="standalone-video-email" autoComplete="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for your Gumroad purchase" />
               </div>
               <div className="navRow videoGenerationActions" data-testid="video-generation-actions">
-                <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working)}>
+                <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working) || !accessToken}>
                   {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
                 </button>
                 <Link className="btn light" href="/video-studio/results">View Video Results</Link>
@@ -435,7 +435,7 @@ export default function VideoStudioPage() {
               </div>
             </div>
             <div className="navRow videoGenerationActions" data-testid="video-generation-actions">
-              <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working)}>
+              <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working) || !accessToken}>
                 {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
               </button>
               <Link className="btn light" href="/video-studio/results">View Video Results</Link>

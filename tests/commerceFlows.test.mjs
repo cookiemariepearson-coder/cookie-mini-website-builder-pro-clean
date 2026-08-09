@@ -142,6 +142,7 @@ test('website and standalone video access remain server verified', async () => {
   assert.match(videoLicense, /api\.gumroad\.com\/v2\/licenses\/verify/);
   assert.match(videoLicense, /increment_uses_count: 'false'/);
   assert.match(videoAccess, /process\.env\.GUMROAD_AI_VIDEO_PRODUCT_ID/);
+  assert.match(videoAccess, /APPROVED_AI_VIDEO_PRODUCT_ID/);
   assert.match(videoAccess, /emailHash: videoEmailHash\(purchaseEmail\)/);
   assert.doesNotMatch(videoAccess, /saleId\s*:/);
   assert.match(videoAccess, /createVideoAccessToken/);
@@ -154,6 +155,7 @@ test('website and standalone video access remain server verified', async () => {
   assert.match(studio, /href="\/customer\?return=video-studio">Secure Website-Plan Sign-In/);
   assert.match(studio, /Verify License/);
   assert.equal((studio.match(/data-testid="video-generation-actions"/g) || []).length, 2);
+  assert.equal((studio.match(/disabled=\{Boolean\(working\) \|\| !accessToken\}/g) || []).length, 2);
   assert.equal((studio.match(/href="\/video-studio\/results">View Video Results/g) || []).length, 2);
   assert.doesNotMatch(studio, /if \(!accessToken\) \{\s*setStatus\('Unlock AI Video Studio before creating the AI-powered Smart Video Kit/);
   assert.match(studio, /response\.status === 401 \|\| response\.status === 403/);

@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { createVideoAccessToken } from '../../../../lib/videoAccessToken';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
-import { privateLicenseSubject, verifyAiVideoLicense } from '../../../../lib/gumroadVideoLicense.mjs';
+import { APPROVED_AI_VIDEO_PRODUCT_ID, privateLicenseSubject, verifyAiVideoLicense } from '../../../../lib/gumroadVideoLicense.mjs';
 import { standaloneVideoSlug, videoEmailHash } from '../../../../lib/videoResultAccess';
 
 export const dynamic = 'force-dynamic';
@@ -18,11 +18,8 @@ export async function POST(request) {
     const limited = rateLimit(request, { name: 'video-access', limit: 10, windowMs: 15 * 60 * 1000, subject });
     if (!limited.ok) return rateLimitResponse(limited, 'Please wait before verifying access again.');
     if (licenseKey) {
-      const result = await verifyAiVideoLicense({ licenseKey, productId: process.env.GUMROAD_AI_VIDEO_PRODUCT_ID });
-      if (result.reason === 'missing_product_configuration') {
-        console.error('[video-access] AI Video product configuration missing');
-        return NextResponse.json({ ok: false, error: 'AI Video purchase verification is temporarily unavailable. Please contact hello@cookiesdigitalcreations.com.' }, { status: 503 });
-      }
+      const productId = process.env.GUMROAD_AI_VIDEO_PRODUCT_ID || APPROVED_AI_VIDEO_PRODUCT_ID;
+      const result = await verifyAiVideoLicense({ licenseKey, productId });
       if (!result.valid) return NextResponse.json({ ok: false, error: 'That license key could not be verified as an active AI Video Studio purchase.' }, { status: 403 });
       const { saleId, email: purchaseEmail } = result.identity;
       return NextResponse.json({
