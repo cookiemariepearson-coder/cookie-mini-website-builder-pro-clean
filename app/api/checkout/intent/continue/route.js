@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { WEBSITE_CHECKOUTS, cleanCheckoutUrl, websiteCheckoutRoute } from '../../../../../lib/commerceConfig.mjs';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../../lib/siteOwnerAuth';
-import { checkoutIntentBelongsToOwner, checkoutIntentEmailHash, normalizeCheckoutDraftSlug, normalizeWebsiteCheckoutIntentId, websiteCheckoutIntentState } from '../../../../../lib/websiteCheckoutIntent.mjs';
+import { checkoutIntentBelongsToOwner, checkoutIntentEmailHash, normalizeCheckoutDraftSlug, normalizeWebsiteCheckoutIntentId, traceWebsiteCheckout, websiteCheckoutIntentState } from '../../../../../lib/websiteCheckoutIntent.mjs';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   try {
     const owner = await getVerifiedSiteOwner(request);
-    if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
+    if (!owner.ok) return NextResponse.json({ ok: false, reasonCode: 'AUTH_REQUIRED', error: owner.error }, { status: owner.status });
     const body = await request.json();
     const id = normalizeWebsiteCheckoutIntentId(body.intentId);
     const draftSlug = normalizeCheckoutDraftSlug(body.draftSlug);
@@ -30,6 +30,7 @@ export async function POST(request) {
     const config = WEBSITE_CHECKOUTS[state.plan];
     const checkoutUrl = cleanCheckoutUrl(process.env[config.envName] || '');
     if (!checkoutUrl) {
+      traceWebsiteCheckout('CHECKOUT_REDIRECT_BLOCKED', data, { reasonCode: 'MISSING_PRODUCT_CONFIGURATION' });
       console.error('[website-checkout-intent] checkout configuration missing', { plan: state.plan, environmentVariable: config.envName });
       return NextResponse.json({ ok: false, error: 'Secure checkout is temporarily unavailable. Your draft and plan selection are still saved.' }, { status: 503 });
     }
@@ -52,6 +53,7 @@ export async function POST(request) {
       .maybeSingle();
     if (updateError) throw updateError;
     if (!started) return NextResponse.json({ ok: false, error: 'This checkout continuation was already used.' }, { status: 409 });
+    traceWebsiteCheckout('GUMROAD_PRODUCT_SELECTED', { ...data, status: 'checkout_started' });
     return NextResponse.json({ ok: true, plan: state.plan, checkoutPath: websiteCheckoutRoute(state.plan) });
   } catch (error) {
     console.error('[website-checkout-intent] continue failed', { message: error?.message || String(error) });

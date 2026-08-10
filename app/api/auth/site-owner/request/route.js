@@ -8,6 +8,7 @@ import {
   newWebsiteCheckoutIntent,
   normalizeCheckoutDraftSlug,
   normalizeWebsiteCheckoutIntentId,
+  traceWebsiteCheckout,
   websiteCheckoutIntentState
 } from '../../../../../lib/websiteCheckoutIntent.mjs';
 
@@ -32,10 +33,12 @@ export async function POST(req) {
     let intentId = normalizeWebsiteCheckoutIntentId(body.intentId);
     const requestedDraftSlug = normalizeCheckoutDraftSlug(body.draftSlug);
     const legacyIntent = checkoutIntentRequestFromReturnPath(returnPath);
+    let intentForTrace = null;
 
     if (intentId) {
       const { data: currentIntent, error: intentLookupError } = await supabase.from('website_checkout_intents').select('*').eq('id', intentId).maybeSingle();
       if (intentLookupError) throw intentLookupError;
+      intentForTrace = currentIntent;
       const state = websiteCheckoutIntentState(currentIntent || {});
       if (!state.ok) return NextResponse.json({ ok: false, error: state.reason === 'expired' ? 'This checkout continuation expired. Return to Pricing to start again.' : 'This checkout continuation is no longer available.' }, { status: 410 });
       const emailHash = checkoutIntentEmailHash(email);
@@ -55,11 +58,13 @@ export async function POST(req) {
       const { error: createError } = await supabase.from('website_checkout_intents').insert(intent);
       if (createError) throw createError;
       intentId = intent.id;
+      intentForTrace = intent;
     }
 
     const redirectTo = intentId
       ? `${origin}/customer/auth/callback?intent=${encodeURIComponent(intentId)}`
       : `${origin}/customer/auth/callback?return=${encodeURIComponent(returnPath)}`;
+    if (intentId) traceWebsiteCheckout('AUTH_EMAIL_REQUESTED', intentForTrace || { id: intentId, status: 'pending_auth' });
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -69,6 +74,7 @@ export async function POST(req) {
     });
 
     if (error) throw error;
+    if (intentId) traceWebsiteCheckout('AUTH_EMAIL_PROVIDER_ACCEPTED', intentForTrace || { id: intentId, status: 'pending_auth' });
     return NextResponse.json({
       ok: true,
       checkoutIntentSaved: Boolean(intentId),

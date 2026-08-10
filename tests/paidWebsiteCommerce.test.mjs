@@ -63,7 +63,7 @@ test('stored webhook evidence excludes license, payment-card, email and personal
 });
 
 test('server checkout intent survives a different browser without exposing the email', () => {
-  const now = Date.parse('2026-08-10T12:00:00Z');
+  const now = Date.parse('2036-08-10T12:00:00Z');
   const record = newWebsiteCheckoutIntent({ id: '11111111-1111-4111-8111-111111111111', plan: 'business', draftSlug: 'cookies-kitchen', email: 'Customer@Example.com', now });
   assert.equal(record.email_hash, checkoutIntentEmailHash('customer@example.com'));
   assert.doesNotMatch(JSON.stringify(record), /customer@example\.com/i);
@@ -157,5 +157,5 @@ test('extra-page checkout no longer calls an undefined browser variable', async 
   assert.match(builder, /async function checkoutExtraPage\(existingIntentId = ''\)/);
   assert.match(builder, /ensureCheckoutIntent\('extra'/);
   assert.match(builder, /continueServerCheckout\(intentId, draft\.slug\)/);
-  assert.match(builder, /\/customer\?intent=/);
+  assert.match(builder, /\/checkout\/continue\?intent=/);
 });
