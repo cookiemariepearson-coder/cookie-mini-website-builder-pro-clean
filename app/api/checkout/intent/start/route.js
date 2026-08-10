@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../../lib/supabaseAdmin';
+import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../../lib/siteOwnerAuth';
 import { rateLimit, rateLimitResponse } from '../../../../../lib/rateLimit.mjs';
 import {
   newWebsiteCheckoutIntent,
+  checkoutIntentBelongsToOwner,
+  checkoutIntentIdentityBelongsToOwner,
   normalizeCheckoutDraftSlug,
   normalizeWebsiteCheckoutIntentId,
   normalizeWebsiteCheckoutPlan,
@@ -25,10 +28,45 @@ export async function POST(request) {
       const { data: existing, error: lookupError } = await supabase.from('website_checkout_intents').select('*').eq('id', existingIntentId).maybeSingle();
       if (lookupError) throw lookupError;
       const state = websiteCheckoutIntentState(existing || {});
-      if (!state.ok) return NextResponse.json({ ok: false, error: state.reason === 'expired' ? 'This checkout continuation expired. Return to Pricing to start again.' : 'This checkout continuation is no longer available.' }, { status: 410 });
-      if (existing.owner_id || existing.email_hash) return NextResponse.json({ ok: false, error: 'This checkout is already attached to a verified customer.' }, { status: 409 });
       const requestedPlan = normalizeWebsiteCheckoutPlan(body.plan);
-      if (requestedPlan && requestedPlan !== state.plan) return NextResponse.json({ ok: false, error: 'The selected plan does not match this secure checkout.' }, { status: 409 });
+      const storedPlan = normalizeWebsiteCheckoutPlan(existing?.plan);
+      const storedDraftSlug = normalizeCheckoutDraftSlug(existing?.draft_slug);
+      if (!existing || !storedPlan) return NextResponse.json({ ok: false, error: 'This checkout continuation is no longer available. Return to Pricing to start again.' }, { status: 410 });
+      if (requestedPlan && requestedPlan !== storedPlan) return NextResponse.json({ ok: false, error: 'The selected plan does not match this secure checkout.' }, { status: 409 });
+      if (storedDraftSlug && storedDraftSlug !== draftSlug) return NextResponse.json({ ok: false, error: 'This checkout is attached to a different website draft.' }, { status: 409 });
+
+      if (!state.ok) {
+        if (state.reason !== 'expired') return NextResponse.json({ ok: false, error: state.reason === 'used' ? 'This checkout was already opened and cannot be replayed.' : 'This checkout continuation is no longer available.' }, { status: state.reason === 'used' ? 409 : 410 });
+        const owner = await getVerifiedSiteOwner(request);
+        if (!owner.ok) return NextResponse.json({ ok: false, reasonCode: 'AUTH_REQUIRED', error: 'This checkout expired. Verify your email to securely start a replacement checkout.' }, { status: owner.status });
+        if ((existing.owner_id || existing.email_hash) && !checkoutIntentIdentityBelongsToOwner(existing, owner)) {
+          return NextResponse.json({ ok: false, error: 'This checkout belongs to a different verified customer.' }, { status: 403 });
+        }
+        if (storedDraftSlug) {
+          const { data: website, error: websiteError } = await supabase.from('websites').select('id,owner_id,customer_email').eq('slug', storedDraftSlug).maybeSingle();
+          if (websiteError) throw websiteError;
+          if (website && !siteBelongsToOwner(website, owner)) return NextResponse.json({ ok: false, error: 'This website belongs to a different verified customer.' }, { status: 403 });
+        }
+        const replacement = newWebsiteCheckoutIntent({ plan: storedPlan, draftSlug: storedDraftSlug || draftSlug, email: owner.email, ownerId: owner.user.id });
+        const { error: replacementError } = await supabase.from('website_checkout_intents').insert(replacement);
+        if (replacementError) throw replacementError;
+        traceWebsiteCheckout('INTENT_REPLACED_AFTER_EXPIRY', replacement, { reasonCode: 'EXPIRED' });
+        return NextResponse.json({ ok: true, intentId: replacement.id, plan: replacement.plan, draftSlug: replacement.draft_slug, expiresAt: replacement.expires_at, replaced: true });
+      }
+
+      if (state.ownerId || state.emailHash) {
+        const owner = await getVerifiedSiteOwner(request);
+        if (!owner.ok) return NextResponse.json({ ok: false, reasonCode: 'AUTH_REQUIRED', error: owner.error }, { status: owner.status });
+        if (!checkoutIntentBelongsToOwner(existing, owner)) return NextResponse.json({ ok: false, error: 'This checkout belongs to a different verified customer.' }, { status: 403 });
+        if (state.draftSlug) {
+          const { data: website, error: websiteError } = await supabase.from('websites').select('id,owner_id,customer_email').eq('slug', state.draftSlug).maybeSingle();
+          if (websiteError) throw websiteError;
+          if (website && !siteBelongsToOwner(website, owner)) return NextResponse.json({ ok: false, error: 'This website belongs to a different verified customer.' }, { status: 403 });
+        }
+        traceWebsiteCheckout('VERIFIED_INTENT_REUSED', existing);
+        return NextResponse.json({ ok: true, intentId: state.id, plan: state.plan, draftSlug: state.draftSlug, expiresAt: existing.expires_at, resumed: true });
+      }
+
       const { data: prepared, error: updateError } = await supabase
         .from('website_checkout_intents')
         .update({ draft_slug: draftSlug })

@@ -68,7 +68,7 @@ test('6a. final draft slug is prepared server-side before authentication without
     source('app/api/checkout/intent/start/route.js')
   ]);
   assert.match(builder, /body: JSON\.stringify\(\{ plan, draftSlug, intentId \}\)/);
-  assert.match(startRoute, /requestedPlan !== state\.plan/);
+  assert.match(startRoute, /requestedPlan !== storedPlan/);
   assert.match(startRoute, /update\(\{ draft_slug: draftSlug \}\)/);
   assert.match(startRoute, /\.is\('owner_id', null\)/);
   assert.match(startRoute, /\.is\('email_hash', null\)/);

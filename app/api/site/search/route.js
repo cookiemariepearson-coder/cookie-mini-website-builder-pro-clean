@@ -46,9 +46,8 @@ export async function POST(req) {
       (data || []).forEach(row => found.set(row.slug, row));
     }
 
-    if (email) {
-      await addRows(supabase.from('websites').select('*').eq('customer_email', email).order('updated_at', { ascending: false }).limit(50));
-    }
+    await addRows(supabase.from('websites').select('*').eq('owner_id', owner.user.id).order('updated_at', { ascending: false }).limit(50));
+    await addRows(supabase.from('websites').select('*').is('owner_id', null).eq('customer_email', email).order('updated_at', { ascending: false }).limit(50));
     if (slug && slug !== 'my-website') {
       const safeTerm = slug.replace(/[%_,()]/g, '');
       if (safeTerm.length >= 2) {
@@ -57,6 +56,16 @@ export async function POST(req) {
           supabase
             .from('websites')
             .select('*')
+            .eq('owner_id', owner.user.id)
+            .or(`slug.ilike.%${safeTerm}%,business_name.ilike.%${safeTerm}%,business_name.ilike.%${spacedTerm}%`)
+            .order('updated_at', { ascending: false })
+            .limit(25)
+        );
+        await addRows(
+          supabase
+            .from('websites')
+            .select('*')
+            .is('owner_id', null)
             .eq('customer_email', email)
             .or(`slug.ilike.%${safeTerm}%,business_name.ilike.%${safeTerm}%,business_name.ilike.%${spacedTerm}%`)
             .order('updated_at', { ascending: false })
