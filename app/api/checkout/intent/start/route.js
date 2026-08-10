@@ -31,23 +31,25 @@ export async function POST(request) {
       const requestedPlan = normalizeWebsiteCheckoutPlan(body.plan);
       const storedPlan = normalizeWebsiteCheckoutPlan(existing?.plan);
       const storedDraftSlug = normalizeCheckoutDraftSlug(existing?.draft_slug);
+      const identityBound = Boolean(existing?.owner_id || existing?.email_hash);
       if (!existing || !storedPlan) return NextResponse.json({ ok: false, error: 'This checkout continuation is no longer available. Return to Pricing to start again.' }, { status: 410 });
       if (requestedPlan && requestedPlan !== storedPlan) return NextResponse.json({ ok: false, error: 'The selected plan does not match this secure checkout.' }, { status: 409 });
-      if (storedDraftSlug && storedDraftSlug !== draftSlug) return NextResponse.json({ ok: false, error: 'This checkout is attached to a different website draft.' }, { status: 409 });
+      if (identityBound && storedDraftSlug && storedDraftSlug !== draftSlug) return NextResponse.json({ ok: false, error: 'This checkout is attached to a different website draft.' }, { status: 409 });
 
       if (!state.ok) {
         if (state.reason !== 'expired') return NextResponse.json({ ok: false, error: state.reason === 'used' ? 'This checkout was already opened and cannot be replayed.' : 'This checkout continuation is no longer available.' }, { status: state.reason === 'used' ? 409 : 410 });
         const owner = await getVerifiedSiteOwner(request);
         if (!owner.ok) return NextResponse.json({ ok: false, reasonCode: 'AUTH_REQUIRED', error: 'This checkout expired. Verify your email to securely start a replacement checkout.' }, { status: owner.status });
-        if ((existing.owner_id || existing.email_hash) && !checkoutIntentIdentityBelongsToOwner(existing, owner)) {
+        if (identityBound && !checkoutIntentIdentityBelongsToOwner(existing, owner)) {
           return NextResponse.json({ ok: false, error: 'This checkout belongs to a different verified customer.' }, { status: 403 });
         }
-        if (storedDraftSlug) {
-          const { data: website, error: websiteError } = await supabase.from('websites').select('id,owner_id,customer_email').eq('slug', storedDraftSlug).maybeSingle();
+        const replacementDraftSlug = identityBound ? storedDraftSlug : draftSlug;
+        if (replacementDraftSlug) {
+          const { data: website, error: websiteError } = await supabase.from('websites').select('id,owner_id,customer_email').eq('slug', replacementDraftSlug).maybeSingle();
           if (websiteError) throw websiteError;
           if (website && !siteBelongsToOwner(website, owner)) return NextResponse.json({ ok: false, error: 'This website belongs to a different verified customer.' }, { status: 403 });
         }
-        const replacement = newWebsiteCheckoutIntent({ plan: storedPlan, draftSlug: storedDraftSlug || draftSlug, email: owner.email, ownerId: owner.user.id });
+        const replacement = newWebsiteCheckoutIntent({ plan: storedPlan, draftSlug: replacementDraftSlug, email: owner.email, ownerId: owner.user.id });
         const { error: replacementError } = await supabase.from('website_checkout_intents').insert(replacement);
         if (replacementError) throw replacementError;
         traceWebsiteCheckout('INTENT_REPLACED_AFTER_EXPIRY', replacement, { reasonCode: 'EXPIRED' });

@@ -52,9 +52,18 @@ test('Premium Retry reuses a valid verified intent and replaces only an expired 
 test('Premium Retry keeps the server plan and draft authoritative', async () => {
   const start = await source('app/api/checkout/intent/start/route.js');
   assert.match(start, /requestedPlan !== storedPlan/);
-  assert.match(start, /storedDraftSlug !== draftSlug/);
+  assert.match(start, /identityBound && storedDraftSlug && storedDraftSlug !== draftSlug/);
   assert.match(start, /siteBelongsToOwner/);
-  assert.match(start, /plan: storedPlan, draftSlug: storedDraftSlug \|\| draftSlug/);
+  assert.match(start, /replacementDraftSlug = identityBound \? storedDraftSlug : draftSlug/);
+});
+
+test('fresh Pricing intent may bind its placeholder draft to the current browser draft exactly once', async () => {
+  const start = await source('app/api/checkout/intent/start/route.js');
+  assert.match(start, /const identityBound = Boolean\(existing\?\.owner_id \|\| existing\?\.email_hash\)/);
+  assert.match(start, /if \(identityBound && storedDraftSlug && storedDraftSlug !== draftSlug\)/);
+  assert.match(start, /\.update\(\{ draft_slug: draftSlug \}\)/);
+  assert.match(start, /\.is\('owner_id', null\)/);
+  assert.match(start, /\.is\('email_hash', null\)/);
 });
 
 test('signed-out Open My Drafts requests a Builder-owned secure sign-in', async () => {
