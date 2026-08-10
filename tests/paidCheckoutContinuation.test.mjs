@@ -93,10 +93,13 @@ test('10. Extra Page remains bound to only its exact configured route', () => {
 });
 
 test('11. auth callback and dashboard fallback both resume the durable intent', async () => {
-  const [callback, customer] = await Promise.all([
+  const [confirm, callback, customer] = await Promise.all([
+    source('app/customer/auth/confirm/page.js'),
     source('app/customer/auth/callback/page.js'),
     source('app/customer/page.js')
   ]);
+  assert.match(confirm, /fetch\('\/api\/auth\/site-owner\/confirm'/);
+  assert.match(confirm, /fetch\('\/api\/checkout\/intent\/resume'/);
   assert.match(callback, /fetch\('\/api\/checkout\/intent\/resume'/);
   assert.match(customer, /window\.location\.hash/);
   assert.match(customer, /fetch\('\/api\/checkout\/intent\/active'/);
@@ -105,7 +108,7 @@ test('11. auth callback and dashboard fallback both resume the durable intent', 
 
 test('12. already-authenticated Builder uses the same server continuation route', async () => {
   const builder = await source('app/builder/page.js');
-  assert.match(builder, /ensureCheckoutIntent\(site\.plan, draftSlug, existingIntentId\)/);
+  assert.match(builder, /ensureCheckoutIntent\(selectedPlan, draftSlug, existingIntentId\)/);
   assert.match(builder, /fetch\('\/api\/checkout\/intent\/continue'/);
   assert.match(builder, /onClick=\{\(\) => checkoutPlan\(\)\}/, 'React click event must not be mistaken for an existing checkout intent');
   assert.doesNotMatch(builder, /onClick=\{checkoutPlan\}/, 'direct event binding would pass a circular HTML event into persisted checkout state');
@@ -146,7 +149,7 @@ test('16. every paid Builder checkout button uses the centralized handler and ne
     source('app/pricing/page.js')
   ]);
   assert.match(builder, /onClick=\{\(\) => checkoutPlan\(\)\}/);
-  assert.match(builder, /Go to Secure \{plans\[site\.plan\]\?\.price\} Checkout/);
+  assert.match(builder, /`Go to Secure \$\{plans\[site\.plan\]\?\.price\} Checkout`/);
   assert.doesNotMatch(builder, /href=["'`]\/customer["'`][^\n]*Go to/i);
   for (const plan of ['starter', 'business', 'premium']) assert.match(pricing, new RegExp(`href: '/builder\\?checkout=${plan}'`));
 });
