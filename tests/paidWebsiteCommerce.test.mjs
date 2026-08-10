@@ -86,15 +86,18 @@ test('pricing starts paid website plans in the builder before Gumroad', async ()
 });
 
 test('auth callback, dashboard fallback and restored sessions recover server-side checkout intent', async () => {
-  const [request, callback, customer, resume, active] = await Promise.all([
+  const [request, confirm, callback, customer, resume, active] = await Promise.all([
     source('app/api/auth/site-owner/request/route.js'),
+    source('app/customer/auth/confirm/page.js'),
     source('app/customer/auth/callback/page.js'),
     source('app/customer/page.js'),
     source('app/api/checkout/intent/resume/route.js'),
     source('app/api/checkout/intent/active/route.js')
   ]);
   assert.match(request, /website_checkout_intents/);
-  assert.match(request, /customer\/auth\/callback\?intent=/);
+  assert.match(request, /builderCheckoutConfirmationUrl/);
+  assert.match(confirm, /\/api\/auth\/site-owner\/confirm/);
+  assert.match(confirm, /\/api\/checkout\/intent\/resume/);
   assert.match(callback, /\/api\/checkout\/intent\/resume/);
   assert.match(customer, /window\.location\.hash/);
   assert.match(customer, /\/api\/checkout\/intent\/active/);

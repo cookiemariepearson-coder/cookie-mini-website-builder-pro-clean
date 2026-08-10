@@ -1,6 +1,6 @@
 'use client';
 
-import { Children, cloneElement, isValidElement, useEffect, useId, useMemo, useState } from 'react';
+import { Children, cloneElement, isValidElement, useEffect, useId, useMemo, useRef, useState } from 'react';
 import SitePreview from '../../lib/SitePreview.js';
 import { createDefaultSite, templateLibrary, getTemplate, pageOptions, plans, slugify, sectionPrompts, normalizeSelectedPagesForPlan, planAllowsMedia, planAllowsAiVideo, planSectionLimit, customerActionLimit, customerActionTypes, normalizeCustomerActions } from '../../lib/siteDefaults';
 import { PENDING_CHECKOUT_STORAGE_KEY, createPendingCheckoutIntent, websiteCheckoutRoute } from '../../lib/commerceConfig.mjs';
@@ -146,6 +146,9 @@ export default function Builder() {
   const [pendingCheckout, setPendingCheckout] = useState('');
   const [pendingCheckoutIntent, setPendingCheckoutIntent] = useState('');
   const [resumeCheckoutRequested, setResumeCheckoutRequested] = useState(false);
+  const [checkoutBusyPlan, setCheckoutBusyPlan] = useState('');
+  const [checkoutRetryPlan, setCheckoutRetryPlan] = useState('');
+  const checkoutBusyRef = useRef(false);
   const tmpl = useMemo(() => getTemplate(site.typeKey, site.styleKey), [site.typeKey, site.styleKey]);
 
   useEffect(() => {
@@ -667,14 +670,23 @@ export default function Builder() {
   }
 
   async function checkoutPlan(existingIntentId = '') {
+    if (checkoutBusyRef.current) return;
+    checkoutBusyRef.current = true;
+    const selectedPlan = site.plan;
+    setCheckoutBusyPlan(selectedPlan);
+    setCheckoutRetryPlan('');
+    setMessage(`Opening your secure ${plans[selectedPlan]?.label || 'paid-plan'} checkout…`);
     const draftSlug = draftSlugFor(site);
     let intentId = '';
     try {
-      intentId = await ensureCheckoutIntent(site.plan, draftSlug, existingIntentId);
-      const checkoutIntent = createPendingCheckoutIntent(site.plan, draftSlug);
+      intentId = await ensureCheckoutIntent(selectedPlan, draftSlug, existingIntentId);
+      const checkoutIntent = createPendingCheckoutIntent(selectedPlan, draftSlug);
       if (checkoutIntent) localStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify({ ...checkoutIntent, intentId }));
     } catch (error) {
       setMessage(error.message || 'Secure checkout could not start. Your draft is still safe.');
+      setCheckoutRetryPlan(selectedPlan);
+      setCheckoutBusyPlan('');
+      checkoutBusyRef.current = false;
       return;
     }
     if (!ownerAccessToken()) {
@@ -687,6 +699,9 @@ export default function Builder() {
     if (incompleteActions.length) {
       setStep(3);
       setMessage(`Add the destination for ${incompleteActions.map(action => action.label).join(', ')} before checkout. Use an email, phone number, booking form, menu, product, payment, or order link.`);
+      setCheckoutRetryPlan(selectedPlan);
+      setCheckoutBusyPlan('');
+      checkoutBusyRef.current = false;
       return;
     }
     const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
@@ -702,6 +717,9 @@ export default function Builder() {
         return;
       }
       setMessage(error.message || 'Secure online draft save failed. Checkout was not opened.');
+      setCheckoutRetryPlan(selectedPlan);
+      setCheckoutBusyPlan('');
+      checkoutBusyRef.current = false;
       return;
     }
     try {
@@ -716,6 +734,9 @@ export default function Builder() {
         return;
       }
       setMessage(error.message || 'Secure checkout could not continue. Your draft is still safe.');
+      setCheckoutRetryPlan(selectedPlan);
+      setCheckoutBusyPlan('');
+      checkoutBusyRef.current = false;
     }
   }
 
@@ -837,6 +858,14 @@ export default function Builder() {
                 <p className="mutedText">Change the website type, template look, colors, layout, hero image, and media. Template changes apply immediately to the preview.</p>
                 <Field label="Plan"><select value={site.plan} onChange={e => {
                   const nextPlan = e.target.value;
+                  if (nextPlan !== site.plan) {
+                    setPendingCheckout('');
+                    setPendingCheckoutIntent('');
+                    setResumeCheckoutRequested(false);
+                    setCheckoutBusyPlan('');
+                    setCheckoutRetryPlan('');
+                    checkoutBusyRef.current = false;
+                  }
                   update({ plan: nextPlan, pages: normalizeSelectedPagesForPlan(site.pages || ['Home'], nextPlan, site.extraPages || site.extra_pages), customerActions: normalizeCustomerActions(site.customerActions, nextPlan) });
                   setMessage(`Plan changed to ${plans[nextPlan]?.label}. Pick your own sections below instead of letting a template choose for you.`);
                 }}>{Object.entries(plans).map(([k, v]) => <option value={k} key={k}>{v.label} - {v.price}</option>)}</select></Field>
@@ -948,7 +977,21 @@ export default function Builder() {
                 <div className="notice"><strong>{plans[site.plan]?.label}</strong> will publish {limitText}. Selected sections: {selectedSections.join(', ')}.</div>
                 <div className="notice"><strong>{draftSlugFor(site)}.cookiesdigitalcreations.com</strong></div>
                 <button className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}<a className="btn dark" href="/customer">Open My Drafts</a>{' '}
-                {site.plan === 'free' ? <button className="btn" onClick={publishFree}>Publish Free Page</button> : <button className="btn" onClick={() => checkoutPlan()}>Go to Secure {plans[site.plan]?.price} Checkout</button>}
+                {site.plan === 'free' ? <button className="btn" onClick={publishFree}>Publish Free Page</button> : (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => checkoutPlan()}
+                    disabled={Boolean(checkoutBusyPlan)}
+                    aria-busy={checkoutBusyPlan === site.plan}
+                  >
+                    {checkoutBusyPlan === site.plan
+                      ? `Opening Secure ${plans[site.plan]?.price} Checkout…`
+                      : checkoutRetryPlan === site.plan
+                        ? `Retry Secure ${plans[site.plan]?.price} Checkout`
+                        : `Go to Secure ${plans[site.plan]?.price} Checkout`}
+                  </button>
+                )}
                 <div className="navRow"><button className="btn dark" onClick={back}>Back</button></div>
               </>
             )}

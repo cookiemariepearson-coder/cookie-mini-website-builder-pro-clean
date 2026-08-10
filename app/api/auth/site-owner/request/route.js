@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../../lib/supabaseAdmin';
 import { rateLimit, rateLimitResponse } from '../../../../../lib/rateLimit.mjs';
 import { safeCustomerReturnPath } from '../../../../../lib/commerceConfig.mjs';
+import { builderCheckoutConfirmationUrl, canonicalBuilderOrigin } from '../../../../../lib/builderCheckoutAuth.mjs';
+import { sendResendEmail } from '../../../../../lib/resendEmail.mjs';
 import {
   checkoutIntentEmailHash,
   checkoutIntentRequestFromReturnPath,
@@ -9,8 +11,28 @@ import {
   normalizeCheckoutDraftSlug,
   normalizeWebsiteCheckoutIntentId,
   traceWebsiteCheckout,
+  websiteCheckoutCorrelationId,
   websiteCheckoutIntentState
 } from '../../../../../lib/websiteCheckoutIntent.mjs';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+const CHECKOUT_PLAN_LABELS = Object.freeze({
+  starter: 'Starter Pro — $19/month',
+  business: 'Business — $30/month',
+  premium: 'Premium — $50/month',
+  extra: 'Extra Page Add-On — $10/month per page'
+});
+
+function escapeHtml(value = '') {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 export async function POST(req) {
   try {
@@ -25,9 +47,7 @@ export async function POST(req) {
 
     const requestUrl = new URL(req.url);
     const rootDomain = String(process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'cookiesdigitalcreations.com').trim().toLowerCase();
-    const origin = requestUrl.hostname === rootDomain || requestUrl.hostname === `www.${rootDomain}`
-      ? `https://www.${rootDomain}`
-      : requestUrl.origin;
+    const origin = canonicalBuilderOrigin(requestUrl, rootDomain);
     const returnPath = safeCustomerReturnPath(body.returnPath);
     const supabase = getSupabaseAdmin();
     let intentId = normalizeWebsiteCheckoutIntentId(body.intentId);
@@ -61,20 +81,57 @@ export async function POST(req) {
       intentForTrace = intent;
     }
 
-    const redirectTo = intentId
-      ? `${origin}/customer/auth/callback?intent=${encodeURIComponent(intentId)}`
-      : `${origin}/customer/auth/callback?return=${encodeURIComponent(returnPath)}`;
-    if (intentId) traceWebsiteCheckout('AUTH_EMAIL_REQUESTED', intentForTrace || { id: intentId, status: 'pending_auth' });
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: redirectTo,
-        shouldCreateUser: true
+    if (intentId) {
+      const apiKey = process.env.RESEND_API_KEY;
+      const from = process.env.ADMIN_NOTIFICATION_FROM_EMAIL;
+      if (!apiKey || !from) {
+        traceWebsiteCheckout('CHECKOUT_AUTH_EMAIL_BLOCKED', intentForTrace || { id: intentId, status: 'pending_auth' }, { reasonCode: 'EMAIL_CONFIGURATION_UNAVAILABLE' });
+        console.error('[website-checkout-auth] customer email configuration unavailable');
+        return NextResponse.json({ ok: false, error: 'The secure checkout email is temporarily unavailable. Your plan and website are still saved; please try again shortly.' }, { status: 503 });
       }
-    });
 
-    if (error) throw error;
-    if (intentId) traceWebsiteCheckout('AUTH_EMAIL_PROVIDER_ACCEPTED', intentForTrace || { id: intentId, status: 'pending_auth' });
+      traceWebsiteCheckout('AUTH_EMAIL_REQUESTED', intentForTrace || { id: intentId, status: 'pending_auth' });
+      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+        type: 'magiclink',
+        email
+      });
+      if (linkError) throw linkError;
+
+      const confirmationUrl = builderCheckoutConfirmationUrl({
+        origin,
+        intentId,
+        tokenHash: linkData?.properties?.hashed_token,
+        type: linkData?.properties?.verification_type
+      });
+      if (!confirmationUrl) throw new Error('Builder checkout authentication link could not be generated.');
+
+      const currentState = websiteCheckoutIntentState(intentForTrace || {});
+      const planLabel = CHECKOUT_PLAN_LABELS[currentState.plan] || 'Paid website plan';
+      const websiteLabel = currentState.draftSlug || requestedDraftSlug || 'your saved Builder website';
+      const correlationId = websiteCheckoutCorrelationId(intentId);
+      await sendResendEmail({
+        apiKey,
+        from,
+        to: email,
+        replyTo: process.env.ADMIN_NOTIFICATION_EMAIL || undefined,
+        notification: 'builder-checkout-auth',
+        requestId: correlationId,
+        idempotencyKey: `builder-checkout-auth-${correlationId}-${Date.now().toString(36)}`,
+        subject: 'Continue your Cookie Mini Website Builder checkout',
+        html: `<h2>Continue your secure website checkout</h2><p><strong>Plan:</strong> ${escapeHtml(planLabel)}<br><strong>Website:</strong> ${escapeHtml(websiteLabel)}</p><p>Use the secure button below to verify this email and continue the exact saved purchase in Cookie Mini Website Builder Pro.</p><p><a href="${escapeHtml(confirmationUrl)}" style="display:inline-block;padding:13px 20px;background:#f28a1e;color:#20172f;text-decoration:none;border-radius:999px;font-weight:800">Verify Email and Continue Checkout</a></p><p>This one-time link expires shortly. If you did not request it, you can ignore this email.</p><p>Questions? Contact hello@cookiesdigitalcreations.com.</p>`
+      });
+      traceWebsiteCheckout('AUTH_EMAIL_PROVIDER_ACCEPTED', intentForTrace || { id: intentId, status: 'pending_auth' });
+    } else {
+      const redirectTo = `${origin}/customer/auth/callback?return=${encodeURIComponent(returnPath)}`;
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: redirectTo,
+          shouldCreateUser: true
+        }
+      });
+      if (error) throw error;
+    }
     return NextResponse.json({
       ok: true,
       checkoutIntentSaved: Boolean(intentId),
