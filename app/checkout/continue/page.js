@@ -28,11 +28,12 @@ export default function ContinueWebsiteCheckout() {
       try {
         const response = await fetch(`/api/checkout/intent/status?id=${encodeURIComponent(intentId)}`, { cache: 'no-store' });
         const data = await response.json();
-        if (!data.ok || !data.intent) {
+        if (!data.ok || !data.intentId) {
           setMessage(data.error || 'This checkout is no longer available. Return to Pricing to start again.');
           return;
         }
-        setIntent(data.intent);
+        const loadedIntent = { id: data.intentId, plan: data.plan, draftSlug: data.draftSlug || '', status: data.status };
+        setIntent(loadedIntent);
         const token = localStorage.getItem(AUTH_TOKEN_KEY) || '';
         if (!token) {
           setMessage('Verify your email once. After verification, your exact plan and website will continue automatically to Gumroad.');

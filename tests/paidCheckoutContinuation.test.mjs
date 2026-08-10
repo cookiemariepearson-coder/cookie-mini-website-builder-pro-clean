@@ -161,6 +161,9 @@ test('17. fresh incognito checkout uses a dedicated verification page rather tha
   assert.match(continuationPage, /Continue Your Website Purchase/);
   assert.match(continuationPage, /Email My Secure Checkout Link/);
   assert.match(continuationPage, /\/api\/auth\/site-owner\/request/);
+  assert.match(continuationPage, /!data\.ok \|\| !data\.intentId/);
+  assert.match(continuationPage, /id: data\.intentId, plan: data\.plan, draftSlug: data\.draftSlug/);
+  assert.doesNotMatch(continuationPage, /!data\.ok \|\| !data\.intent\)/);
   assert.match(customer, /window\.location\.replace\(`\/checkout\/continue\?intent=/);
 });
 
