@@ -2,7 +2,14 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../../lib/supabaseAdmin';
 import { rateLimit, rateLimitResponse } from '../../../../../lib/rateLimit.mjs';
 import { safeCustomerReturnPath } from '../../../../../lib/commerceConfig.mjs';
-import { checkoutContinuationRecord } from '../../../../../lib/checkoutContinuation.mjs';
+import {
+  checkoutIntentEmailHash,
+  checkoutIntentRequestFromReturnPath,
+  newWebsiteCheckoutIntent,
+  normalizeCheckoutDraftSlug,
+  normalizeWebsiteCheckoutIntentId,
+  websiteCheckoutIntentState
+} from '../../../../../lib/websiteCheckoutIntent.mjs';
 
 export async function POST(req) {
   try {
@@ -15,10 +22,44 @@ export async function POST(req) {
     const emailLimited = rateLimit(req, { name: 'customer-auth-email', limit: 5, windowMs: 15 * 60 * 1000, subject: email });
     if (!ipLimited.ok || !emailLimited.ok) return rateLimitResponse(!ipLimited.ok ? ipLimited : emailLimited, 'Please wait before requesting another sign-in email. You can also check your spam folder.');
 
-    const origin = new URL(req.url).origin;
+    const requestUrl = new URL(req.url);
+    const rootDomain = String(process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'cookiesdigitalcreations.com').trim().toLowerCase();
+    const origin = requestUrl.hostname === rootDomain || requestUrl.hostname === `www.${rootDomain}`
+      ? `https://www.${rootDomain}`
+      : requestUrl.origin;
     const returnPath = safeCustomerReturnPath(body.returnPath);
-    const redirectTo = `${origin}/customer/auth/callback?return=${encodeURIComponent(returnPath)}`;
     const supabase = getSupabaseAdmin();
+    let intentId = normalizeWebsiteCheckoutIntentId(body.intentId);
+    const requestedDraftSlug = normalizeCheckoutDraftSlug(body.draftSlug);
+    const legacyIntent = checkoutIntentRequestFromReturnPath(returnPath);
+
+    if (intentId) {
+      const { data: currentIntent, error: intentLookupError } = await supabase.from('website_checkout_intents').select('*').eq('id', intentId).maybeSingle();
+      if (intentLookupError) throw intentLookupError;
+      const state = websiteCheckoutIntentState(currentIntent || {});
+      if (!state.ok) return NextResponse.json({ ok: false, error: state.reason === 'expired' ? 'This checkout continuation expired. Return to Pricing to start again.' : 'This checkout continuation is no longer available.' }, { status: 410 });
+      const emailHash = checkoutIntentEmailHash(email);
+      if ((state.emailHash && state.emailHash !== emailHash) || state.ownerId) {
+        return NextResponse.json({ ok: false, error: 'This checkout is already attached to a different verified customer.' }, { status: 403 });
+      }
+      if (state.draftSlug && requestedDraftSlug && state.draftSlug !== requestedDraftSlug) {
+        return NextResponse.json({ ok: false, error: 'This checkout is attached to a different website draft.' }, { status: 409 });
+      }
+      const { error: bindError } = await supabase.from('website_checkout_intents').update({
+        email_hash: emailHash,
+        draft_slug: state.draftSlug || requestedDraftSlug || null
+      }).eq('id', intentId).eq('status', 'pending_auth');
+      if (bindError) throw bindError;
+    } else if (legacyIntent) {
+      const intent = newWebsiteCheckoutIntent({ plan: legacyIntent.plan, draftSlug: legacyIntent.draftSlug, email });
+      const { error: createError } = await supabase.from('website_checkout_intents').insert(intent);
+      if (createError) throw createError;
+      intentId = intent.id;
+    }
+
+    const redirectTo = intentId
+      ? `${origin}/customer/auth/callback?intent=${encodeURIComponent(intentId)}`
+      : `${origin}/customer/auth/callback?return=${encodeURIComponent(returnPath)}`;
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -28,18 +69,12 @@ export async function POST(req) {
     });
 
     if (error) throw error;
-    const continuation = checkoutContinuationRecord(email, returnPath);
-    if (continuation) {
-      const { error: continuationError } = await supabase
-        .from('checkout_continuations')
-        .upsert(continuation, { onConflict: 'email_hash' });
-      if (continuationError) {
-        console.error('[customer-auth] checkout continuation could not be saved', { message: continuationError.message });
-      }
-    }
     return NextResponse.json({
       ok: true,
-      message: 'Check your email and tap the secure sign-in link. You can then manage websites saved with that email.'
+      checkoutIntentSaved: Boolean(intentId),
+      message: intentId
+        ? 'Check your email and tap the secure sign-in link. Your selected plan and website are saved, and checkout will continue after verification.'
+        : 'Check your email and tap the secure sign-in link. You can then manage websites saved with that email.'
     });
   } catch (error) {
     console.error('Customer sign-in request failed', error);

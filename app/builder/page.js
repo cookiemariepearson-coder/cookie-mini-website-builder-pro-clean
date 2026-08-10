@@ -144,15 +144,62 @@ export default function Builder() {
   const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
   const [isSmallBuilderScreen, setIsSmallBuilderScreen] = useState(false);
   const [pendingCheckout, setPendingCheckout] = useState('');
+  const [pendingCheckoutIntent, setPendingCheckoutIntent] = useState('');
+  const [resumeCheckoutRequested, setResumeCheckoutRequested] = useState(false);
   const tmpl = useMemo(() => getTemplate(site.typeKey, site.styleKey), [site.typeKey, site.styleKey]);
 
   useEffect(() => {
     async function restore() {
       const params = new URLSearchParams(window.location.search);
-      const requestedCheckout = websiteCheckoutRoute(params.get('checkout')) ? params.get('checkout') : '';
+      let requestedCheckout = websiteCheckoutRoute(params.get('checkout')) ? params.get('checkout') : '';
+      let checkoutIntentId = params.get('checkoutIntent') || '';
+      let intentDraftSlug = '';
+      const shouldResumeCheckout = params.get('resumeCheckout') === '1';
+      if (checkoutIntentId) {
+        try {
+          const token = ownerAccessToken();
+          const response = await fetch(`/api/checkout/intent/status?id=${encodeURIComponent(checkoutIntentId)}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          });
+          const intent = await response.json();
+          if (!intent.ok) {
+            setMessage(intent.error || 'This secure checkout continuation could not be loaded.');
+            return;
+          }
+          requestedCheckout = intent.plan;
+          intentDraftSlug = intent.draftSlug || '';
+          setPendingCheckoutIntent(intent.intentId);
+          setResumeCheckoutRequested(shouldResumeCheckout);
+        } catch {
+          setMessage('This secure checkout continuation could not be loaded. Your draft is still safe.');
+          return;
+        }
+      } else if (requestedCheckout) {
+        try {
+          const draftFromUrl = normalizeSlug(params.get('draft') || '');
+          const response = await fetch('/api/checkout/intent/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plan: requestedCheckout, draftSlug: draftFromUrl })
+          });
+          const intent = await response.json();
+          if (!intent.ok) {
+            setMessage(intent.error || 'Secure checkout could not start. Your draft is still safe.');
+            return;
+          }
+          checkoutIntentId = intent.intentId;
+          setPendingCheckoutIntent(intent.intentId);
+          const nextParams = new URLSearchParams({ checkoutIntent: intent.intentId });
+          if (draftFromUrl) nextParams.set('draft', draftFromUrl);
+          window.history.replaceState({}, document.title, `/builder?${nextParams.toString()}`);
+        } catch {
+          setMessage('Secure checkout could not start. Your draft is still safe.');
+          return;
+        }
+      }
       const requestedPlan = requestedCheckout && requestedCheckout !== 'extra' ? requestedCheckout : '';
       if (requestedCheckout) setPendingCheckout(requestedCheckout);
-      const draftSlug = normalizeSlug(params.get('draft') || params.get('slug') || '');
+      const draftSlug = normalizeSlug(intentDraftSlug || params.get('draft') || params.get('slug') || '');
       if (draftSlug && draftSlug !== 'my-website') {
         setSaveMessage('Opening saved draft...');
         try {
@@ -189,15 +236,16 @@ export default function Builder() {
   }, []);
 
   useEffect(() => {
-    if (!pendingCheckout || (pendingCheckout !== 'extra' && site.plan !== pendingCheckout) || !ownerAccessToken()) return;
+    if (!resumeCheckoutRequested || !pendingCheckout || !pendingCheckoutIntent || (pendingCheckout !== 'extra' && site.plan !== pendingCheckout) || !ownerAccessToken()) return;
+    const intentId = pendingCheckoutIntent;
     setPendingCheckout('');
-    window.history.replaceState({}, document.title, '/builder?verified=1');
+    setResumeCheckoutRequested(false);
     setMessage(`Email verified. Continuing to the ${pendingCheckout === 'extra' ? 'Extra Page Add-On' : (plans[pendingCheckout]?.label || 'selected plan')} checkout...`);
-    if (pendingCheckout === 'extra') checkoutExtraPage();
-    else checkoutPlan();
+    if (pendingCheckout === 'extra') checkoutExtraPage(intentId);
+    else checkoutPlan(intentId);
     // checkoutPlan saves the verified owner's draft before opening checkout.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingCheckout, site.plan]);
+  }, [pendingCheckout, pendingCheckoutIntent, resumeCheckoutRequested, site.plan]);
 
   useEffect(() => {
     function checkSize() {
@@ -545,7 +593,36 @@ export default function Builder() {
     }
   }
 
-  async function checkoutExtraPage() {
+  async function ensureCheckoutIntent(plan, draftSlug, existingIntentId = '') {
+    if (existingIntentId) return existingIntentId;
+    if (pendingCheckoutIntent) return pendingCheckoutIntent;
+    const response = await fetch('/api/checkout/intent/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan, draftSlug })
+    });
+    const data = await response.json();
+    if (!data.ok || !data.intentId) throw new Error(data.error || 'Secure checkout could not start.');
+    setPendingCheckoutIntent(data.intentId);
+    return data.intentId;
+  }
+
+  async function continueServerCheckout(intentId, draftSlug) {
+    const response = await fetch('/api/checkout/intent/continue', {
+      method: 'POST',
+      headers: ownerAuthHeaders(),
+      body: JSON.stringify({ intentId, draftSlug })
+    });
+    const data = await response.json();
+    if (!data.ok || !data.checkoutPath) {
+      const error = new Error(data.error || 'Secure checkout could not continue.');
+      error.status = response.status;
+      throw error;
+    }
+    return data.checkoutPath;
+  }
+
+  async function checkoutExtraPage(existingIntentId = '') {
     const draftSlug = draftSlugFor(site);
     if (!['starter', 'business'].includes(site.plan)) {
       setMessage(site.plan === 'free'
@@ -553,14 +630,19 @@ export default function Builder() {
         : 'Premium already includes all built-in sections; no Extra Page Add-On is needed.');
       return;
     }
-    const checkoutIntent = createPendingCheckoutIntent('extra', draftSlug);
-    if (checkoutIntent) {
-      try { localStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify(checkoutIntent)); } catch {}
+    let intentId = '';
+    try {
+      intentId = await ensureCheckoutIntent('extra', draftSlug, existingIntentId);
+      const checkoutIntent = createPendingCheckoutIntent('extra', draftSlug);
+      if (checkoutIntent) localStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify({ ...checkoutIntent, intentId }));
+    } catch (error) {
+      setMessage(error.message || 'Secure checkout could not start. Your draft is still safe.');
+      return;
     }
     if (!ownerAccessToken()) {
       persistLocal('Draft saved before secure email verification.');
       setMessage('Verify your email before the add-on checkout so it is attached to the correct website.');
-      setTimeout(() => { window.location.href = `/customer?return=builder&checkout=extra&draft=${encodeURIComponent(draftSlug)}`; }, 700);
+      setTimeout(() => { window.location.href = `/customer?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draftSlug)}`; }, 700);
       return;
     }
     const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlug, draftName: site.draftName || site.businessName, status: 'draft' };
@@ -570,26 +652,36 @@ export default function Builder() {
       if (error.status === 401) {
         try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
         setMessage('Your secure session expired. Re-verify your email to continue this add-on checkout.');
-        setTimeout(() => { window.location.href = `/customer?return=builder&checkout=extra&draft=${encodeURIComponent(draft.slug)}`; }, 700);
+        setTimeout(() => { window.location.href = `/customer?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draft.slug)}`; }, 700);
         return;
       }
       setMessage(error.message || 'Secure online draft save failed. Add-on checkout was not opened.');
       return;
     }
-    try { localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY); } catch {}
-    window.location.href = websiteCheckoutRoute('extra');
+    try {
+      const checkoutPath = await continueServerCheckout(intentId, draft.slug);
+      localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+      window.location.href = checkoutPath;
+    } catch (error) {
+      setMessage(error.message || 'Secure add-on checkout could not continue. Your draft is still safe.');
+    }
   }
 
-  async function checkoutPlan() {
+  async function checkoutPlan(existingIntentId = '') {
     const draftSlug = draftSlugFor(site);
-    const checkoutIntent = createPendingCheckoutIntent(site.plan, draftSlug);
-    if (checkoutIntent) {
-      try { localStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify(checkoutIntent)); } catch {}
+    let intentId = '';
+    try {
+      intentId = await ensureCheckoutIntent(site.plan, draftSlug, existingIntentId);
+      const checkoutIntent = createPendingCheckoutIntent(site.plan, draftSlug);
+      if (checkoutIntent) localStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify({ ...checkoutIntent, intentId }));
+    } catch (error) {
+      setMessage(error.message || 'Secure checkout could not start. Your draft is still safe.');
+      return;
     }
     if (!ownerAccessToken()) {
       persistLocal('Draft saved before secure email verification.');
       setMessage('Verify your email before checkout so the paid website belongs securely to you.');
-      setTimeout(() => { window.location.href = `/customer?return=builder&checkout=${encodeURIComponent(site.plan)}&draft=${encodeURIComponent(draftSlug)}`; }, 700);
+      setTimeout(() => { window.location.href = `/customer?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draftSlug)}`; }, 700);
       return;
     }
     const incompleteActions = missingActionLinks(site);
@@ -607,16 +699,25 @@ export default function Builder() {
       if (error.status === 401) {
         try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
         setMessage('Your secure session expired. Re-verify your email to continue this checkout.');
-        setTimeout(() => { window.location.href = `/customer?return=builder&checkout=${encodeURIComponent(site.plan)}&draft=${encodeURIComponent(draft.slug)}`; }, 700);
+        setTimeout(() => { window.location.href = `/customer?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draft.slug)}`; }, 700);
         return;
       }
       setMessage(error.message || 'Secure online draft save failed. Checkout was not opened.');
       return;
     }
-    const url = websiteCheckoutRoute(site.plan);
-    if (!url) { setMessage('Checkout route missing.'); return; }
-    try { localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY); } catch {}
-    window.location.href = url;
+    try {
+      const checkoutPath = await continueServerCheckout(intentId, draft.slug);
+      localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+      window.location.href = checkoutPath;
+    } catch (error) {
+      if (error.status === 401) {
+        try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
+        setMessage('Your secure session expired. Re-verify your email to continue this checkout.');
+        setTimeout(() => { window.location.href = `/customer?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draft.slug)}`; }, 700);
+        return;
+      }
+      setMessage(error.message || 'Secure checkout could not continue. Your draft is still safe.');
+    }
   }
 
   async function uploadHero(file) {

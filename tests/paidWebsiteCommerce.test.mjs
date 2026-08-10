@@ -7,10 +7,11 @@ import {
   sanitizeGumroadPayload
 } from '../lib/gumroadWebsiteProducts.mjs';
 import {
-  checkoutContinuationKey,
-  checkoutContinuationRecord,
-  validCheckoutContinuation
-} from '../lib/checkoutContinuation.mjs';
+  checkoutIntentBuilderPath,
+  checkoutIntentEmailHash,
+  newWebsiteCheckoutIntent,
+  websiteCheckoutIntentState
+} from '../lib/websiteCheckoutIntent.mjs';
 import { normalizeSelectedPagesForPlan, planSectionLimit } from '../lib/siteDefaults.js';
 
 async function source(path) {
@@ -61,14 +62,13 @@ test('stored webhook evidence excludes license, payment-card, email and personal
   assert.equal('card[bin]' in safe, false);
 });
 
-test('server checkout continuation survives a different browser without exposing the email', () => {
+test('server checkout intent survives a different browser without exposing the email', () => {
   const now = Date.parse('2026-08-10T12:00:00Z');
-  const record = checkoutContinuationRecord('Customer@Example.com', '/builder?checkout=business&draft=cookies-kitchen', now);
-  assert.equal(record.email_hash, checkoutContinuationKey('customer@example.com'));
+  const record = newWebsiteCheckoutIntent({ id: '11111111-1111-4111-8111-111111111111', plan: 'business', draftSlug: 'cookies-kitchen', email: 'Customer@Example.com', now });
+  assert.equal(record.email_hash, checkoutIntentEmailHash('customer@example.com'));
   assert.doesNotMatch(JSON.stringify(record), /customer@example\.com/i);
-  assert.equal(validCheckoutContinuation(record, now + 60_000), '/builder?checkout=business&draft=cookies-kitchen');
-  assert.equal(validCheckoutContinuation(record, now + (3 * 60 * 60 * 1000)), '/customer');
-  assert.equal(checkoutContinuationRecord('customer@example.com', 'https://attacker.example', now), null);
+  assert.equal(checkoutIntentBuilderPath(record), '/builder?checkoutIntent=11111111-1111-4111-8111-111111111111&draft=cookies-kitchen');
+  assert.equal(websiteCheckoutIntentState(record, now + (3 * 60 * 60 * 1000)).reason, 'expired');
 });
 
 test('pricing starts paid website plans in the builder before Gumroad', async () => {
@@ -85,19 +85,23 @@ test('pricing starts paid website plans in the builder before Gumroad', async ()
   assert.match(checkoutHome, /href="\/builder\?checkout=business"/);
 });
 
-test('auth callback and restored sessions recover server-side checkout intent', async () => {
-  const [request, callback, customer, continuation] = await Promise.all([
+test('auth callback, dashboard fallback and restored sessions recover server-side checkout intent', async () => {
+  const [request, callback, customer, resume, active] = await Promise.all([
     source('app/api/auth/site-owner/request/route.js'),
     source('app/customer/auth/callback/page.js'),
     source('app/customer/page.js'),
-    source('app/api/auth/site-owner/continuation/route.js')
+    source('app/api/checkout/intent/resume/route.js'),
+    source('app/api/checkout/intent/active/route.js')
   ]);
-  assert.match(request, /checkoutContinuationRecord/);
-  assert.match(request, /checkout_continuations/);
-  assert.match(callback, /\/api\/auth\/site-owner\/continuation/);
-  assert.match(customer, /\/api\/auth\/site-owner\/continuation/);
-  assert.match(continuation, /getVerifiedSiteOwner/);
-  assert.match(continuation, /\.delete\(\)\.eq\('email_hash'/);
+  assert.match(request, /website_checkout_intents/);
+  assert.match(request, /customer\/auth\/callback\?intent=/);
+  assert.match(callback, /\/api\/checkout\/intent\/resume/);
+  assert.match(customer, /window\.location\.hash/);
+  assert.match(customer, /\/api\/checkout\/intent\/active/);
+  assert.match(customer, /Continue Purchase/);
+  assert.match(resume, /checkoutIntentBelongsToOwner/);
+  assert.match(resume, /siteBelongsToOwner/);
+  assert.match(active, /owner_id\.eq/);
 });
 
 test('website webhook requires approved product, exact website and verified owner email', async () => {
@@ -150,7 +154,8 @@ test('an active paid add-on expands section allowance without changing Premium',
 test('extra-page checkout no longer calls an undefined browser variable', async () => {
   const builder = await source('app/builder/page.js');
   assert.doesNotMatch(builder, /checkout\.extra/);
-  assert.match(builder, /async function checkoutExtraPage\(\)/);
-  assert.match(builder, /websiteCheckoutRoute\('extra'\)/);
-  assert.match(builder, /checkout=extra&draft=/);
+  assert.match(builder, /async function checkoutExtraPage\(existingIntentId = ''\)/);
+  assert.match(builder, /ensureCheckoutIntent\('extra'/);
+  assert.match(builder, /continueServerCheckout\(intentId, draft\.slug\)/);
+  assert.match(builder, /\/customer\?intent=/);
 });

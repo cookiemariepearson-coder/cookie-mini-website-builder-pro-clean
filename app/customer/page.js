@@ -46,11 +46,20 @@ export default function Customer() {
   const [verifiedEmail, setVerifiedEmail] = useState('');
   const [authLoading, setAuthLoading] = useState(true);
   const [linkSending, setLinkSending] = useState(false);
+  const [pendingPurchase, setPendingPurchase] = useState(null);
 
   useEffect(() => {
     async function restoreSecureSession() {
-      const token = localStorage.getItem(AUTH_TOKEN_KEY) || '';
       const params = new URLSearchParams(window.location.search);
+      const authHash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const fragmentToken = authHash.get('access_token') || '';
+      const fragmentError = authHash.get('error_description') || authHash.get('error') || '';
+      if (fragmentToken) {
+        localStorage.setItem(AUTH_TOKEN_KEY, fragmentToken);
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+      }
+      const token = fragmentToken || localStorage.getItem(AUTH_TOKEN_KEY) || '';
+      const checkoutIntentId = params.get('intent') || '';
       const queryReturnPath = customerReturnPath(params.get('return'), params.get('checkout'), params.get('draft'));
       const requestedReturnPath = queryReturnPath !== '/customer'
         ? queryReturnPath
@@ -60,7 +69,11 @@ export default function Customer() {
         if (intent) localStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify(intent));
       }
       if (!token) {
-        if (requestedReturnPath !== '/customer') {
+        if (fragmentError) {
+          setMsg(fragmentError);
+        } else if (checkoutIntentId) {
+          setMsg('Verify your email to continue the saved paid-plan checkout. Your selected plan and website are preserved.');
+        } else if (requestedReturnPath !== '/customer') {
           setMsg(requestedReturnPath.startsWith('/builder')
             ? 'Verify your email to continue to the selected paid-plan checkout. Your plan and browser draft are preserved.'
             : 'Verify your email to continue to AI Video Studio with your website plan.');
@@ -76,6 +89,36 @@ export default function Customer() {
         if (data.ok) {
           setVerifiedEmail(data.email);
           setEmail(data.email);
+          if (checkoutIntentId) {
+            const resumeResponse = await fetch('/api/checkout/intent/resume', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ intentId: checkoutIntentId })
+            });
+            const resumed = await resumeResponse.json();
+            if (resumed.ok && resumed.builderPath) {
+              localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+              window.location.replace(resumed.builderPath);
+              return;
+            }
+            setMsg(resumed.error || 'The saved checkout could not resume. Your website draft is still safe.');
+          }
+          if (fragmentToken && !checkoutIntentId) {
+            const activeResponse = await fetch('/api/checkout/intent/active', { headers: { Authorization: `Bearer ${token}` } });
+            const active = await activeResponse.json();
+            if (active.ok && active.intent?.id) {
+              const resumeResponse = await fetch('/api/checkout/intent/resume', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ intentId: active.intent.id })
+              });
+              const resumed = await resumeResponse.json();
+              if (resumed.ok && resumed.builderPath) {
+                window.location.replace(resumed.builderPath);
+                return;
+              }
+            }
+          }
           let continuationPath = requestedReturnPath;
           if (continuationPath === '/customer') {
             try {
@@ -90,6 +133,14 @@ export default function Customer() {
             window.location.replace(continuationPath);
             return;
           }
+          try {
+            const activeResponse = await fetch('/api/checkout/intent/active', { headers: { Authorization: `Bearer ${token}` } });
+            const active = await activeResponse.json();
+            if (active.ok && active.intent) {
+              setPendingPurchase(active.intent);
+              setMsg('Your paid-plan checkout is still waiting. Choose Continue Purchase to return to the correct plan and website.');
+            }
+          } catch {}
           if (new URLSearchParams(window.location.search).get('verified') === '1') {
             setMsg('Email verified. You can now find and manage websites saved with this email.');
           }
@@ -137,6 +188,7 @@ export default function Customer() {
     setMsg('Sending your secure sign-in link...');
     try {
       const params = new URLSearchParams(window.location.search);
+      const checkoutIntentId = params.get('intent') || '';
       const queryReturnPath = customerReturnPath(params.get('return'), params.get('checkout'), params.get('draft'));
       const returnPath = queryReturnPath !== '/customer'
         ? queryReturnPath
@@ -144,7 +196,7 @@ export default function Customer() {
       const res = await fetch('/api/auth/site-owner/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, returnPath })
+        body: JSON.stringify({ email: cleanEmail, returnPath, intentId: checkoutIntentId, draftSlug: params.get('draft') || '' })
       });
       const data = await res.json();
       setMsg(data.ok ? data.message : (data.error || 'The secure email link could not be sent.'));
@@ -258,6 +310,13 @@ export default function Customer() {
               </>
             )}
           </div>
+          {pendingPurchase && (
+            <div className="notice" data-testid="continue-purchase">
+              <strong>Complete your saved purchase</strong><br />
+              Your {pendingPurchase.plan === 'starter' ? 'Starter Pro' : pendingPurchase.plan === 'business' ? 'Business' : pendingPurchase.plan === 'premium' ? 'Premium' : 'Extra Page Add-On'} checkout is still waiting for {pendingPurchase.draftSlug || 'your saved website'}.
+              <div className="navRow"><a className="btn" href={pendingPurchase.builderPath}>Continue Purchase</a></div>
+            </div>
+          )}
           <div className="row">
             <div className="field">
               <label>Email for secure sign-in</label>
