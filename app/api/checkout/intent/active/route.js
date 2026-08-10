@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getVerifiedSiteOwner } from '../../../../../lib/siteOwnerAuth';
-import { checkoutIntentBuilderPath, checkoutIntentEmailHash, websiteCheckoutIntentState } from '../../../../../lib/websiteCheckoutIntent.mjs';
+import { checkoutIntentBuilderPath, checkoutIntentEmailHash, traceWebsiteCheckout, websiteCheckoutIntentState } from '../../../../../lib/websiteCheckoutIntent.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +21,7 @@ export async function GET(request) {
     const row = Array.isArray(data) ? data[0] : null;
     const state = websiteCheckoutIntentState(row || {});
     if (!state.ok) return NextResponse.json({ ok: true, intent: null });
+    traceWebsiteCheckout('DASHBOARD_CONTINUE_PURCHASE_OFFERED', row, { reasonCode: 'UNFINISHED_CHECKOUT' });
     return NextResponse.json({ ok: true, intent: { id: state.id, plan: state.plan, draftSlug: state.draftSlug, builderPath: checkoutIntentBuilderPath(row, { resume: true }) } });
   } catch (error) {
     console.error('[website-checkout-intent] active lookup failed', { message: error?.message || String(error) });

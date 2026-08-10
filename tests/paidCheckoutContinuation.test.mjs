@@ -11,7 +11,7 @@ import {
   websiteCheckoutIntentState
 } from '../lib/websiteCheckoutIntent.mjs';
 
-const NOW = Date.parse('2026-08-10T12:00:00Z');
+const NOW = Date.parse('2036-08-10T12:00:00Z');
 const ID = '11111111-1111-4111-8111-111111111111';
 
 async function source(path) {
@@ -138,4 +138,53 @@ test('15. durable intent table is server-only and protected by RLS', async () =>
   assert.match(migration, /revoke all on table public\.website_checkout_intents from anon, authenticated/i);
   assert.match(migration, /grant all on table public\.website_checkout_intents to service_role/i);
   assert.match(migration, /status in \('pending_auth', 'ready', 'checkout_started'\)/i);
+});
+
+test('16. every paid Builder checkout button uses the centralized handler and never links directly to Customer Dashboard', async () => {
+  const [builder, pricing] = await Promise.all([
+    source('app/builder/page.js'),
+    source('app/pricing/page.js')
+  ]);
+  assert.match(builder, /onClick=\{\(\) => checkoutPlan\(\)\}/);
+  assert.match(builder, /Go to Secure \{plans\[site\.plan\]\?\.price\} Checkout/);
+  assert.doesNotMatch(builder, /href=["'`]\/customer["'`][^\n]*Go to/i);
+  for (const plan of ['starter', 'business', 'premium']) assert.match(pricing, new RegExp(`href: '/builder\\?checkout=${plan}'`));
+});
+
+test('17. fresh incognito checkout uses a dedicated verification page rather than the generic dashboard', async () => {
+  const [builder, continuationPage, customer] = await Promise.all([
+    source('app/builder/page.js'),
+    source('app/checkout/continue/page.js'),
+    source('app/customer/page.js')
+  ]);
+  assert.match(builder, /\/checkout\/continue\?intent=/);
+  assert.match(continuationPage, /Continue Your Website Purchase/);
+  assert.match(continuationPage, /Email My Secure Checkout Link/);
+  assert.match(continuationPage, /\/api\/auth\/site-owner\/request/);
+  assert.match(customer, /window\.location\.replace\(`\/checkout\/continue\?intent=/);
+});
+
+test('18. website-plan checkout redirects and continuation share one authoritative commerce map', async () => {
+  const [redirectPage, continuation] = await Promise.all([
+    source('lib/checkoutRedirect.js'),
+    source('app/api/checkout/intent/continue/route.js')
+  ]);
+  assert.match(redirectPage, /WEBSITE_CHECKOUTS/);
+  assert.doesNotMatch(redirectPage, /const checkoutMap/);
+  assert.match(continuation, /WEBSITE_CHECKOUTS\[state\.plan\]/);
+});
+
+test('19. production-safe trace correlation contains no token, cookie, email, or checkout URL', async () => {
+  const helper = await source('lib/websiteCheckoutIntent.mjs');
+  assert.match(helper, /\[paid-checkout-trace\]/);
+  assert.match(helper, /correlationId: websiteCheckoutCorrelationId/);
+  assert.doesNotMatch(helper, /console\.info\([^\n]*(email|token|cookie|checkoutUrl|license)/i);
+});
+
+test('20. flagged supply-chain packages are absent from every repository manifest and lockfile', async () => {
+  const [manifest, lockfile] = await Promise.all([source('package.json'), source('package-lock.json')]);
+  const dependencyText = `${manifest}\n${lockfile}`;
+  assert.doesNotMatch(dependencyText, /axios/i);
+  assert.doesNotMatch(dependencyText, /plain-crypto-js/i);
+  assert.doesNotMatch(dependencyText, /1\.14\.1|0\.30\.4|4\.2\.1/);
 });

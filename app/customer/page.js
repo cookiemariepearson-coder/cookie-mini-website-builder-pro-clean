@@ -60,6 +60,11 @@ export default function Customer() {
       }
       const token = fragmentToken || localStorage.getItem(AUTH_TOKEN_KEY) || '';
       const checkoutIntentId = params.get('intent') || '';
+      if (!token && checkoutIntentId) {
+        const draft = params.get('draft') || '';
+        window.location.replace(`/checkout/continue?intent=${encodeURIComponent(checkoutIntentId)}${draft ? `&draft=${encodeURIComponent(draft)}` : ''}`);
+        return;
+      }
       const queryReturnPath = customerReturnPath(params.get('return'), params.get('checkout'), params.get('draft'));
       const requestedReturnPath = queryReturnPath !== '/customer'
         ? queryReturnPath

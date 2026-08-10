@@ -641,7 +641,7 @@ export default function Builder() {
     if (!ownerAccessToken()) {
       persistLocal('Draft saved before secure email verification.');
       setMessage('Verify your email before the add-on checkout so it is attached to the correct website.');
-      setTimeout(() => { window.location.href = `/customer?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draftSlug)}`; }, 700);
+      setTimeout(() => { window.location.href = `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draftSlug)}`; }, 700);
       return;
     }
     const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlug, draftName: site.draftName || site.businessName, status: 'draft' };
@@ -651,7 +651,7 @@ export default function Builder() {
       if (error.status === 401) {
         try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
         setMessage('Your secure session expired. Re-verify your email to continue this add-on checkout.');
-        setTimeout(() => { window.location.href = `/customer?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draft.slug)}`; }, 700);
+        setTimeout(() => { window.location.href = `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draft.slug)}`; }, 700);
         return;
       }
       setMessage(error.message || 'Secure online draft save failed. Add-on checkout was not opened.');
@@ -680,7 +680,7 @@ export default function Builder() {
     if (!ownerAccessToken()) {
       persistLocal('Draft saved before secure email verification.');
       setMessage('Verify your email before checkout so the paid website belongs securely to you.');
-      setTimeout(() => { window.location.href = `/customer?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draftSlug)}`; }, 700);
+      setTimeout(() => { window.location.href = `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draftSlug)}`; }, 700);
       return;
     }
     const incompleteActions = missingActionLinks(site);
@@ -698,7 +698,7 @@ export default function Builder() {
       if (error.status === 401) {
         try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
         setMessage('Your secure session expired. Re-verify your email to continue this checkout.');
-        setTimeout(() => { window.location.href = `/customer?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draft.slug)}`; }, 700);
+        setTimeout(() => { window.location.href = `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draft.slug)}`; }, 700);
         return;
       }
       setMessage(error.message || 'Secure online draft save failed. Checkout was not opened.');
@@ -712,7 +712,7 @@ export default function Builder() {
       if (error.status === 401) {
         try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
         setMessage('Your secure session expired. Re-verify your email to continue this checkout.');
-        setTimeout(() => { window.location.href = `/customer?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draft.slug)}`; }, 700);
+        setTimeout(() => { window.location.href = `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draft.slug)}`; }, 700);
         return;
       }
       setMessage(error.message || 'Secure checkout could not continue. Your draft is still safe.');
@@ -948,7 +948,7 @@ export default function Builder() {
                 <div className="notice"><strong>{plans[site.plan]?.label}</strong> will publish {limitText}. Selected sections: {selectedSections.join(', ')}.</div>
                 <div className="notice"><strong>{draftSlugFor(site)}.cookiesdigitalcreations.com</strong></div>
                 <button className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}<a className="btn dark" href="/customer">Open My Drafts</a>{' '}
-                {site.plan === 'free' ? <button className="btn" onClick={publishFree}>Publish Free Page</button> : <button className="btn" onClick={() => checkoutPlan()}>Go to {plans[site.plan]?.price} Checkout</button>}
+                {site.plan === 'free' ? <button className="btn" onClick={publishFree}>Publish Free Page</button> : <button className="btn" onClick={() => checkoutPlan()}>Go to Secure {plans[site.plan]?.price} Checkout</button>}
                 <div className="navRow"><button className="btn dark" onClick={back}>Back</button></div>
               </>
             )}

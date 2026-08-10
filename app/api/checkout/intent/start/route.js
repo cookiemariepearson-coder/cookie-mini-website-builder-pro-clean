@@ -6,6 +6,7 @@ import {
   normalizeCheckoutDraftSlug,
   normalizeWebsiteCheckoutIntentId,
   normalizeWebsiteCheckoutPlan,
+  traceWebsiteCheckout,
   websiteCheckoutIntentState
 } from '../../../../../lib/websiteCheckoutIntent.mjs';
 
@@ -39,6 +40,7 @@ export async function POST(request) {
         .maybeSingle();
       if (updateError) throw updateError;
       if (!prepared) return NextResponse.json({ ok: false, error: 'This checkout could not be prepared for authentication.' }, { status: 409 });
+      traceWebsiteCheckout('INTENT_PREPARED_FOR_AUTH', { ...existing, ...prepared });
       return NextResponse.json({ ok: true, intentId: prepared.id, plan: prepared.plan, draftSlug: prepared.draft_slug, expiresAt: prepared.expires_at });
     }
     const intent = newWebsiteCheckoutIntent({ plan: body.plan, draftSlug: body.draftSlug });
@@ -46,6 +48,7 @@ export async function POST(request) {
 
     const { error } = await supabase.from('website_checkout_intents').insert(intent);
     if (error) throw error;
+    traceWebsiteCheckout('INTENT_CREATED', intent);
     return NextResponse.json({ ok: true, intentId: intent.id, plan: intent.plan, expiresAt: intent.expires_at });
   } catch (error) {
     console.error('[website-checkout-intent] start failed', { message: error?.message || String(error) });
