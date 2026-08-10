@@ -16,13 +16,16 @@ function privateTokenSubject(token = '') {
 
 function entitlementResponse(entitlement, access) {
   const noCredit = entitlement.remaining <= 0;
+  const standaloneNoCredit = noCredit && entitlement.kind === 'standalone';
   return NextResponse.json({
     ok: true,
     verified: true,
     ...entitlement,
     access,
     message: noCredit
-      ? 'This verified access has no real-video credit remaining. You can open Video Results or purchase another approved standalone video.'
+      ? standaloneNoCredit
+        ? 'Your 1 included video credit has been used. 0 video credits available. You can open Video Results or purchase another approved standalone video.'
+        : '0 video credits available for this verified website plan. You can open Video Results to view completed videos.'
       : `${access} verified. ${entitlement.remaining} real-video credit${entitlement.remaining === 1 ? '' : 's'} available.`
   });
 }

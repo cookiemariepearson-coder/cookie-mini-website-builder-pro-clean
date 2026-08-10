@@ -41,7 +41,7 @@ export async function POST(request) {
         email: purchaseEmail,
         message: entitlement.generationAllowed
           ? 'Standalone AI Video Studio verified. One real-video credit is available.'
-          : 'This verified standalone purchase has already used its included real-video credit. Open Video Results or purchase another approved standalone video.'
+          : 'Your 1 included video credit has been used. 0 video credits available. Open Video Results or purchase another approved standalone video.'
       });
     }
 

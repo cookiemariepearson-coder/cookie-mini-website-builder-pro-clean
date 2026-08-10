@@ -331,6 +331,8 @@ export default function VideoStudioPage() {
               ? `✓ ${accessKind === 'standalone' ? 'Standalone AI Video access' : 'Eligible website plan'} verified — ${entitlement.remaining} credit${entitlement.remaining === 1 ? '' : 's'} available`
               : entitlement.state === VIDEO_ENTITLEMENT_STATE.CHECKING
                 ? 'Checking saved video access'
+                : entitlement.state === VIDEO_ENTITLEMENT_STATE.NO_CREDIT
+                  ? '0 video credits available'
                 : 'Your AI Video plan is ready'}</strong>
             <p>{accessMessage}</p>
             <p><strong>$5 standalone access:</strong> A verified $5 standalone license includes the complete planning kit and one real video generated through this website.</p>
