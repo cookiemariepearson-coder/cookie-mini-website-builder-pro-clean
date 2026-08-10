@@ -30,16 +30,20 @@ export async function POST(req) {
       return NextResponse.json({ ok: false, error: 'That website address already belongs to a different verified email. Choose another business or website name.' }, { status: 403 });
     }
 
-    const protectedSite = { ...site, slug, customerEmail: owner.email, status: 'draft' };
+    const activeExtraPages = String(existing?.extra_page_subscription_status || '').toLowerCase() === 'active'
+      ? Math.max(0, Number(existing?.extra_pages) || 0)
+      : 0;
+    const protectedSite = { ...site, slug, customerEmail: owner.email, extraPages: activeExtraPages, status: 'draft' };
+    const authoritativePlan = existing?.plan || 'free';
     const row = {
       slug,
       owner_id: owner.user.id,
       customer_email: owner.email,
       business_name: site.businessName || null,
-      plan: site.plan || 'free',
-      status: 'draft',
-      extra_pages: Number(site.extraPages || site.extra_pages || 0),
-      monthly_price: site.plan === 'premium' ? 50 : site.plan === 'business' ? 30 : site.plan === 'starter' ? 19 : 0,
+      plan: authoritativePlan,
+      status: existing?.status === 'published' ? 'published' : 'draft',
+      extra_pages: Math.max(0, Number(existing?.extra_pages) || 0),
+      monthly_price: authoritativePlan === 'premium' ? 50 : authoritativePlan === 'business' ? 30 : authoritativePlan === 'starter' ? 19 : 0,
       site: protectedSite,
       updated_at: new Date().toISOString()
     };

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createHash, timingSafeEqual } from 'crypto';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
+import { identifyWebsiteProduct, sanitizeGumroadPayload } from '../../../../lib/gumroadWebsiteProducts.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,29 +33,12 @@ function slugify(value) {
     .slice(0, 80);
 }
 
-function lowerPayloadText(payload) {
-  return Object.entries(payload)
-    .map(([k, v]) => `${k}:${typeof v === 'string' ? v : JSON.stringify(v)}`)
-    .join(' ')
-    .toLowerCase();
-}
-
 function extractEmail(payload) {
-  return normalize(payload.email || payload.purchaser_email || payload.customer_email || payload.buyer_email || payload.seller_email).toLowerCase();
+  return normalize(payload.email || payload.purchaser_email || payload.customer_email || payload.buyer_email).toLowerCase();
 }
 
 function extractProductName(payload) {
   return normalize(payload.product_name || payload.product_title || payload.name || payload.product || payload.product_permalink || payload.permalink);
-}
-
-function extractPlan(payload) {
-  const text = lowerPayloadText(payload);
-  if (text.includes('extra page') || text.includes('extra-page') || text.includes('add-on') || text.includes('addon')) return 'extra_page';
-  if (text.includes('premium')) return 'premium';
-  if (text.includes('business')) return 'business';
-  if (text.includes('starter')) return 'starter';
-  if (text.includes('free launch') || text.includes('free-page') || text.includes('free page')) return 'free';
-  return '';
 }
 
 function extractSlug(payload) {
@@ -113,7 +97,7 @@ function statusForResource(resource) {
     case 'dispute':
       return { subscription_status: 'disputed', access_status: 'paused', status: 'paused', paused_reason: 'Payment dispute opened in Gumroad.', canceled_at: new Date().toISOString() };
     default:
-      return { subscription_status: 'received', access_status: 'active' };
+      return null;
   }
 }
 
@@ -129,18 +113,14 @@ async function parseRequest(req) {
   return payload;
 }
 
-async function findWebsite(supabase, { slug, email }) {
+async function findWebsite(supabase, { slug, subscriptionId }) {
   if (slug) {
     const { data } = await supabase.from('websites').select('*').eq('slug', slug).maybeSingle();
     if (data) return data;
   }
-  if (email) {
-    let result = await supabase.from('websites').select('*').eq('customer_email', email).order('updated_at', { ascending: false }).limit(1);
-    if (result.data?.[0]) return result.data[0];
-    result = await supabase.from('websites').select('*').eq('email', email).order('updated_at', { ascending: false }).limit(1);
-    if (result.data?.[0]) return result.data[0];
-    result = await supabase.from('websites').select('*').eq('gumroad_email', email).order('updated_at', { ascending: false }).limit(1);
-    if (result.data?.[0]) return result.data[0];
+  if (subscriptionId) {
+    const { data } = await supabase.from('websites').select('*').eq('gumroad_subscription_id', subscriptionId).maybeSingle();
+    if (data) return data;
   }
   return null;
 }
@@ -158,7 +138,7 @@ export async function POST(req) {
     const resource = normalize(payload.resource_name || payload.resource || payload.event || resourceFromQuery || 'sale');
     const email = extractEmail(payload);
     const slug = extractSlug(payload);
-    const plan = extractPlan(payload);
+    const product = identifyWebsiteProduct(payload);
     const productName = extractProductName(payload);
     const saleId = normalize(payload.sale_id || payload.id || payload.order_id || payload.purchase_id);
     const subscriptionId = normalize(payload.subscription_id || payload.subscription || payload.subscriber_id);
@@ -167,33 +147,66 @@ export async function POST(req) {
       .update(JSON.stringify({ resource, saleId, subscriptionId, email, productId, payload }))
       .digest('hex');
 
-    let matched = await findWebsite(supabase, { slug, email });
-    let action = 'logged_only_no_matching_website';
+    const safePayload = sanitizeGumroadPayload(payload);
+    const { data: priorEvent } = await supabase.from('gumroad_events').select('action_taken, matched_slug').eq('event_key', eventKey).maybeSingle();
+    if (priorEvent) return NextResponse.json({ ok: true, action: priorEvent.action_taken || 'duplicate_ignored', matchedSlug: priorEvent.matched_slug || null });
+
+    let matched = product ? await findWebsite(supabase, { slug, subscriptionId }) : null;
+    let action = !product
+      ? 'logged_only_non_website_product'
+      : (!slug && !subscriptionId ? 'unmatched_missing_website_identity' : 'unmatched_no_matching_website');
 
     if (matched) {
       const statusUpdate = statusForResource(resource);
-      const updates = {
-        ...statusUpdate,
-        payment_provider: 'gumroad',
-        gumroad_email: email || matched.gumroad_email || null,
-        gumroad_sale_id: saleId || matched.gumroad_sale_id || null,
-        gumroad_subscription_id: subscriptionId || matched.gumroad_subscription_id || null,
-        gumroad_product_id: productId || matched.gumroad_product_id || null,
-        gumroad_product_name: productName || matched.gumroad_product_name || null,
-        gumroad_last_event: resource,
-        gumroad_last_event_at: receivedAt,
-        updated_at: receivedAt
-      };
-
-      if (resource === 'sale' || resource === 'subscription_restarted' || resource === 'subscription_updated' || resource === 'dispute_won') {
-        updates.last_payment_at = receivedAt;
+      const ownerEmail = normalize(matched.customer_email || matched.site?.customerEmail).toLowerCase();
+      const emailMatches = Boolean(email && ownerEmail && email === ownerEmail);
+      if (!emailMatches) {
+        action = 'unmatched_verified_owner_email_mismatch';
+        matched = null;
+      } else if (!statusUpdate) {
+        action = 'logged_only_unsupported_resource';
+      } else if (product.plan === 'extra_page') {
+        const eligibleBasePlan = ['starter', 'business'].includes(String(matched.plan || '').toLowerCase())
+          && String(matched.subscription_status || '').toLowerCase() === 'active'
+          && String(matched.access_status || '').toLowerCase() === 'active';
+        if (!eligibleBasePlan) {
+          action = 'unmatched_extra_page_requires_active_paid_website';
+          matched = null;
+        } else {
+          const paused = statusUpdate.access_status === 'paused';
+          const quantity = Math.max(1, Math.min(20, Number(payload.quantity) || 1));
+          const updates = {
+            extra_page_subscription_status: paused ? 'paused' : 'active',
+            extra_pages: paused ? Math.max(0, Number(matched.extra_pages) || 0) : Math.max(Number(matched.extra_pages) || 0, quantity),
+            gumroad_last_event: `extra_page:${resource}`,
+            gumroad_last_event_at: receivedAt,
+            updated_at: receivedAt
+          };
+          const { error: updateError } = await supabase.from('websites').update(updates).eq('slug', matched.slug);
+          if (updateError) throw updateError;
+          action = `matched_extra_page_${paused ? 'paused' : 'active'}`;
+        }
+      } else {
+        const updates = {
+          ...statusUpdate,
+          plan: product.plan,
+          payment_provider: 'gumroad',
+          gumroad_email: email,
+          gumroad_sale_id: saleId || matched.gumroad_sale_id || null,
+          gumroad_subscription_id: subscriptionId || matched.gumroad_subscription_id || null,
+          gumroad_product_id: productId,
+          gumroad_product_name: productName || product.name,
+          gumroad_last_event: resource,
+          gumroad_last_event_at: receivedAt,
+          updated_at: receivedAt
+        };
+        if (resource === 'sale' || resource === 'subscription_restarted' || resource === 'subscription_updated' || resource === 'dispute_won') {
+          updates.last_payment_at = receivedAt;
+        }
+        const { error: updateError } = await supabase.from('websites').update(updates).eq('slug', matched.slug);
+        if (updateError) throw updateError;
+        action = `matched_${product.key}_${statusUpdate.subscription_status}`;
       }
-      if (plan && plan !== 'extra_page') updates.plan = plan;
-      if (plan === 'extra_page') updates.extra_page_subscription_status = (statusUpdate.access_status === 'paused') ? 'paused' : 'active';
-
-      const { error: updateError } = await supabase.from('websites').update(updates).eq('slug', matched.slug);
-      if (updateError) throw updateError;
-      action = `matched_${matched.slug}_${statusUpdate.subscription_status || resource}`;
     }
 
     await supabase.from('gumroad_events').upsert({
@@ -205,9 +218,9 @@ export async function POST(req) {
       product_id: productId || null,
       product_name: productName || null,
       matched_slug: matched?.slug || slug || null,
-      matched_plan: plan || null,
+      matched_plan: product?.key || null,
       action_taken: action,
-      payload,
+      payload: safePayload,
       processed_at: receivedAt
     }, { onConflict: 'event_key' });
 
@@ -221,7 +234,7 @@ export async function POST(req) {
         event_key: `error:${Date.now()}`,
         resource_name: resourceFromQuery || 'unknown',
         action_taken: `error:${error.message}`,
-        payload: payload || {},
+        payload: sanitizeGumroadPayload(payload || {}),
         processed_at: new Date().toISOString()
       });
     } catch {}
