@@ -594,12 +594,11 @@ export default function Builder() {
   }
 
   async function ensureCheckoutIntent(plan, draftSlug, existingIntentId = '') {
-    if (existingIntentId) return existingIntentId;
-    if (pendingCheckoutIntent) return pendingCheckoutIntent;
+    const intentId = existingIntentId || pendingCheckoutIntent || '';
     const response = await fetch('/api/checkout/intent/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan, draftSlug })
+      body: JSON.stringify({ plan, draftSlug, intentId })
     });
     const data = await response.json();
     if (!data.ok || !data.intentId) throw new Error(data.error || 'Secure checkout could not start.');
