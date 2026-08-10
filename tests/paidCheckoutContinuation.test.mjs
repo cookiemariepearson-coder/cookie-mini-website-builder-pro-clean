@@ -62,6 +62,18 @@ test('6. changing the website identifier cannot transfer the intent', () => {
   assert.notEqual(websiteCheckoutIntentState(row, NOW + 60_000).draftSlug, 'other-site');
 });
 
+test('6a. final draft slug is prepared server-side before authentication without changing the plan', async () => {
+  const [builder, startRoute] = await Promise.all([
+    source('app/builder/page.js'),
+    source('app/api/checkout/intent/start/route.js')
+  ]);
+  assert.match(builder, /body: JSON\.stringify\(\{ plan, draftSlug, intentId \}\)/);
+  assert.match(startRoute, /requestedPlan !== state\.plan/);
+  assert.match(startRoute, /update\(\{ draft_slug: draftSlug \}\)/);
+  assert.match(startRoute, /\.is\('owner_id', null\)/);
+  assert.match(startRoute, /\.is\('email_hash', null\)/);
+});
+
 test('7. expired intent fails safely', () => {
   assert.deepEqual(websiteCheckoutIntentState(intent(), NOW + (3 * 60 * 60 * 1000)), { ok: false, reason: 'expired' });
 });
