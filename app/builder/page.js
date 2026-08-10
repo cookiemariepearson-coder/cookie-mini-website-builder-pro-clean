@@ -949,7 +949,7 @@ export default function Builder() {
                 <div className="notice"><strong>{plans[site.plan]?.label}</strong> will publish {limitText}. Selected sections: {selectedSections.join(', ')}.</div>
                 <div className="notice"><strong>{draftSlugFor(site)}.cookiesdigitalcreations.com</strong></div>
                 <button className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}<a className="btn dark" href="/customer">Open My Drafts</a>{' '}
-                {site.plan === 'free' ? <button className="btn" onClick={publishFree}>Publish Free Page</button> : <button className="btn" onClick={checkoutPlan}>Go to {plans[site.plan]?.price} Checkout</button>}
+                {site.plan === 'free' ? <button className="btn" onClick={publishFree}>Publish Free Page</button> : <button className="btn" onClick={() => checkoutPlan()}>Go to {plans[site.plan]?.price} Checkout</button>}
                 <div className="navRow"><button className="btn dark" onClick={back}>Back</button></div>
               </>
             )}

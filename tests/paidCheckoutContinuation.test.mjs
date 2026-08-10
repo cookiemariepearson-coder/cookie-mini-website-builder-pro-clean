@@ -95,6 +95,8 @@ test('12. already-authenticated Builder uses the same server continuation route'
   const builder = await source('app/builder/page.js');
   assert.match(builder, /ensureCheckoutIntent\(site\.plan, draftSlug, existingIntentId\)/);
   assert.match(builder, /fetch\('\/api\/checkout\/intent\/continue'/);
+  assert.match(builder, /onClick=\{\(\) => checkoutPlan\(\)\}/, 'React click event must not be mistaken for an existing checkout intent');
+  assert.doesNotMatch(builder, /onClick=\{checkoutPlan\}/, 'direct event binding would pass a circular HTML event into persisted checkout state');
   assert.doesNotMatch(builder, /window\.location\.href = websiteCheckoutRoute\(site\.plan\)/);
 });
 
