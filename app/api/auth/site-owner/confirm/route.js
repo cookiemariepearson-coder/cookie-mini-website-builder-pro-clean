@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { normalizeBuilderCheckoutAuthToken, normalizeBuilderCheckoutAuthType } from '../../../../../lib/builderCheckoutAuth.mjs';
+import { safeCustomerReturnPath } from '../../../../../lib/commerceConfig.mjs';
 import { rateLimit, rateLimitResponse } from '../../../../../lib/rateLimit.mjs';
 import { getSupabaseAdmin } from '../../../../../lib/supabaseAdmin';
 import {
@@ -19,30 +20,36 @@ export async function POST(request) {
 
     const body = await request.json().catch(() => ({}));
     const intentId = normalizeWebsiteCheckoutIntentId(body.intentId);
+    const returnPath = safeCustomerReturnPath(body.returnPath);
     const tokenHash = normalizeBuilderCheckoutAuthToken(body.tokenHash);
     const type = normalizeBuilderCheckoutAuthType(body.type);
-    if (!intentId || !tokenHash || !type) {
-      return NextResponse.json({ ok: false, error: 'This secure email link is incomplete or invalid. Request a new link from Continue Your Website Purchase.' }, { status: 400 });
+    if (!tokenHash || !type) {
+      return NextResponse.json({ ok: false, error: 'This secure email link is incomplete or invalid. Request a new link from the Builder.' }, { status: 400 });
     }
 
     const supabase = getSupabaseAdmin();
-    const { data: intent, error: intentError } = await supabase.from('website_checkout_intents').select('*').eq('id', intentId).maybeSingle();
-    if (intentError) throw intentError;
-    const state = websiteCheckoutIntentState(intent || {});
-    if (!state.ok || !state.emailHash) {
-      traceWebsiteCheckout('AUTH_CONFIRM_BLOCKED', intent || { id: intentId }, { reasonCode: state.reason === 'expired' ? 'INTENT_EXPIRED' : 'INTENT_INVALID' });
-      return NextResponse.json({ ok: false, error: state.reason === 'expired' ? 'This checkout link expired. Return to Pricing and start the purchase again.' : 'This secure checkout is no longer available.' }, { status: state.reason === 'expired' ? 410 : 403 });
+    let intent = null;
+    let state = null;
+    if (intentId) {
+      const { data: checkoutIntent, error: intentError } = await supabase.from('website_checkout_intents').select('*').eq('id', intentId).maybeSingle();
+      if (intentError) throw intentError;
+      intent = checkoutIntent;
+      state = websiteCheckoutIntentState(intent || {});
+      if (!state.ok || !state.emailHash) {
+        traceWebsiteCheckout('AUTH_CONFIRM_BLOCKED', intent || { id: intentId }, { reasonCode: state.reason === 'expired' ? 'INTENT_EXPIRED' : 'INTENT_INVALID' });
+        return NextResponse.json({ ok: false, error: state.reason === 'expired' ? 'This checkout link expired. Return to Pricing and start the purchase again.' : 'This secure checkout is no longer available.' }, { status: state.reason === 'expired' ? 410 : 403 });
+      }
     }
 
     const { data, error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
     const verifiedEmailHash = checkoutIntentEmailHash(data?.user?.email || '');
-    if (error || !data?.session?.access_token || !data?.user?.id || verifiedEmailHash !== state.emailHash) {
-      traceWebsiteCheckout('AUTH_CONFIRM_BLOCKED', intent, { reasonCode: error ? 'TOKEN_REJECTED' : 'OWNER_MISMATCH' });
-      return NextResponse.json({ ok: false, error: 'This secure email link is invalid or expired. Request a new link from Continue Your Website Purchase.' }, { status: 401 });
+    if (error || !data?.session?.access_token || !data?.user?.id || (state?.emailHash && verifiedEmailHash !== state.emailHash)) {
+      if (intentId) traceWebsiteCheckout('AUTH_CONFIRM_BLOCKED', intent || { id: intentId }, { reasonCode: error ? 'TOKEN_REJECTED' : 'OWNER_MISMATCH' });
+      return NextResponse.json({ ok: false, error: 'This secure email link is invalid or expired. Request a new link from the Builder.' }, { status: 401 });
     }
 
-    traceWebsiteCheckout('AUTH_CONFIRM_SUCCEEDED', intent);
-    return NextResponse.json({ ok: true, accessToken: data.session.access_token }, {
+    if (intentId) traceWebsiteCheckout('AUTH_CONFIRM_SUCCEEDED', intent);
+    return NextResponse.json({ ok: true, accessToken: data.session.access_token, returnPath }, {
       headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }
     });
   } catch (error) {

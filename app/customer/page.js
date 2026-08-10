@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Nav from '../../lib/Nav';
 import { PENDING_CHECKOUT_STORAGE_KEY, createPendingCheckoutIntent, customerReturnPath, pendingCheckoutReturnPath } from '../../lib/commerceConfig.mjs';
 
@@ -47,6 +47,7 @@ export default function Customer() {
   const [authLoading, setAuthLoading] = useState(true);
   const [linkSending, setLinkSending] = useState(false);
   const [pendingPurchase, setPendingPurchase] = useState(null);
+  const autoLoadedOwnerRef = useRef('');
 
   useEffect(() => {
     async function restoreSecureSession() {
@@ -151,8 +152,11 @@ export default function Customer() {
           }
         } else {
           localStorage.removeItem(AUTH_TOKEN_KEY);
+          setMsg(data.error || 'Your secure sign-in expired. Request a new email link to open My Drafts.');
         }
-      } catch {}
+      } catch {
+        setMsg('Your secure session could not be checked. Your drafts are still safe; please retry or request a new sign-in link.');
+      }
       setAuthLoading(false);
     }
 
@@ -174,6 +178,14 @@ export default function Customer() {
     const timer = setTimeout(() => findSites(true), 450);
     return () => clearTimeout(timer);
   }, [query, verifiedEmail]);
+
+  useEffect(() => {
+    if (!verifiedEmail || autoLoadedOwnerRef.current === verifiedEmail) return;
+    autoLoadedOwnerRef.current = verifiedEmail;
+    findSites(true);
+    // findSites intentionally runs once for each verified owner session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [verifiedEmail]);
 
   function secureHeaders() {
     const token = localStorage.getItem(AUTH_TOKEN_KEY) || '';
@@ -214,6 +226,7 @@ export default function Customer() {
 
   function signOut() {
     localStorage.removeItem(AUTH_TOKEN_KEY);
+    autoLoadedOwnerRef.current = '';
     setVerifiedEmail('');
     setSites([]);
     setMsg('Signed out securely.');
@@ -233,7 +246,7 @@ export default function Customer() {
     }
     setLoading(true);
     setSavedOpen(true);
-    setMsg(liveSearch ? 'Filtering saved websites as you type...' : 'Searching for your websites and drafts...');
+    setMsg(liveSearch && query ? 'Filtering saved websites as you type...' : 'Loading your websites and drafts...');
     try {
       const res = await fetch('/api/site/search', {
         method: 'POST',
@@ -333,7 +346,7 @@ export default function Customer() {
             </div>
           </div>
           {query && <div className="notice smallNotice">We will search for: <strong>{normalizeSubdomain(query) || 'enter a website name'}</strong></div>}
-          {msg && <div className={`notice ${msg.includes('failed') || msg.includes('No websites') || msg.includes('Enter') ? 'error' : ''}`}>{msg}</div>}
+          {msg && <div role="status" aria-live="polite" className={`notice ${msg.includes('failed') || msg.includes('No websites') || msg.includes('Enter') ? 'error' : ''}`}>{msg}</div>}
           <div className="navRow">
             <button className="btn" onClick={findSites} disabled={loading || !verifiedEmail}>{loading ? 'Searching...' : 'Find My Websites / Drafts'}</button>
             <a className="btn dark" href="/builder">Start New Website</a>

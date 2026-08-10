@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../../lib/supabaseAdmin';
 import { rateLimit, rateLimitResponse } from '../../../../../lib/rateLimit.mjs';
 import { safeCustomerReturnPath } from '../../../../../lib/commerceConfig.mjs';
-import { builderCheckoutConfirmationUrl, canonicalBuilderOrigin } from '../../../../../lib/builderCheckoutAuth.mjs';
+import { builderCheckoutConfirmationUrl, builderCustomerConfirmationUrl, canonicalBuilderOrigin } from '../../../../../lib/builderCheckoutAuth.mjs';
 import { sendResendEmail } from '../../../../../lib/resendEmail.mjs';
 import {
   checkoutIntentEmailHash,
@@ -81,15 +81,19 @@ export async function POST(req) {
       intentForTrace = intent;
     }
 
-    if (intentId) {
-      const apiKey = process.env.RESEND_API_KEY;
-      const from = process.env.ADMIN_NOTIFICATION_FROM_EMAIL;
-      if (!apiKey || !from) {
+    const apiKey = process.env.RESEND_API_KEY;
+    const from = process.env.ADMIN_NOTIFICATION_FROM_EMAIL;
+    if (!apiKey || !from) {
+      if (intentId) {
         traceWebsiteCheckout('CHECKOUT_AUTH_EMAIL_BLOCKED', intentForTrace || { id: intentId, status: 'pending_auth' }, { reasonCode: 'EMAIL_CONFIGURATION_UNAVAILABLE' });
-        console.error('[website-checkout-auth] customer email configuration unavailable');
-        return NextResponse.json({ ok: false, error: 'The secure checkout email is temporarily unavailable. Your plan and website are still saved; please try again shortly.' }, { status: 503 });
       }
+      console.error('[website-checkout-auth] customer email configuration unavailable');
+      return NextResponse.json({ ok: false, error: intentId
+        ? 'The secure checkout email is temporarily unavailable. Your plan and website are still saved; please try again shortly.'
+        : 'The secure sign-in email is temporarily unavailable. Please try again shortly.' }, { status: 503 });
+    }
 
+    if (intentId) {
       traceWebsiteCheckout('AUTH_EMAIL_REQUESTED', intentForTrace || { id: intentId, status: 'pending_auth' });
       const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
         type: 'magiclink',
@@ -122,15 +126,31 @@ export async function POST(req) {
       });
       traceWebsiteCheckout('AUTH_EMAIL_PROVIDER_ACCEPTED', intentForTrace || { id: intentId, status: 'pending_auth' });
     } else {
-      const redirectTo = `${origin}/customer/auth/callback?return=${encodeURIComponent(returnPath)}`;
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: redirectTo,
-          shouldCreateUser: true
-        }
+      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+        type: 'magiclink',
+        email
       });
-      if (error) throw error;
+      if (linkError) throw linkError;
+      const confirmationUrl = builderCustomerConfirmationUrl({
+        origin,
+        returnPath,
+        tokenHash: linkData?.properties?.hashed_token,
+        type: linkData?.properties?.verification_type
+      });
+      if (!confirmationUrl) throw new Error('Builder customer authentication link could not be generated.');
+      const authCorrelationId = checkoutIntentEmailHash(email).slice(0, 16);
+      await sendResendEmail({
+        apiKey,
+        from,
+        to: email,
+        replyTo: process.env.ADMIN_NOTIFICATION_EMAIL || undefined,
+        notification: 'builder-customer-auth',
+        requestId: authCorrelationId,
+        idempotencyKey: `builder-customer-auth-${authCorrelationId}-${Date.now().toString(36)}`,
+        subject: 'Open your Cookie Mini Website Builder drafts',
+        html: `<h2>Open My Drafts securely</h2><p>Use the secure button below to verify your email and return to Cookie Mini Website Builder Pro.</p><p><a href="${escapeHtml(confirmationUrl)}" style="display:inline-block;padding:13px 20px;background:#f28a1e;color:#20172f;text-decoration:none;border-radius:999px;font-weight:800">Verify Email and Open My Drafts</a></p><p>This one-time link expires shortly. If you did not request it, you can ignore this email.</p><p>Questions? Contact hello@cookiesdigitalcreations.com.</p>`
+      });
+      console.info('[builder-customer-auth]', { event: 'AUTH_EMAIL_PROVIDER_ACCEPTED', returnTarget: returnPath === '/customer' ? 'drafts' : returnPath === '/video-studio' ? 'video-studio' : 'builder' });
     }
     return NextResponse.json({
       ok: true,

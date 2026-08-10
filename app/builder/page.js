@@ -600,12 +600,16 @@ export default function Builder() {
     const intentId = existingIntentId || pendingCheckoutIntent || '';
     const response = await fetch('/api/checkout/intent/start', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: ownerAuthHeaders(),
       body: JSON.stringify({ plan, draftSlug, intentId })
     });
     const data = await response.json();
     if (!data.ok || !data.intentId) throw new Error(data.error || 'Secure checkout could not start.');
     setPendingCheckoutIntent(data.intentId);
+    if (data.replaced) {
+      const nextParams = new URLSearchParams({ checkoutIntent: data.intentId, draft: draftSlug, resumeCheckout: '1' });
+      window.history.replaceState({}, document.title, `/builder?${nextParams.toString()}`);
+    }
     return data.intentId;
   }
 
