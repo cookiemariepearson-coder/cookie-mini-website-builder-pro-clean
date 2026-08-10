@@ -13,8 +13,10 @@ export default function CustomerAuthCallback() {
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
       const token = hash.get('access_token');
       const error = hash.get('error_description') || hash.get('error');
+      const query = new URLSearchParams(window.location.search);
+      const intentId = query.get('intent') || '';
       let returnPath = resolveCustomerContinuation(
-        new URLSearchParams(window.location.search).get('return'),
+        query.get('return'),
         localStorage.getItem(PENDING_CHECKOUT_STORAGE_KEY)
       );
 
@@ -25,6 +27,26 @@ export default function CustomerAuthCallback() {
 
       localStorage.setItem(AUTH_TOKEN_KEY, token);
       window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+      if (intentId) {
+        try {
+          const response = await fetch('/api/checkout/intent/resume', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ intentId })
+          });
+          const recovered = await response.json();
+          if (!recovered.ok || !recovered.builderPath) {
+            setMessage(recovered.error || 'Your email was verified, but checkout could not resume. Open My Website to use Continue Purchase.');
+            return;
+          }
+          localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+          window.location.replace(recovered.builderPath);
+          return;
+        } catch {
+          setMessage('Your email was verified, but checkout could not resume. Open My Website to use Continue Purchase.');
+          return;
+        }
+      }
       if (returnPath === '/customer') {
         try {
           const response = await fetch('/api/auth/site-owner/continuation', {
