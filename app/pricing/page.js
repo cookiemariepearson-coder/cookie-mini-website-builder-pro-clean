@@ -15,7 +15,7 @@ const websitePlans = [
     price: '$19/month',
     desc: 'Up to 4 selected sections with image/video upload options.',
     actions: 'Up to 2 customer action buttons',
-    href: '/checkout/starter',
+    href: '/builder?checkout=starter',
     cta: 'Choose Starter Pro',
   },
   {
@@ -23,7 +23,7 @@ const websitePlans = [
     price: '$30/month',
     desc: 'Up to 6 selected sections with media options and AI Video Studio access.',
     actions: 'Up to 4 customer action buttons',
-    href: '/checkout/business',
+    href: '/builder?checkout=business',
     cta: 'Choose Business',
     featured: true,
   },
@@ -32,7 +32,7 @@ const websitePlans = [
     price: '$50/month',
     desc: 'All built-in sections with media options and the strongest AI Video Studio access.',
     actions: 'Up to 8 customer action buttons',
-    href: '/checkout/premium',
+    href: '/builder?checkout=premium',
     cta: 'Choose Premium',
   },
   {
@@ -40,8 +40,8 @@ const websitePlans = [
     price: '$10/month per page',
     desc: 'Extra page/section space as the customer website grows.',
     actions: 'Add more room when needed',
-    href: '/checkout/extra',
-    cta: 'Choose Extra Page Add-On',
+    href: '/customer',
+    cta: 'Open My Website for Add-On',
   },
 ];
 

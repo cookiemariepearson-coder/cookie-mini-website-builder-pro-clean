@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
+import { APPROVED_WEBSITE_PRODUCTS } from '../../../../lib/gumroadWebsiteProducts.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,10 +30,14 @@ export async function POST(request) {
 
     const emailMatches = [website.customer_email, website.gumroad_email].map(clean).includes(email);
     const active = clean(website.subscription_status) === 'active' && clean(website.access_status) === 'active';
+    const expectedProduct = APPROVED_WEBSITE_PRODUCTS[expected];
     const planMatches = expected === 'extra'
       ? clean(website.extra_page_subscription_status) === 'active'
       : clean(website.plan) === expected;
-    const verified = emailMatches && active && planMatches;
+    const productMatches = expected === 'extra'
+      ? planMatches
+      : Boolean(expectedProduct?.productId && clean(website.gumroad_product_id) === clean(expectedProduct.productId));
+    const verified = emailMatches && active && planMatches && productMatches;
 
     return NextResponse.json({
       ok: true,

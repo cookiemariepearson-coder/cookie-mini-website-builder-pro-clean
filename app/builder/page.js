@@ -96,7 +96,7 @@ function mergeDefaults(saved) {
     offers: Array.isArray(saved?.offers) && saved.offers.length ? saved.offers : base.offers,
     media: Array.isArray(saved?.media) ? saved.media : [],
     customerActions: Array.isArray(saved?.customerActions) && saved.customerActions.length ? normalizeCustomerActions(saved.customerActions, saved?.plan || base.plan) : base.customerActions,
-    pages: normalizeSelectedPagesForPlan(Array.isArray(saved?.pages) && saved.pages.length ? saved.pages : base.pages, saved?.plan || base.plan),
+    pages: normalizeSelectedPagesForPlan(Array.isArray(saved?.pages) && saved.pages.length ? saved.pages : base.pages, saved?.plan || base.plan, saved?.extraPages || saved?.extra_pages),
     desiredPages: Array.isArray(saved?.desiredPages) && saved.desiredPages.length ? saved.desiredPages : base.desiredPages
   };
 }
@@ -150,6 +150,7 @@ export default function Builder() {
     async function restore() {
       const params = new URLSearchParams(window.location.search);
       const requestedCheckout = websiteCheckoutRoute(params.get('checkout')) ? params.get('checkout') : '';
+      const requestedPlan = requestedCheckout && requestedCheckout !== 'extra' ? requestedCheckout : '';
       if (requestedCheckout) setPendingCheckout(requestedCheckout);
       const draftSlug = normalizeSlug(params.get('draft') || params.get('slug') || '');
       if (draftSlug && draftSlug !== 'my-website') {
@@ -160,7 +161,7 @@ export default function Builder() {
           });
           const data = await res.json();
           if (data.ok && data.site) {
-            const merged = mergeDefaults({ ...data.site, ...(requestedCheckout ? { plan: requestedCheckout } : {}) });
+            const merged = mergeDefaults({ ...data.site, ...(requestedPlan ? { plan: requestedPlan } : {}) });
             setSite(merged);
             localStorage.setItem(DRAFT_KEY, JSON.stringify(merged));
             localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftSlugFor(merged));
@@ -176,23 +177,24 @@ export default function Builder() {
       const saved = safeParse(localStorage.getItem(DRAFT_KEY));
       const savedStep = Number(localStorage.getItem(LAST_STEP_KEY || 0));
       if (saved) {
-        setSite(mergeDefaults({ ...saved, ...(requestedCheckout ? { plan: requestedCheckout } : {}) }));
+        setSite(mergeDefaults({ ...saved, ...(requestedPlan ? { plan: requestedPlan } : {}) }));
         localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftSlugFor(saved));
         if (!Number.isNaN(savedStep)) setStep(Math.min(4, Math.max(0, savedStep)));
         setSaveMessage('Draft restored from this browser.');
-      } else if (requestedCheckout) {
-        setSite(current => mergeDefaults({ ...current, plan: requestedCheckout }));
+      } else if (requestedPlan) {
+        setSite(current => mergeDefaults({ ...current, plan: requestedPlan }));
       }
     }
     restore();
   }, []);
 
   useEffect(() => {
-    if (!pendingCheckout || site.plan !== pendingCheckout || !ownerAccessToken()) return;
+    if (!pendingCheckout || (pendingCheckout !== 'extra' && site.plan !== pendingCheckout) || !ownerAccessToken()) return;
     setPendingCheckout('');
     window.history.replaceState({}, document.title, '/builder?verified=1');
-    setMessage(`Email verified. Continuing to the ${plans[pendingCheckout]?.label || 'selected plan'} checkout...`);
-    checkoutPlan();
+    setMessage(`Email verified. Continuing to the ${pendingCheckout === 'extra' ? 'Extra Page Add-On' : (plans[pendingCheckout]?.label || 'selected plan')} checkout...`);
+    if (pendingCheckout === 'extra') checkoutExtraPage();
+    else checkoutPlan();
     // checkoutPlan saves the verified owner's draft before opening checkout.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingCheckout, site.plan]);
@@ -279,7 +281,7 @@ export default function Builder() {
       ...preset,
       primaryColor: palette.primary || current.primaryColor,
       accentColor: palette.accent || current.accentColor,
-      pages: normalizeSelectedPagesForPlan(type.pages || ['Home'], current.plan),
+      pages: normalizeSelectedPagesForPlan(type.pages || ['Home'], current.plan, current.extraPages || current.extra_pages),
       desiredPages: type.pages,
       offerTitle: ns.offerTitle,
       offers: ns.offers,
@@ -305,7 +307,7 @@ export default function Builder() {
     setMessage(`Template look changed to ${style.name}. Layout, background, font feel, and card style were updated too.`);
   }
 
-  function planLimit() { return planSectionLimit(site.plan); }
+  function planLimit() { return planSectionLimit(site.plan, site.extraPages || site.extra_pages); }
 
   function addPage(page) {
     if (site.pages.includes(page)) return;
@@ -313,10 +315,10 @@ export default function Builder() {
     if (site.pages.length >= limit && site.plan !== 'premium') {
       setMessage(`${plans[site.plan]?.label} includes ${limit} selected section(s). Extra sections/pages are $10/month each. Sending you to the add-on checkout.`);
       persistLocal('Draft saved before extra page checkout.');
-      setTimeout(() => { window.location.href = checkout.extra; }, 550);
+      setTimeout(() => { checkoutExtraPage(); }, 550);
       return;
     }
-    update({ pages: normalizeSelectedPagesForPlan([...site.pages, page], site.plan) });
+    update({ pages: normalizeSelectedPagesForPlan([...site.pages, page], site.plan, site.extraPages || site.extra_pages) });
   }
 
   function removePage(page) {
@@ -327,10 +329,10 @@ export default function Builder() {
   function addOrderBookBuySection() {
     setSite(current => {
       const sectionName = 'Order / Book / Buy';
-      let pages = normalizeSelectedPagesForPlan(current.pages || ['Home'], current.plan);
+      let pages = normalizeSelectedPagesForPlan(current.pages || ['Home'], current.plan, current.extraPages || current.extra_pages);
       if (pages.includes(sectionName)) return current;
 
-      const limit = planSectionLimit(current.plan);
+      const limit = planSectionLimit(current.plan, current.extraPages || current.extra_pages);
       let nextPages = [...pages];
       let removedPage = '';
 
@@ -362,7 +364,7 @@ export default function Builder() {
 
       return {
         ...current,
-        pages: normalizeSelectedPagesForPlan(nextPages, current.plan),
+        pages: normalizeSelectedPagesForPlan(nextPages, current.plan, current.extraPages || current.extra_pages),
         sections: nextSections
       };
     });
@@ -371,8 +373,8 @@ export default function Builder() {
   function applyActionPreset(label, type, note) {
     setSite(current => {
       const sectionName = 'Order / Book / Buy';
-      let pages = normalizeSelectedPagesForPlan(current.pages || ['Home'], current.plan);
-      const limit = planSectionLimit(current.plan);
+      let pages = normalizeSelectedPagesForPlan(current.pages || ['Home'], current.plan, current.extraPages || current.extra_pages);
+      const limit = planSectionLimit(current.plan, current.extraPages || current.extra_pages);
       let nextPages = [...pages];
       let removedPage = '';
 
@@ -391,7 +393,7 @@ export default function Builder() {
 
       const next = {
         ...current,
-        pages: normalizeSelectedPagesForPlan(nextPages, current.plan),
+        pages: normalizeSelectedPagesForPlan(nextPages, current.plan, current.extraPages || current.extra_pages),
         sections: {
           ...(current.sections || {}),
           [sectionName]: current.sections?.[sectionName] || 'Choose an option below to order, book, buy, request a quote, view a menu, or contact us.'
@@ -430,7 +432,7 @@ export default function Builder() {
       setMessage(`${plans[site.plan]?.label} includes ${limit} selected section(s). The media was saved, but showing ${section} requires the add-on or a higher plan.`);
       return false;
     }
-    setSite(current => current.pages.includes(section) ? current : { ...current, pages: normalizeSelectedPagesForPlan([...current.pages, section], current.plan) });
+    setSite(current => current.pages.includes(section) ? current : { ...current, pages: normalizeSelectedPagesForPlan([...current.pages, section], current.plan, current.extraPages || current.extra_pages) });
     setSaveMessage(`${section} was added to your selected sections so the media can show in the preview.`);
     return true;
   }
@@ -468,7 +470,7 @@ export default function Builder() {
   }
 
   async function saveDraft() {
-    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
+    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     setIsSaving(true);
     setSaveMessage('Saving draft...');
     try {
@@ -485,7 +487,7 @@ export default function Builder() {
   }
 
   function missingActionLinks(currentSite = site) {
-    const selected = normalizeSelectedPagesForPlan(currentSite.pages, currentSite.plan);
+    const selected = normalizeSelectedPagesForPlan(currentSite.pages, currentSite.plan, currentSite.extraPages || currentSite.extra_pages);
     const usesActionSection = selected.includes('Order / Book / Buy') || selected.includes('Customer Action');
     if (!usesActionSection) return [];
     return normalizeCustomerActions(currentSite.customerActions, currentSite.plan)
@@ -499,7 +501,7 @@ export default function Builder() {
       setTimeout(() => { window.location.href = '/checkout/ai-video'; }, 650);
       return;
     }
-    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
+    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     persistLocal('Draft saved before opening AI Video Studio.');
     saveLocalDraftIndex(draft);
     setSaveMessage('Saving your draft before opening AI Video Studio...');
@@ -543,6 +545,41 @@ export default function Builder() {
     }
   }
 
+  async function checkoutExtraPage() {
+    const draftSlug = draftSlugFor(site);
+    if (!['starter', 'business'].includes(site.plan)) {
+      setMessage(site.plan === 'free'
+        ? 'The Extra Page Add-On requires an active Starter Pro or Business website. Choose a paid website plan first.'
+        : 'Premium already includes all built-in sections; no Extra Page Add-On is needed.');
+      return;
+    }
+    const checkoutIntent = createPendingCheckoutIntent('extra', draftSlug);
+    if (checkoutIntent) {
+      try { localStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify(checkoutIntent)); } catch {}
+    }
+    if (!ownerAccessToken()) {
+      persistLocal('Draft saved before secure email verification.');
+      setMessage('Verify your email before the add-on checkout so it is attached to the correct website.');
+      setTimeout(() => { window.location.href = `/customer?return=builder&checkout=extra&draft=${encodeURIComponent(draftSlug)}`; }, 700);
+      return;
+    }
+    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlug, draftName: site.draftName || site.businessName, status: 'draft' };
+    try {
+      await saveDraftOnline(draft, true);
+    } catch (error) {
+      if (error.status === 401) {
+        try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
+        setMessage('Your secure session expired. Re-verify your email to continue this add-on checkout.');
+        setTimeout(() => { window.location.href = `/customer?return=builder&checkout=extra&draft=${encodeURIComponent(draft.slug)}`; }, 700);
+        return;
+      }
+      setMessage(error.message || 'Secure online draft save failed. Add-on checkout was not opened.');
+      return;
+    }
+    try { localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY); } catch {}
+    window.location.href = websiteCheckoutRoute('extra');
+  }
+
   async function checkoutPlan() {
     const draftSlug = draftSlugFor(site);
     const checkoutIntent = createPendingCheckoutIntent(site.plan, draftSlug);
@@ -561,7 +598,7 @@ export default function Builder() {
       setMessage(`Add the destination for ${incompleteActions.map(action => action.label).join(', ')} before checkout. Use an email, phone number, booking form, menu, product, payment, or order link.`);
       return;
     }
-    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
+    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     try { const lightDraft = stripHeavyLocalData(draft); localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft)); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draft.slug); saveLocalDraftIndex(lightDraft); } catch {}
     setMessage('Saving your draft before checkout. If checkout opens, your draft was saved.');
     try {
@@ -596,14 +633,14 @@ export default function Builder() {
   function next() { persistLocal('Draft saved.'); setStep(s => Math.min(4, s + 1)); }
   function back() { persistLocal('Draft saved.'); setStep(s => Math.max(0, s - 1)); }
 
-  const selectedSections = normalizeSelectedPagesForPlan(site.pages, site.plan);
+  const selectedSections = normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages);
   const selectedCount = selectedSections.length;
   const limitText = plans[site.plan]?.maxPages >= 99 ? 'all built-in sections' : `${planLimit()} selected section(s)`;
   const canUseMedia = planAllowsMedia(site.plan);
   const canUseAiVideo = planAllowsAiVideo(site.plan);
   // Keep the preview tied directly to the current form state so wording and
   // customer-action links update immediately while the customer types.
-  const previewSite = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan) };
+  const previewSite = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages) };
 
   const mediaPreviewKey = (site.media || []).map(item => `${item.section || ''}:${item.kind || ''}:${String(item.url || '').slice(-24)}:${item.title || ''}`).join('|');
   const previewKey = `${site.typeKey}-${site.styleKey}-${site.primaryColor}-${site.accentColor}-${site.fontStyle}-${site.layoutStyle}-${site.backgroundStyle}-${site.sectionShape}-${site.templateAppliedAt || ''}-${site.designUpdatedAt || ''}-${site.heroImage ? site.heroImage.slice(-32) : 'template-hero'}-${JSON.stringify(site.pages || [])}-${mediaPreviewKey}-${JSON.stringify(site.customerActions || [])}`;
@@ -700,7 +737,7 @@ export default function Builder() {
                 <p className="mutedText">Change the website type, template look, colors, layout, hero image, and media. Template changes apply immediately to the preview.</p>
                 <Field label="Plan"><select value={site.plan} onChange={e => {
                   const nextPlan = e.target.value;
-                  update({ plan: nextPlan, pages: normalizeSelectedPagesForPlan(site.pages || ['Home'], nextPlan), customerActions: normalizeCustomerActions(site.customerActions, nextPlan) });
+                  update({ plan: nextPlan, pages: normalizeSelectedPagesForPlan(site.pages || ['Home'], nextPlan, site.extraPages || site.extra_pages), customerActions: normalizeCustomerActions(site.customerActions, nextPlan) });
                   setMessage(`Plan changed to ${plans[nextPlan]?.label}. Pick your own sections below instead of letting a template choose for you.`);
                 }}>{Object.entries(plans).map(([k, v]) => <option value={k} key={k}>{v.label} - {v.price}</option>)}</select></Field>
                 <Field label="Website type"><select value={site.typeKey} onChange={e => chooseType(e.target.value)}>{templateLibrary.map(t => <option value={t.key} key={t.key}>{t.type}</option>)}</select></Field>

@@ -76,8 +76,18 @@ export default function Customer() {
         if (data.ok) {
           setVerifiedEmail(data.email);
           setEmail(data.email);
-          if (requestedReturnPath !== '/customer') {
-            window.location.replace(requestedReturnPath);
+          let continuationPath = requestedReturnPath;
+          if (continuationPath === '/customer') {
+            try {
+              const continuationResponse = await fetch('/api/auth/site-owner/continuation', {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              const continuation = await continuationResponse.json();
+              if (continuation.ok && continuation.returnPath) continuationPath = continuation.returnPath;
+            } catch {}
+          }
+          if (continuationPath !== '/customer') {
+            window.location.replace(continuationPath);
             return;
           }
           if (new URLSearchParams(window.location.search).get('verified') === '1') {

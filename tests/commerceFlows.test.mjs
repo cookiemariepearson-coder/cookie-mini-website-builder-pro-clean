@@ -77,7 +77,7 @@ test('valid restored customer sessions continue instead of terminating at the da
     source('app/api/auth/site-owner/request/route.js'),
     source('app/customer/auth/callback/page.js')
   ]);
-  assert.match(customer, /window\.location\.replace\(requestedReturnPath\)/);
+  assert.match(customer, /window\.location\.replace\(continuationPath\)/);
   assert.match(customer, /PENDING_CHECKOUT_STORAGE_KEY/);
   assert.match(customer, /pendingCheckoutReturnPath/);
   assert.match(customer, /params\.get\('draft'\)/);

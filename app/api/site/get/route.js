@@ -3,7 +3,7 @@ import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 
 function fallbackSite(row){
-  return row.site || {
+  const saved = row.site || {
     businessName: row.business_name || row.businessName || 'Published Website',
     customerEmail: row.customer_email || row.email || '',
     plan: row.plan || 'starter',
@@ -16,6 +16,10 @@ function fallbackSite(row){
     offers: [{title:'Main Service',text:'Describe your offer.'},{title:'Highlights',text:'Share why customers choose you.'},{title:'Contact',text:'Tell people how to reach you.'}],
     sections: {}
   };
+  const activeExtraPages = String(row.extra_page_subscription_status || '').toLowerCase() === 'active'
+    ? Math.max(0, Number(row.extra_pages) || 0)
+    : 0;
+  return { ...saved, plan: row.plan || saved.plan || 'free', extraPages: activeExtraPages };
 }
 
 export async function GET(req) {

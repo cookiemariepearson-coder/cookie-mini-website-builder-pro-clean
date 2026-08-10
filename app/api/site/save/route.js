@@ -4,6 +4,7 @@ import { sendAdminNotification } from '../../../../lib/adminNotifications';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
 import { validateSiteMedia } from '../../../../lib/mediaValidation.mjs';
+import { normalizeSelectedPagesForPlan } from '../../../../lib/siteDefaults';
 
 export async function POST(req) {
   try {
@@ -25,13 +26,23 @@ export async function POST(req) {
       return NextResponse.json({ ok: false, error: 'This website belongs to a different verified email.' }, { status: 403 });
     }
 
-    const protectedSite = { ...site, slug, customerEmail: owner.email, status: 'published' };
+    const authoritativePlan = existing.plan || 'free';
+    const activeExtraPages = String(existing.extra_page_subscription_status || '').toLowerCase() === 'active'
+      ? Math.max(0, Number(existing.extra_pages) || 0)
+      : 0;
+    const protectedSite = {
+      ...site,
+      slug,
+      plan: authoritativePlan,
+      extraPages: activeExtraPages,
+      pages: normalizeSelectedPagesForPlan(site.pages, authoritativePlan, activeExtraPages),
+      customerEmail: owner.email,
+      status: 'published'
+    };
     const { data: updated, error } = await supabase.from('websites').update({
       customer_email: owner.email,
       owner_id: owner.user.id,
       business_name: protectedSite.businessName || null,
-      plan: site.plan || 'free',
-      extra_pages: Number(site.extraPages || 0),
       site: protectedSite,
       updated_at: new Date().toISOString()
     }).eq('slug', slug).select('slug').maybeSingle();

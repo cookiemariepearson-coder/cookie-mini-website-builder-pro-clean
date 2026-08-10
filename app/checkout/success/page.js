@@ -120,7 +120,7 @@ export default function CheckoutSuccess() {
         ...saved,
         slug,
         plan: paidPlan,
-        pages: normalizeSelectedPagesForPlan(saved.pages, paidPlan),
+        pages: normalizeSelectedPagesForPlan(saved.pages, paidPlan, saved.extraPages || saved.extra_pages),
         status: 'published',
         completedPurchase: paidParam || paidPlan
       };

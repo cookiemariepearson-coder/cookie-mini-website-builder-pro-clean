@@ -16,6 +16,7 @@ const activeWebsite = {
   status: 'published',
   access_status: 'active',
   subscription_status: 'active',
+  gumroad_product_id: 'RxLLDsLsLaQb1n6letAgSQ==',
   video_month_key: '2026-08',
   video_usage_month: 0,
   video_bonus_credits: 0
@@ -104,8 +105,10 @@ test('13. inactive or ineligible website plan remains locked', () => {
   const limits = { free: 0, starter: 0, business: 1, premium: 3 };
   const inactive = websiteVideoEntitlement({ ...activeWebsite, subscription_status: 'cancelled' }, { now, limits });
   const starter = websiteVideoEntitlement({ ...activeWebsite, plan: 'starter' }, { now, limits });
+  const wrongProduct = websiteVideoEntitlement({ ...activeWebsite, gumroad_product_id: 'GE_fDgvz_GT29Fn6eSj9uw==' }, { now, limits });
   assert.equal(inactive.generationAllowed, false);
   assert.equal(starter.generationAllowed, false);
+  assert.equal(wrongProduct.generationAllowed, false);
 });
 
 test('14. locked Generate is visually and programmatically disabled', async () => {

@@ -5,6 +5,7 @@ import { sendAdminNotification } from '../../../../lib/adminNotifications';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
 import { validateSiteMedia } from '../../../../lib/mediaValidation.mjs';
+import { APPROVED_WEBSITE_PRODUCTS } from '../../../../lib/gumroadWebsiteProducts.mjs';
 
 function friendlyError(message='') {
   return 'The website could not be published right now. Your draft remains saved; please try again shortly.';
@@ -43,7 +44,8 @@ export async function POST(req) {
       const paidAccess = existing
         && String(existing.plan || '').toLowerCase() === requestedPlan
         && String(existing.subscription_status || '').toLowerCase() === 'active'
-        && String(existing.access_status || '').toLowerCase() === 'active';
+        && String(existing.access_status || '').toLowerCase() === 'active'
+        && String(existing.gumroad_product_id || '') === String(APPROVED_WEBSITE_PRODUCTS[requestedPlan]?.productId || '');
       if (!paidAccess) {
         return NextResponse.json({ ok: false, error: 'Your paid plan is not confirmed yet. Complete checkout and wait for payment confirmation before publishing.' }, { status: 402 });
       }
@@ -52,7 +54,10 @@ export async function POST(req) {
     const plan = paidPlans.has(requestedPlan) ? requestedPlan : 'free';
     const monthly = plan === 'premium' ? 50 : plan === 'business' ? 30 : plan === 'starter' ? 19 : 0;
 
-    const protectedSite = { ...site, slug, customerEmail: owner.email, status: 'published' };
+    const activeExtraPages = String(existing?.extra_page_subscription_status || '').toLowerCase() === 'active'
+      ? Math.max(0, Number(existing?.extra_pages) || 0)
+      : 0;
+    const protectedSite = { ...site, slug, customerEmail: owner.email, extraPages: activeExtraPages, status: 'published' };
     const row = {
       slug,
       owner_id: owner.user.id,
@@ -60,7 +65,7 @@ export async function POST(req) {
       business_name: site.businessName || null,
       plan,
       status: 'published',
-      extra_pages: Number(site.extraPages || site.extra_pages || 0),
+      extra_pages: Math.max(0, Number(existing?.extra_pages) || 0),
       monthly_price: monthly,
       site: protectedSite,
       updated_at: new Date().toISOString()

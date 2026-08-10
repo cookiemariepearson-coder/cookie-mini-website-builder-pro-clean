@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../../lib/supabaseAdmin';
 import { rateLimit, rateLimitResponse } from '../../../../../lib/rateLimit.mjs';
 import { safeCustomerReturnPath } from '../../../../../lib/commerceConfig.mjs';
+import { checkoutContinuationRecord } from '../../../../../lib/checkoutContinuation.mjs';
 
 export async function POST(req) {
   try {
@@ -27,6 +28,15 @@ export async function POST(req) {
     });
 
     if (error) throw error;
+    const continuation = checkoutContinuationRecord(email, returnPath);
+    if (continuation) {
+      const { error: continuationError } = await supabase
+        .from('checkout_continuations')
+        .upsert(continuation, { onConflict: 'email_hash' });
+      if (continuationError) {
+        console.error('[customer-auth] checkout continuation could not be saved', { message: continuationError.message });
+      }
+    }
     return NextResponse.json({
       ok: true,
       message: 'Check your email and tap the secure sign-in link. You can then manage websites saved with that email.'
