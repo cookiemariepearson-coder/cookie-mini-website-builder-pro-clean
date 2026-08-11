@@ -192,6 +192,15 @@
 .generationLockedHelp{margin:12px 0 0;color:#5d5068;font-weight:800;line-height:1.45}
 .navBrandLogo{width:62px;height:62px;display:block;flex:0 0 62px;object-fit:contain;border-radius:14px;background:white;box-shadow:0 8px 20px #0003}
 .nav .logo span{line-height:1.15}
+.navLinks{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:wrap}
+.navAccountControl{display:inline-flex;align-items:center}
+.nav .navAccountLink{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 15px;border:2px solid #ffbd49;border-radius:999px;background:#ffbd49;color:#20172f;line-height:1.1;box-shadow:0 8px 20px #0003}
+.nav .navAccountLink:hover{background:#ffd37d;border-color:#ffd37d}
+.returningCustomerAccess{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px;color:#f8efff}
+.customerAccountHeroLink{min-height:48px;display:inline-flex;align-items:center;justify-content:center}
+.returningCustomerPrompt{font-weight:800;line-height:1.4}
+.customerAccountFeedback{flex-basis:100%;font-size:14px;color:#f3e9f7}
+.customerAccountFeedback.accountError{color:#ffe4a8;font-weight:800}
 @media(max-width:560px){.navBrandLogo{width:50px;height:50px;flex-basis:50px}.nav .logo span{font-size:15px}}
 .creatorBusinessSection{margin-top:28px}
 .twoPathGrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
@@ -206,6 +215,7 @@
 .homepageFaqGrid details{border:1px solid #eaddec;border-radius:18px;padding:16px 18px;background:white}
 .homepageFaqGrid summary{cursor:pointer;font-weight:900;color:#20172f}.homepageFaqGrid p{color:#5d5068;line-height:1.55;margin-bottom:0}
 @media(max-width:760px){.twoPathGrid,.aiReadyCommerceSection,.homepageFaqGrid{grid-template-columns:1fr}.aiReadyCommerceSection,.homepageFaqSection{margin-left:14px;margin-right:14px;padding:24px}}
+@media(max-width:760px){.nav{align-items:stretch}.navLinks{width:100%;justify-content:flex-start}.navAccountControl{flex:1 1 160px}.nav .navAccountLink{width:100%;margin-left:0;min-height:48px}.returningCustomerAccess{align-items:stretch}.customerAccountHeroLink{width:100%}.returningCustomerPrompt,.customerAccountFeedback{width:100%;text-align:left}}
 /* Keep owner-editor save feedback visible even when the customer is at the bottom of a long form. */
 .builderShell .builderSide .notice {
   position: fixed;
