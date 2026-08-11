@@ -144,6 +144,18 @@ export default function Home(){
           </div>
         </section>
 
+        <section className="brandSection accountHowItWorks" aria-labelledby="accounts-work-heading">
+          <span className="kicker">How accounts work</span>
+          <h2 id="accounts-work-heading">Build first. Create an account when you are ready.</h2>
+          <p>You can start building without an account. Your draft will be saved temporarily in your current browser. Create a free account when you want to save permanently, use another device, purchase a plan, or publish. Returning customers can sign in with a secure email link—no password required.</p>
+          <p className="privacyAccountNote">We use your email to create and protect your account, return you to your saved websites, and connect verified purchases to the correct website. Please review our <Link href="/privacy">Privacy Policy</Link> for complete details.</p>
+          <div className="accountHowItWorksActions">
+            <Link className="btn" href="/builder">Start Building Free</Link>
+            <Link className="btn light" href="/customer?mode=create">Create Free Account</Link>
+            <Link className="btn dark" href="/customer?mode=signin">Sign In</Link>
+          </div>
+        </section>
+
         <section className="aiReadyCommerceSection">
           <div>
             <span className="kicker">AI-ready online selling</span>

@@ -16,15 +16,17 @@ test('landing navigation and hero expose the returning-customer account control'
   assert.match(homepage, /<CustomerAccountLink placement="hero" \/>/);
 });
 
-test('signed-out customers see Customer Sign In with clear drafts guidance', async () => {
+test('signed-out visitors see separate Sign In and Create Free Account choices', async () => {
   const account = await source('components/CustomerAccountLink.js');
-  assert.match(account, /'Customer Sign In'/);
+  assert.match(account, />Sign In<\/Link>/);
+  assert.match(account, />Create Free Account<\/Link>/);
   assert.match(account, /Already started a website\? Sign in to open your drafts\./);
-  assert.match(account, /access saved drafts and purchased websites/);
-  assert.match(account, /href = signedIn \? '\/customer' : '\/customer\?signin=1'/);
+  assert.match(account, /save your work permanently/);
+  assert.match(account, /href="\/customer\?mode=signin"/);
+  assert.match(account, /href="\/customer\?mode=create"/);
 });
 
-test('My Drafts appears only after server verification of the saved session', async () => {
+test('My Websites appears only after server verification of the saved session', async () => {
   const account = await source('components/CustomerAccountLink.js');
   assert.match(account, /fetch\('\/api\/auth\/site-owner\/session'/);
   assert.match(account, /Authorization: `Bearer \$\{token\}`/);
@@ -39,10 +41,11 @@ test('account control has accessible feedback, focus styling, touch sizing, and 
     source('app/globals.css')
   ]);
   assert.match(account, /role="status" aria-live="polite"/);
-  assert.match(account, /aria-label=\{accessibleLabel\}/);
+  assert.match(account, /aria-label="Sign In to the Mini Website Builder"/);
+  assert.match(account, /aria-label="Create a free Mini Website Builder account"/);
   assert.match(css, /\.nav \.navAccountLink\{[^}]*min-height:44px/);
-  assert.match(css, /@media\(max-width:760px\)\{\.nav\{align-items:stretch\}/);
-  assert.match(css, /\.nav \.navAccountLink\{width:100%;margin-left:0;min-height:48px\}/);
+  assert.match(css, /@media\(max-width:760px\).*navAccountControl/s);
+  assert.match(css, /min-height:48px/);
   assert.match(css, /:where\(a,button,input,select,textarea,summary\):focus-visible/);
 });
 
@@ -50,5 +53,7 @@ test('landing account access stays on the Builder-owned customer route', async (
   const account = await source('components/CustomerAccountLink.js');
   assert.doesNotMatch(account, /connect\.cookiesdigitalcreations\.com/);
   assert.doesNotMatch(account, /returnTo|redirectTo|https?:\/\//);
-  assert.match(account, /const href = signedIn \? '\/customer' : '\/customer\?signin=1'/);
+  assert.match(account, /href="\/customer\?mode=signin"/);
+  assert.match(account, /href="\/customer\?mode=create"/);
+  assert.match(account, /href="\/customer"/);
 });

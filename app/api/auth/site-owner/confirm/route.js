@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { normalizeBuilderCheckoutAuthToken, normalizeBuilderCheckoutAuthType } from '../../../../../lib/builderCheckoutAuth.mjs';
+import { normalizeBuilderCheckoutAuthToken, normalizeBuilderCheckoutAuthType, normalizeBuilderCustomerAuthMode } from '../../../../../lib/builderCheckoutAuth.mjs';
 import { safeCustomerReturnPath } from '../../../../../lib/commerceConfig.mjs';
 import { rateLimit, rateLimitResponse } from '../../../../../lib/rateLimit.mjs';
 import { getSupabaseAdmin } from '../../../../../lib/supabaseAdmin';
@@ -21,6 +21,7 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     const intentId = normalizeWebsiteCheckoutIntentId(body.intentId);
     const returnPath = safeCustomerReturnPath(body.returnPath);
+    const authMode = normalizeBuilderCustomerAuthMode(body.authMode);
     const tokenHash = normalizeBuilderCheckoutAuthToken(body.tokenHash);
     const type = normalizeBuilderCheckoutAuthType(body.type);
     if (!tokenHash || !type) {
@@ -49,7 +50,7 @@ export async function POST(request) {
     }
 
     if (intentId) traceWebsiteCheckout('AUTH_CONFIRM_SUCCEEDED', intent);
-    return NextResponse.json({ ok: true, accessToken: data.session.access_token, returnPath }, {
+    return NextResponse.json({ ok: true, accessToken: data.session.access_token, returnPath, authMode }, {
       headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }
     });
   } catch (error) {

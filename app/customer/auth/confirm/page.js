@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Nav from '../../../../lib/Nav';
 
 const AUTH_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
+const GUEST_CLAIM_KEY = 'cookieGuestDraftClaimV1';
 
 export default function BuilderCheckoutAuthConfirm() {
   const [title, setTitle] = useState('Continue Secure Checkout');
@@ -16,9 +17,10 @@ export default function BuilderCheckoutAuthConfirm() {
       const query = new URLSearchParams(window.location.search);
       const intentId = query.get('intent') || '';
       const returnPath = query.get('return') || '/customer';
+      const authMode = query.get('mode') === 'create' ? 'create' : 'signin';
       if (!intentId) {
-        setTitle('Open My Drafts Securely');
-        setRecoveryLabel('Return to My Drafts');
+        setTitle(authMode === 'create' ? 'Create Your Free Account' : 'Open My Websites Securely');
+        setRecoveryLabel('Return to My Websites');
       }
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
       const tokenHash = hash.get('token_hash') || '';
@@ -36,7 +38,7 @@ export default function BuilderCheckoutAuthConfirm() {
         const confirmationResponse = await fetch('/api/auth/site-owner/confirm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ intentId, returnPath, tokenHash, type })
+          body: JSON.stringify({ intentId, returnPath, tokenHash, type, authMode })
         });
         const confirmation = await confirmationResponse.json();
         if (!confirmation.ok || !confirmation.accessToken) {
@@ -46,8 +48,27 @@ export default function BuilderCheckoutAuthConfirm() {
 
         localStorage.setItem(AUTH_TOKEN_KEY, confirmation.accessToken);
         if (!intentId) {
-          setMessage('Email verified. Opening My Drafts…');
-          window.location.replace(confirmation.returnPath === '/customer' ? '/customer?verified=1' : confirmation.returnPath);
+          let claimed = false;
+          try {
+            const claim = JSON.parse(localStorage.getItem(GUEST_CLAIM_KEY) || 'null');
+            if (claim?.claimId && claim?.claimToken) {
+              setMessage('Account verified. Saving this browser draft permanently…');
+              const claimResponse = await fetch('/api/site/guest-draft/claim', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${confirmation.accessToken}` },
+                body: JSON.stringify({ claimId: claim.claimId, claimToken: claim.claimToken })
+              });
+              const claimResult = await claimResponse.json();
+              if (claimResult.ok) {
+                claimed = true;
+                localStorage.removeItem(GUEST_CLAIM_KEY);
+                localStorage.setItem('cookieGuestDraftClaimedSlug', claimResult.slug || '');
+              }
+            }
+          } catch {}
+          setMessage(claimed ? 'Account created and browser draft saved. Opening My Websites…' : 'Email verified. Opening My Websites…');
+          const separator = confirmation.returnPath.includes('?') ? '&' : '?';
+          window.location.replace(`${confirmation.returnPath}${separator}verified=1&mode=${encodeURIComponent(confirmation.authMode || authMode)}${claimed ? '&claimed=1' : ''}`);
           return;
         }
         setMessage('Email verified. Restoring your exact plan and website…');
