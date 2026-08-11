@@ -3,6 +3,8 @@ import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
 import { cleanCheckoutUrl, DFY_CHECKOUT_ENV_BY_SERVICE } from '../../../../lib/commerceConfig.mjs';
 import { sendResendEmail } from '../../../../lib/resendEmail.mjs';
 import { createCustomerRequest, updateCustomerRequest } from '../../../../lib/customerRequestStore.mjs';
+import { createCustomerRequestId } from '../../../../lib/customerRequestId.mjs';
+import { customerNotificationOutcome } from '../../../../lib/customerNotificationOutcome.mjs';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -63,7 +65,7 @@ export async function POST(request) {
     if (service.checkoutEnv && !checkoutUrl) {
       console.error('[done-for-you] checkout URL missing or invalid', { plan, environmentVariable: service.checkoutEnv });
     }
-    const requestId = `DFY-${Date.now().toString(36).toUpperCase()}`;
+    const requestId = createCustomerRequestId('DFY');
     const storedRequest = await createCustomerRequest({
       request_id: requestId,
       request_type: 'done-for-you',
@@ -103,10 +105,7 @@ export async function POST(request) {
       <p><strong>Customer action:</strong> ${safe.customerAction}</p>
       <p><strong>Website details:</strong><br>${safe.details.replace(/\n/g, '<br>')}</p>`;
 
-    let adminNotification;
-    let customerNotification;
-    try {
-      [adminNotification, customerNotification] = await Promise.all([
+    const [adminResult, customerResult] = await Promise.allSettled([
       sendResendEmail({
         apiKey,
         from,
@@ -129,19 +128,16 @@ export async function POST(request) {
         subject: `We received your ${plan} website request`,
         html: `<h2>Thank you, ${safe.name}!</h2><p>Cookie Digital Creations received your Done-for-You website request.</p>${detailRows}<h3>What happens next</h3>${nextSteps}${checkoutBlock}<p>Questions? Reply to this email or contact hello@cookiesdigitalcreations.com.</p>`
       })
-      ]);
-      if (storedRequest.ok) await updateCustomerRequest(requestId, {
-        notification_status: 'accepted',
-        admin_provider_message_id: adminNotification.id || null,
-        customer_provider_message_id: customerNotification.id || null,
-        notification_error: null
-      });
-    } catch (emailError) {
-      if (storedRequest.ok) await updateCustomerRequest(requestId, {
-        notification_status: 'rejected',
-        notification_error: String(emailError?.message || 'Provider rejected notification').slice(0, 500)
-      });
-      throw emailError;
+    ]);
+    const notification = customerNotificationOutcome(adminResult, customerResult);
+    if (storedRequest.ok) await updateCustomerRequest(requestId, {
+      notification_status: notification.notificationStatus,
+      admin_provider_message_id: notification.adminProviderMessageId,
+      customer_provider_message_id: notification.customerProviderMessageId,
+      notification_error: notification.notificationError
+    });
+    if (!storedRequest.ok && !notification.adminAccepted) {
+      throw new Error('The request could not be recorded or delivered to the owner.');
     }
 
     return NextResponse.json({
@@ -150,7 +146,10 @@ export async function POST(request) {
       checkoutUrl,
       checkoutRequired: Boolean(service.checkoutEnv),
       checkoutConfigured: Boolean(checkoutUrl),
-      notificationsAccepted: Boolean(adminNotification.accepted && customerNotification.accepted),
+      notificationsAccepted: Boolean(notification.adminAccepted && notification.customerAccepted),
+      notificationStatus: notification.notificationStatus,
+      adminNotificationAccepted: notification.adminAccepted,
+      customerNotificationAccepted: notification.customerAccepted,
       requestStored: Boolean(storedRequest.ok),
       turnaround: service.turnaround
     });

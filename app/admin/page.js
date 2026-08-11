@@ -206,6 +206,7 @@ export default function Admin() {
           <a href="/admin">Website Management</a>
           <a href="/admin/subscriptions">Subscriptions &amp; Access</a>
           <a href="/admin/video-credits">AI Video Credits</a>
+          <a href="/admin/requests">Customer Requests</a>
           <a href="/customer">Customer Dashboard</a>
         </nav>
 

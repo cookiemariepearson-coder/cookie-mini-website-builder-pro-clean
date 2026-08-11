@@ -293,7 +293,7 @@ export default function GumroadSubscriptionsAdmin() {
           <div><span className="kicker">Owner only</span><h1>Subscriptions &amp; Access</h1><p>Track paid website access, subscription status, Gumroad events, and archived customer sites.</p></div>
           <div className="adminHeroBadge" aria-hidden="true"><span>✦</span><strong>Payments</strong><small>Access Organizer</small></div>
         </section>
-        <nav className="adminQuickLinks" aria-label="Admin tools"><a href="/admin">Website Management</a><a className="active" href="/admin/subscriptions">Subscriptions &amp; Access</a><a href="/admin/video-credits">AI Video Credits</a></nav>
+        <nav className="adminQuickLinks" aria-label="Admin tools"><a href="/admin">Website Management</a><a className="active" href="/admin/subscriptions">Subscriptions &amp; Access</a><a href="/admin/video-credits">AI Video Credits</a><a href="/admin/requests">Customer Requests</a></nav>
 
         {!ready && (
           <section className="card">

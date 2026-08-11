@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { rateLimit, rateLimitResponse } from '../../../lib/rateLimit.mjs';
 import { sendResendEmail } from '../../../lib/resendEmail.mjs';
 import { createCustomerRequest, updateCustomerRequest } from '../../../lib/customerRequestStore.mjs';
+import { createCustomerRequestId } from '../../../lib/customerRequestId.mjs';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -41,7 +42,7 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'The contact form is temporarily unavailable. Please email hello@cookiesdigitalcreations.com.' }, { status: 503 });
     }
 
-    const requestId = `SUP-${Date.now().toString(36).toUpperCase()}`;
+    const requestId = createCustomerRequestId('SUP');
     const storedRequest = await createCustomerRequest({
       request_id: requestId,
       request_type: 'contact',
@@ -53,6 +54,7 @@ export async function POST(request) {
       notification_status: 'pending'
     });
     if (!storedRequest.ok) console.error(JSON.stringify({ level: 'error', event: 'customer_request_storage_failed', requestId, requestType: 'contact', status: storedRequest.status, configurationMissing: Boolean(storedRequest.missing) }));
+    let notificationAccepted = false;
     try {
       const notification = await sendResendEmail({
         apiKey,
@@ -65,13 +67,22 @@ export async function POST(request) {
         subject: `Mini Builder support: ${form.website || form.name}`,
         html: `<h2>Cookie Mini Website Builder support request</h2><p><strong>Request:</strong> ${requestId}</p><p><strong>Name:</strong> ${escapeHtml(form.name)}<br><strong>Email:</strong> ${escapeHtml(form.email)}<br><strong>Website:</strong> ${escapeHtml(form.website || 'Not provided')}</p><p><strong>Message:</strong><br>${escapeHtml(form.message).replace(/\n/g, '<br>')}</p>`
       });
+      notificationAccepted = true;
       if (storedRequest.ok) await updateCustomerRequest(requestId, { notification_status: 'accepted', admin_provider_message_id: notification.id || null, notification_error: null });
     } catch (emailError) {
-      if (storedRequest.ok) await updateCustomerRequest(requestId, { notification_status: 'rejected', notification_error: String(emailError?.message || 'Provider rejected notification').slice(0, 500) });
-      throw emailError;
+      if (storedRequest.ok) await updateCustomerRequest(requestId, { notification_status: 'rejected', notification_error: 'Owner notification delayed' });
+      if (!storedRequest.ok) throw emailError;
     }
 
-    return NextResponse.json({ ok: true, requestId, message: `Your support request ${requestId} was accepted for email delivery. Cookie Digital Creations will reply by email.` });
+    return NextResponse.json({
+      ok: true,
+      requestId,
+      requestStored: Boolean(storedRequest.ok),
+      notificationAccepted,
+      message: notificationAccepted
+        ? `Your support request ${requestId} was accepted for email delivery. Cookie Digital Creations will reply by email.`
+        : `Your support request ${requestId} was saved. Email delivery is delayed, but Cookie Digital Creations can see your request and will reply by email.`
+    });
   } catch (error) {
     console.error('[contact] submission failed', { message: error?.message || String(error) });
     return NextResponse.json({ ok: false, error: 'Your message could not be sent. Please email hello@cookiesdigitalcreations.com.' }, { status: 500 });

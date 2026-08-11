@@ -14,7 +14,7 @@ const turnaround = {
 
 export default function DoneForYouRequestPage() {
   const [plan, setPlan] = useState('Website Setup Consultation');
-  const [form, setForm] = useState({ name: '', business: '', businessType: '', email: '', phone: '', customerAction: '', details: '', contact: 'Email' });
+  const [form, setForm] = useState({ name: '', business: '', businessType: '', email: '', phone: '', customerAction: '', details: '', contact: 'Email', companyWebsite: '' });
   const [status, setStatus] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -40,13 +40,16 @@ export default function DoneForYouRequestPage() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) throw new Error(data.error || 'Request failed.');
+      const delivery = data.notificationsAccepted
+        ? 'Your confirmation and owner notification were accepted for delivery.'
+        : 'Your request was saved. One or more email notifications may be delayed.';
       if (data.checkoutRequired && data.checkoutConfigured && data.checkoutUrl) {
-        setStatus(`Request ${data.requestId} received. Email notifications were accepted for delivery. Opening secure checkout...`);
+        setStatus(`Request ${data.requestId} received. ${delivery} Opening secure checkout...`);
         setTimeout(() => window.location.assign(data.checkoutUrl), 1400);
       } else if (data.checkoutRequired) {
-        setStatus(`Request ${data.requestId} received. Email notifications were accepted for delivery. Secure checkout is temporarily unavailable, so Cookie Digital Creations will contact you with the correct payment step. You were not charged.`);
+        setStatus(`Request ${data.requestId} received. ${delivery} Secure checkout is temporarily unavailable, so Cookie Digital Creations will contact you with the correct payment step. You were not charged.`);
       } else {
-        setStatus(`Request ${data.requestId} received. A confirmation email with next steps was accepted for delivery to ${form.email}.`);
+        setStatus(`Request ${data.requestId} received. ${delivery}`);
       }
     } catch (error) {
       setStatus(error.message || 'The request could not be sent. Please try again.');
@@ -67,25 +70,26 @@ export default function DoneForYouRequestPage() {
 
       <form className="dfyRequestForm" onSubmit={submit}>
         <div className="field">
-          <label>Service</label>
-          <select value={plan} onChange={event => setPlan(event.target.value)}>
+          <label htmlFor="dfy-service">Service</label>
+          <select id="dfy-service" value={plan} onChange={event => setPlan(event.target.value)}>
             {['Website Setup Consultation','Free Launch Page','Starter Pro','Business','Premium','Extra Page Add-On'].map(item => <option key={item}>{item}</option>)}
           </select>
         </div>
         <div className="row">
-          <div className="field"><label>Your name</label><input required value={form.name} onChange={e => update('name', e.target.value)} /></div>
-          <div className="field"><label>Business name</label><input required value={form.business} onChange={e => update('business', e.target.value)} /></div>
+          <div className="field"><label htmlFor="dfy-name">Your name</label><input id="dfy-name" required autoComplete="name" value={form.name} onChange={e => update('name', e.target.value)} /></div>
+          <div className="field"><label htmlFor="dfy-business">Business name</label><input id="dfy-business" required autoComplete="organization" value={form.business} onChange={e => update('business', e.target.value)} /></div>
         </div>
         <div className="row">
-          <div className="field"><label>Business type</label><input required placeholder="Example: catering, beauty, consulting" value={form.businessType} onChange={e => update('businessType', e.target.value)} /></div>
-          <div className="field"><label>Email</label><input required type="email" value={form.email} onChange={e => update('email', e.target.value)} /></div>
+          <div className="field"><label htmlFor="dfy-business-type">Business type</label><input id="dfy-business-type" required placeholder="Example: catering, beauty, consulting" value={form.businessType} onChange={e => update('businessType', e.target.value)} /></div>
+          <div className="field"><label htmlFor="dfy-email">Email</label><input id="dfy-email" required type="email" autoComplete="email" value={form.email} onChange={e => update('email', e.target.value)} /></div>
         </div>
         <div className="row">
-          <div className="field"><label>Phone, optional</label><input type="tel" value={form.phone} onChange={e => update('phone', e.target.value)} /></div>
-          <div className="field"><label>Preferred contact</label><select value={form.contact} onChange={e => update('contact', e.target.value)}><option>Email</option><option>Phone call</option><option>Text message</option></select></div>
+          <div className="field"><label htmlFor="dfy-phone">Phone, optional</label><input id="dfy-phone" type="tel" autoComplete="tel" value={form.phone} onChange={e => update('phone', e.target.value)} /></div>
+          <div className="field"><label htmlFor="dfy-contact">Preferred contact</label><select id="dfy-contact" value={form.contact} onChange={e => update('contact', e.target.value)}><option>Email</option><option>Phone call</option><option>Text message</option></select></div>
         </div>
-        <div className="field"><label>What should customers do on your website?</label><input required placeholder="Book, order, buy, call, request a quote..." value={form.customerAction} onChange={e => update('customerAction', e.target.value)} /></div>
-        <div className="field"><label>Tell me about the website you want</label><textarea required placeholder="Describe your services, products, pages, colors, photos, and anything important." value={form.details} onChange={e => update('details', e.target.value)} /></div>
+        <div className="field"><label htmlFor="dfy-action">What should customers do on your website?</label><input id="dfy-action" required placeholder="Book, order, buy, call, request a quote..." value={form.customerAction} onChange={e => update('customerAction', e.target.value)} /></div>
+        <div className="field"><label htmlFor="dfy-details">Tell me about the website you want</label><textarea id="dfy-details" required placeholder="Describe your services, products, pages, colors, photos, and anything important." value={form.details} onChange={e => update('details', e.target.value)} /></div>
+        <div aria-hidden="true" style={{ position: 'absolute', left: '-10000px' }}><label htmlFor="dfy-company-website">Company website</label><input id="dfy-company-website" tabIndex="-1" autoComplete="off" value={form.companyWebsite} onChange={e => update('companyWebsite', e.target.value)} /></div>
         <div className="dfyRequestActions">
           <button className="btn" type="submit" disabled={submitting}>{submitting ? 'Sending Request...' : 'Submit Request & Continue'}</button>
           <Link className="btn light" href="/done-for-you">Back to Services</Link>
