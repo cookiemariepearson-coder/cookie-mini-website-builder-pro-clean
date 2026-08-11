@@ -41,14 +41,14 @@ test('invalid intent, token, and verification types cannot construct a checkout 
   assert.equal(normalizeBuilderCheckoutAuthType('magiclink'), 'magiclink');
 });
 
-test('My Drafts authentication uses a Builder-owned link and a safe return path', () => {
+test('My Websites authentication uses a Builder-owned link, explicit mode, and safe return path', () => {
   const link = builderCustomerConfirmationUrl({
     origin: 'https://www.cookiesdigitalcreations.com',
     returnPath: '/customer',
     tokenHash: TOKEN_HASH,
     type: 'magiclink'
   });
-  assert.equal(link, `https://www.cookiesdigitalcreations.com/customer/auth/confirm?return=%2Fcustomer#token_hash=${TOKEN_HASH}&type=magiclink`);
+  assert.equal(link, `https://www.cookiesdigitalcreations.com/customer/auth/confirm?return=%2Fcustomer&mode=signin#token_hash=${TOKEN_HASH}&type=magiclink`);
   assert.doesNotMatch(link, /connect\.cookiesdigitalcreations\.com/);
   assert.equal(builderCustomerConfirmationUrl({ origin: 'https://www.cookiesdigitalcreations.com', returnPath: 'https://attacker.example', tokenHash: TOKEN_HASH, type: 'magiclink' }).includes('return=%2Fcustomer'), true);
 });
@@ -79,17 +79,18 @@ test('cross-browser confirmation removes the token fragment and resumes only the
   const page = await source('app/customer/auth/confirm/page.js');
   assert.match(page, /window\.history\.replaceState/);
   assert.match(page, /fetch\('\/api\/auth\/site-owner\/confirm'/);
-  assert.match(page, /body: JSON\.stringify\(\{ intentId, returnPath, tokenHash, type \}\)/);
+  assert.match(page, /body: JSON\.stringify\(\{ intentId, returnPath, tokenHash, type, authMode \}\)/);
   assert.match(page, /fetch\('\/api\/checkout\/intent\/resume'/);
   assert.match(page, /window\.location\.replace\(resumed\.builderPath\)/);
   assert.match(page, /Continue Secure Checkout/);
   assert.match(page, /Return to Builder/);
 });
 
-test('generic My Website authentication uses the Builder-owned callback instead of shared Supabase redirects', async () => {
+test('generic My Websites authentication uses the Builder-owned callback instead of shared Supabase redirects', async () => {
   const request = await source('app/api/auth/site-owner/request/route.js');
   assert.match(request, /builderCustomerConfirmationUrl/);
-  assert.match(request, /Verify Email and Open My Drafts/);
+  assert.match(request, /Sign In and Open My Websites/);
+  assert.match(request, /Create Account and Return to My Website/);
   assert.doesNotMatch(request, /supabase\.auth\.signInWithOtp/);
 });
 

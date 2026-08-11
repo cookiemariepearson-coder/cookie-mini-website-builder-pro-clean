@@ -8,6 +8,7 @@ const ROOT = 'cookiesdigitalcreations.com';
 const DRAFT_KEY = 'cookieDraftSite';
 const DRAFTS_INDEX_KEY = 'cookieDraftSitesIndex';
 const AUTH_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
+const GUEST_CLAIM_KEY = 'cookieGuestDraftClaimV1';
 
 function normalizeSubdomain(input = '') {
   let value = String(input || '').trim().toLowerCase();
@@ -47,11 +48,13 @@ export default function Customer() {
   const [authLoading, setAuthLoading] = useState(true);
   const [linkSending, setLinkSending] = useState(false);
   const [pendingPurchase, setPendingPurchase] = useState(null);
+  const [authMode, setAuthMode] = useState('signin');
   const autoLoadedOwnerRef = useRef('');
 
   useEffect(() => {
     async function restoreSecureSession() {
       const params = new URLSearchParams(window.location.search);
+      setAuthMode(params.get('mode') === 'create' ? 'create' : 'signin');
       const authHash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
       const fragmentToken = authHash.get('access_token') || '';
       const fragmentError = authHash.get('error_description') || authHash.get('error') || '';
@@ -93,6 +96,7 @@ export default function Customer() {
         });
         const data = await res.json();
         if (data.ok) {
+          const claimResult = await claimGuestDraft(token);
           setVerifiedEmail(data.email);
           setEmail(data.email);
           if (checkoutIntentId) {
@@ -148,7 +152,9 @@ export default function Customer() {
             }
           } catch {}
           if (new URLSearchParams(window.location.search).get('verified') === '1') {
-            setMsg('Email verified. You can now find and manage websites saved with this email.');
+            setMsg(claimResult?.ok
+              ? 'Account verified. Your browser draft is now saved permanently in My Websites.'
+              : 'Email verified. My Websites is ready.');
           }
         } else {
           localStorage.removeItem(AUTH_TOKEN_KEY);
@@ -195,6 +201,59 @@ export default function Customer() {
     };
   }
 
+  async function ensureGuestDraftClaim() {
+    let draft = null;
+    let currentClaim = null;
+    try {
+      draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
+      currentClaim = JSON.parse(localStorage.getItem(GUEST_CLAIM_KEY) || 'null');
+    } catch {}
+    if (!draft) return null;
+    let response = await fetch('/api/site/guest-draft', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        site: draft,
+        claimId: currentClaim?.claimId || '',
+        claimToken: currentClaim?.claimToken || ''
+      })
+    });
+    if (response.status === 410 && currentClaim) {
+      localStorage.removeItem(GUEST_CLAIM_KEY);
+      response = await fetch('/api/site/guest-draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ site: draft })
+      });
+    }
+    const result = await response.json();
+    if (!result.ok) throw new Error(result.error || 'The browser draft could not be prepared for account transfer.');
+    const claim = { claimId: result.claimId, claimToken: result.claimToken, expiresAt: result.expiresAt };
+    localStorage.setItem(GUEST_CLAIM_KEY, JSON.stringify(claim));
+    return claim;
+  }
+
+  async function claimGuestDraft(token) {
+    let claim = null;
+    try { claim = JSON.parse(localStorage.getItem(GUEST_CLAIM_KEY) || 'null'); } catch {}
+    if (!claim?.claimId || !claim?.claimToken || !token) return null;
+    try {
+      const response = await fetch('/api/site/guest-draft/claim', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ claimId: claim.claimId, claimToken: claim.claimToken })
+      });
+      const result = await response.json();
+      if (result.ok) {
+        localStorage.removeItem(GUEST_CLAIM_KEY);
+        localStorage.setItem('cookieGuestDraftClaimedSlug', result.slug || '');
+      }
+      return result;
+    } catch {
+      return { ok: false };
+    }
+  }
+
   async function requestSecureLink() {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail) {
@@ -202,8 +261,14 @@ export default function Customer() {
       return;
     }
     setLinkSending(true);
-    setMsg('Sending your secure sign-in link...');
+    setMsg(authMode === 'create' ? 'Preparing your browser draft and secure account link...' : 'Requesting your secure sign-in link...');
     try {
+      let transferWarning = '';
+      try {
+        await ensureGuestDraftClaim();
+      } catch {
+        transferWarning = ' Your browser draft remains on this device and can be saved again after sign-in.';
+      }
       const params = new URLSearchParams(window.location.search);
       const checkoutIntentId = params.get('intent') || '';
       const queryReturnPath = customerReturnPath(params.get('return'), params.get('checkout'), params.get('draft'));
@@ -213,10 +278,10 @@ export default function Customer() {
       const res = await fetch('/api/auth/site-owner/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, returnPath, intentId: checkoutIntentId, draftSlug: params.get('draft') || '' })
+        body: JSON.stringify({ email: cleanEmail, returnPath, intentId: checkoutIntentId, draftSlug: params.get('draft') || '', authMode })
       });
       const data = await res.json();
-      setMsg(data.ok ? data.message : (data.error || 'The secure email link could not be sent.'));
+      setMsg(data.ok ? `${data.message}${transferWarning}` : (data.error || 'The secure email link could not be sent.'));
     } catch (error) {
       setMsg(`The secure email link could not be sent: ${error.message}`);
     } finally {
@@ -224,12 +289,16 @@ export default function Customer() {
     }
   }
 
-  function signOut() {
+  async function signOut() {
+    const token = localStorage.getItem(AUTH_TOKEN_KEY) || '';
+    try {
+      await fetch('/api/auth/site-owner/signout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    } catch {}
     localStorage.removeItem(AUTH_TOKEN_KEY);
     autoLoadedOwnerRef.current = '';
     setVerifiedEmail('');
     setSites([]);
-    setMsg('Signed out securely.');
+    setMsg('Signed out. Your private websites now require a new secure email link.');
   }
 
   async function findSites(liveSearch = false) {
@@ -282,6 +351,24 @@ export default function Customer() {
     window.location.href = '/builder?restore=1';
   }
 
+  async function manageSite(slug, action) {
+    const label = action === 'delete' ? 'permanently delete this unpublished free draft' : 'archive this website';
+    if (!window.confirm(`Are you sure you want to ${label}?`)) return;
+    setMsg(action === 'delete' ? 'Deleting the confirmed draft…' : 'Archiving the confirmed website…');
+    try {
+      const response = await fetch('/api/site/manage', {
+        method: 'POST',
+        headers: secureHeaders(),
+        body: JSON.stringify({ slug, action })
+      });
+      const result = await response.json();
+      setMsg(result.ok ? result.message : (result.error || 'The website was not changed.'));
+      if (result.ok) await findSites(true);
+    } catch {
+      setMsg('The website action could not be completed. Your website remains unchanged.');
+    }
+  }
+
   const searchTerm = normalizeSubdomain(query);
   const matchesWords = (value = '') => !searchTerm || normalizeSubdomain(value).includes(searchTerm);
   const visibleSites = sites.filter(site => {
@@ -294,22 +381,55 @@ export default function Customer() {
     if (!['all', 'draft', 'browser'].includes(statusFilter)) return false;
     return matchesWords(item.slug) || matchesWords(item.draft?.businessName) || matchesWords(item.draft?.draftName);
   });
+  const websiteGroups = [
+    { key: 'drafts', title: 'Drafts', rows: visibleSites.filter(site => effectiveStatus(site) === 'draft') },
+    { key: 'published', title: 'Published Websites', rows: visibleSites.filter(site => effectiveStatus(site) === 'published') },
+    { key: 'plans', title: 'Purchases or Plans', rows: visibleSites.filter(site => ['starter', 'business', 'premium'].includes(String(site.plan || '').toLowerCase()) || Number(site.monthly_price) > 0) },
+    { key: 'archived', title: 'Archived Websites', rows: visibleSites.filter(site => ['archived', 'paused'].includes(effectiveStatus(site))) }
+  ].filter(group => group.rows.length > 0);
+
+  function renderSiteCard(row, groupKey) {
+    const currentStatus = effectiveStatus(row);
+    const status = statusLabel(currentStatus);
+    const isPublished = currentStatus === 'published';
+    const isUnavailable = currentStatus === 'paused' || currentStatus === 'archived';
+    const liveUrl = `https://${row.slug}.${ROOT}`;
+    return (
+      <article className="savedSiteCard" key={`${groupKey}-${row.slug}`}>
+        <div>
+          <span className={`statusPill ${currentStatus}`}>{status}</span>
+          <h3>{row.business_name || row.site?.businessName || row.slug}</h3>
+          <p><strong>Website:</strong> {row.slug}.{ROOT}</p>
+          <p><strong>Plan:</strong> {row.plan || 'free'} {row.monthly_price ? `• $${row.monthly_price}/mo` : ''}</p>
+          {row.updated_at && <p className="mutedText">Last updated: {new Date(row.updated_at).toLocaleString()}</p>}
+        </div>
+        <div className="savedActions">
+          {isPublished && <a className="btn" href={liveUrl} target="_blank" rel="noreferrer">View Live Website</a>}
+          {isPublished && <a className="btn dark" href={`/customer/edit/${row.slug}`}>Edit Website</a>}
+          {!isUnavailable && <a className="btn dark" href={`/builder?draft=${encodeURIComponent(row.slug)}`}>{isPublished ? 'Preview / Republish' : 'Edit Website'}</a>}
+          {!isUnavailable && <button className="btn light" type="button" onClick={() => manageSite(row.slug, 'archive')}>Archive</button>}
+          {!isPublished && String(row.plan || 'free') === 'free' && <button className="btn light" type="button" onClick={() => manageSite(row.slug, 'delete')}>Delete Draft</button>}
+          {isUnavailable && <div className="notice">This website is {currentStatus}. Contact Cookie Digital Creations if access should be restored.</div>}
+        </div>
+      </article>
+    );
+  }
 
   return (
     <>
       <Nav />
       <main className="wrap customerHub customerHubWarm">
         <section className="dashboard customerWelcome">
-          <span className="kicker">My Website</span>
-          <h1>Customer Dashboard</h1>
-          <p>Find your published websites and saved drafts in one place. Type only a few letters or words from the website name and matching results will appear as you type.</p>
+          <span className="kicker">Cookie Mini Website Builder Pro</span>
+          <h1>My Websites</h1>
+          <p>Open your customer-owned drafts, published websites, purchases, and publishing controls in one secure place.</p>
           <div className="customerSearchTips">
             <div><strong>Email only</strong><span>Use the email that owns the website.</span></div>
             <div><strong>A few words</strong><span>Type any part you remember, like kitchen or tadda.</span></div>
             <div><strong>Full link</strong><span>Paste the whole subdomain if you have it.</span></div>
           </div>
           <div className="notice success">
-            <strong>Secure customer access</strong><br />
+            <strong>{verifiedEmail ? 'Secure customer access' : authMode === 'create' ? 'Create Free Account' : 'Sign In'}</strong><br />
             {authLoading ? (
               <span>Checking your secure session...</span>
             ) : verifiedEmail ? (
@@ -319,12 +439,21 @@ export default function Customer() {
               </>
             ) : (
               <>
-                <span>Enter your email below and request a secure sign-in link before searching, editing, saving, or republishing.</span>
+                <span>{authMode === 'create'
+                  ? 'Create your free account to save your website, reopen it later, access it from another device, purchase a plan, and publish when you’re ready.'
+                  : 'Sign in securely to open your saved websites, drafts, purchases, and publishing controls.'}</span>
+                <div className="authChoiceRow" aria-label="Choose account access">
+                  <a className={`btn ${authMode === 'signin' ? '' : 'light'}`} href="/customer?mode=signin">Sign In</a>
+                  <a className={`btn ${authMode === 'create' ? '' : 'light'}`} href="/customer?mode=create">Create Free Account</a>
+                </div>
                 <div className="navRow">
                   <button className="btn" type="button" onClick={requestSecureLink} disabled={linkSending}>
-                    {linkSending ? 'Sending Link...' : 'Email My Secure Sign-In Link'}
+                    {linkSending
+                      ? 'Requesting Secure Link...'
+                      : authMode === 'create' ? 'Email My Secure Account Link' : 'Email My Secure Sign-In Link'}
                   </button>
                 </div>
+                <p className="mutedText">Secure links are temporary and one-time use. If you entered the wrong email, correct it below before requesting another link.</p>
               </>
             )}
           </div>
@@ -337,8 +466,8 @@ export default function Customer() {
           )}
           <div className="row">
             <div className="field">
-              <label>Email for secure sign-in</label>
-              <input placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} disabled={Boolean(verifiedEmail)} />
+              <label htmlFor="customer-auth-email">{authMode === 'create' ? 'Email for your free account' : 'Account email'}</label>
+              <input id="customer-auth-email" type="email" autoComplete="email" placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} disabled={Boolean(verifiedEmail)} />
             </div>
             <div className="field">
               <label>Type a few letters, words, or the website link</label>
@@ -348,14 +477,15 @@ export default function Customer() {
           {query && <div className="notice smallNotice">We will search for: <strong>{normalizeSubdomain(query) || 'enter a website name'}</strong></div>}
           {msg && <div role="status" aria-live="polite" className={`notice ${msg.includes('failed') || msg.includes('No websites') || msg.includes('Enter') ? 'error' : ''}`}>{msg}</div>}
           <div className="navRow">
-            <button className="btn" onClick={findSites} disabled={loading || !verifiedEmail}>{loading ? 'Searching...' : 'Find My Websites / Drafts'}</button>
+            <button className="btn" onClick={findSites} disabled={loading || !verifiedEmail}>{loading ? 'Loading My Websites...' : 'Refresh My Websites'}</button>
             <a className="btn dark" href="/builder">Start New Website</a>
+            {verifiedEmail && <a className="btn light" href="/customer/account">Account</a>}
             {browserDraft && <button className="btn dark" onClick={() => continueBrowserDraft(browserDraft)}>Continue Last Browser Draft</button>}
           </div>
         </section>
 
         <details className="savedDropdown" open={savedOpen} onToggle={event => setSavedOpen(event.currentTarget.open)}>
-          <summary>Saved Websites &amp; Drafts</summary>
+          <summary>My Websites</summary>
           <div className="savedDropdownContent">
           <p className="savedDropdownIntro">Published sites and saved drafts show here. Use Continue Draft to keep building, Open Website to view a live site, or Edit Published Site to update one that is already published.</p>
           <div className="savedWebsitePicker field">
@@ -370,34 +500,15 @@ export default function Customer() {
             </select>
           </div>
           {visibleSites.length === 0 ? (
-            <div className="emptyState"><strong>No online websites match this search and filter.</strong><br/>Try fewer letters, select All, search by email, or check the browser draft backups below.</div>
+            <div className="emptyState"><strong>You do not have any saved websites matching this view.</strong><br/>Start building your first website, try fewer search words, or check the browser draft backups below.</div>
           ) : (
-            <div className="savedSiteList">
-              {visibleSites.map(row => {
-                const currentStatus = effectiveStatus(row);
-                const status = statusLabel(currentStatus);
-                const isPublished = currentStatus === 'published';
-                const isUnavailable = currentStatus === 'paused' || currentStatus === 'archived';
-                const liveUrl = `https://${row.slug}.${ROOT}`;
-                return (
-                  <article className="savedSiteCard" key={row.slug}>
-                    <div>
-                      <span className={`statusPill ${currentStatus}`}>{status}</span>
-                      <h3>{row.business_name || row.site?.businessName || row.slug}</h3>
-                      <p><strong>Subdomain:</strong> {row.slug}.{ROOT}</p>
-                      <p><strong>Email:</strong> {row.customer_email || row.site?.customerEmail || 'Not saved'}</p>
-                      <p><strong>Plan:</strong> {row.plan || 'free'} {row.monthly_price ? `• $${row.monthly_price}/mo` : ''}</p>
-                      {row.updated_at && <p className="mutedText">Last saved: {new Date(row.updated_at).toLocaleString()}</p>}
-                    </div>
-                    <div className="savedActions">
-                      {isPublished && <a className="btn" href={liveUrl} target="_blank" rel="noreferrer">Open Website</a>}
-                      {isPublished && <a className="btn dark" href={`/customer/edit/${row.slug}`}>Edit Published Site</a>}
-                      {!isUnavailable && <a className="btn dark" href={`/builder?draft=${encodeURIComponent(row.slug)}`}>{isPublished ? 'Use as Draft / Update' : 'Continue Draft'}</a>}
-                      {isUnavailable && <div className="notice">This website is {currentStatus}. Contact Cookie Digital Creations if access should be restored.</div>}
-                    </div>
-                  </article>
-                );
-              })}
+            <div className="myWebsiteGroups">
+              {websiteGroups.map(group => (
+                <section className="websiteGroup" aria-labelledby={`website-group-${group.key}`} key={group.key}>
+                  <h3 id={`website-group-${group.key}`}>{group.title}</h3>
+                  <div className="savedSiteList">{group.rows.map(row => renderSiteCard(row, group.key))}</div>
+                </section>
+              ))}
             </div>
           )}
           {shownBrowserDrafts.length > 0 && (

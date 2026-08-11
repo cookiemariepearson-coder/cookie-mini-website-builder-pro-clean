@@ -10,6 +10,7 @@ const LAST_STEP_KEY = 'cookieBuilderStep';
 const CURRENT_DRAFT_SLUG_KEY = 'cookieBuilderCurrentSlug';
 const DRAFTS_INDEX_KEY = 'cookieDraftSitesIndex';
 const AUTH_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
+const GUEST_CLAIM_KEY = 'cookieGuestDraftClaimV1';
 
 function ownerAccessToken() {
   try { return localStorage.getItem(AUTH_TOKEN_KEY) || ''; } catch { return ''; }
@@ -148,11 +149,13 @@ export default function Builder() {
   const [resumeCheckoutRequested, setResumeCheckoutRequested] = useState(false);
   const [checkoutBusyPlan, setCheckoutBusyPlan] = useState('');
   const [checkoutRetryPlan, setCheckoutRetryPlan] = useState('');
+  const [hasOwnerSession, setHasOwnerSession] = useState(false);
   const checkoutBusyRef = useRef(false);
   const tmpl = useMemo(() => getTemplate(site.typeKey, site.styleKey), [site.typeKey, site.styleKey]);
 
   useEffect(() => {
     async function restore() {
+      setHasOwnerSession(Boolean(ownerAccessToken()));
       const params = new URLSearchParams(window.location.search);
       let requestedCheckout = websiteCheckoutRoute(params.get('checkout')) ? params.get('checkout') : '';
       let checkoutIntentId = params.get('checkoutIntent') || '';
@@ -274,7 +277,10 @@ export default function Builder() {
 
   useEffect(() => {
     // Slower, lightweight autosave keeps the builder from freezing while typing or uploading images.
-    const handle = setTimeout(() => persistLocal('Draft auto-saved.', true), 13000);
+    const handle = setTimeout(() => {
+      const localDraft = persistLocal('Draft auto-saved.', true);
+      if (!ownerAccessToken() && localDraft) void syncGuestDraftClaim(localDraft, true);
+    }, 13000);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [site, step]);
@@ -464,6 +470,7 @@ export default function Builder() {
     const ok = window.confirm('Start a fresh website draft? Your current draft is already saved in this browser if autosave ran, but click Cancel if you want to manually Save Draft first.');
     if (!ok) return;
     localStorage.removeItem(DRAFT_KEY);
+    localStorage.removeItem(GUEST_CLAIM_KEY);
     localStorage.removeItem(LAST_STEP_KEY);
     localStorage.removeItem(CURRENT_DRAFT_SLUG_KEY);
     setSite(createDefaultSite());
@@ -490,14 +497,45 @@ export default function Builder() {
 
   function persistLocal(note = 'Draft saved in this browser.', silent = false) {
     try {
-      const lightDraft = stripHeavyLocalData(site);
+      const lightDraft = stripHeavyLocalData({ ...site, localDraftVersion: 1, updatedAt: new Date().toISOString() });
       localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft));
       localStorage.setItem(LAST_STEP_KEY, String(step));
       localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftSlugFor(lightDraft));
       saveLocalDraftIndex(lightDraft);
       if (!silent) setSaveMessage(`${note} ${nowStamp()}`);
+      return lightDraft;
     } catch (e) {
-      if (!silent) setSaveMessage('Draft text saved best with smaller images. Click Save Draft to save online, or use media links for large visuals.');
+      if (!silent) setSaveMessage('We could not save this draft in your browser. Create a free account to save your work securely.');
+      return null;
+    }
+  }
+
+  async function syncGuestDraftClaim(draft, quiet = false) {
+    if (!draft || ownerAccessToken()) return null;
+    let existing = null;
+    try { existing = safeParse(localStorage.getItem(GUEST_CLAIM_KEY)); } catch {}
+    try {
+      const response = await fetch('/api/site/guest-draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          site: draft,
+          claimId: existing?.claimId || '',
+          claimToken: existing?.claimToken || ''
+        })
+      });
+      if (response.status === 410 && existing) {
+        localStorage.removeItem(GUEST_CLAIM_KEY);
+        return syncGuestDraftClaim(draft, quiet);
+      }
+      const result = await response.json();
+      if (!result.ok) throw new Error(result.error || 'Temporary account transfer could not be prepared.');
+      localStorage.setItem(GUEST_CLAIM_KEY, JSON.stringify({ claimId: result.claimId, claimToken: result.claimToken, expiresAt: result.expiresAt }));
+      if (!quiet) setSaveMessage('Saved on this device. Create a free account to save permanently and open this website on other devices.');
+      return result;
+    } catch (error) {
+      if (!quiet) setSaveMessage(`${error.message} Your browser draft remains available.`);
+      return null;
     }
   }
 
@@ -529,7 +567,11 @@ export default function Builder() {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft));
       localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draft.slug);
       saveLocalDraftIndex(lightDraft);
-      await saveDraftOnline(draft);
+      if (!ownerAccessToken()) {
+        await syncGuestDraftClaim(lightDraft);
+      } else {
+        await saveDraftOnline(draft);
+      }
     } catch (e) {
       setSaveMessage(`Draft saved lightly in this browser. Online draft could not save: ${e.message}`);
     } finally {
@@ -564,7 +606,7 @@ export default function Builder() {
     if (!ownerAccessToken()) {
       persistLocal('Draft saved before secure email verification.');
       setMessage('Verify your email before publishing. Opening secure customer access now...');
-      setTimeout(() => { window.location.href = '/customer?return=builder'; }, 700);
+      setTimeout(() => { window.location.href = '/customer?mode=create&return=builder'; }, 700);
       return;
     }
     const businessSlug = slugify(site.businessName || '');
@@ -783,7 +825,7 @@ export default function Builder() {
         <button className="btn light" onClick={saveDraft} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Draft'}</button>
         {isSmallBuilderScreen && <button className="btn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button>}
         {planAllowsAiVideo(site.plan) ? <button className="btn light aiStudioBuilderBtn" onClick={goVideo}>AI Video Studio</button> : <button className="btn light lockedBtn aiStudioBuilderBtn" onClick={goVideo}>AI Video Upgrade</button>}
-        <a className="btn light" href="/customer">Open My Drafts</a>
+        <a className="btn light" href="/customer">My Websites</a>
         <button className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
         {showCurrentDraft && (
           <div className="notice smallNotice currentDraftNotice" role="status">
@@ -802,6 +844,16 @@ export default function Builder() {
       <section className="builderMain">
         <div className="row builderTwoCol">
           <div className="dashboard builderPanel">
+            {!hasOwnerSession && (
+              <div className="notice guestDraftNotice" role="status">
+                <strong>Saved on this device</strong><br />
+                This draft is saved only in this browser. Create a free account to save it permanently and open it on other devices.
+                <div className="navRow">
+                  <a className="btn" href="/customer?mode=create&return=builder">Create Free Account</a>{' '}
+                  <a className="btn light" href="/customer?mode=signin&return=builder">Sign In</a>
+                </div>
+              </div>
+            )}
             {isSmallBuilderScreen && <div className="notice mobilePreviewNotice"><strong>Mobile tip:</strong> Tap the button below to preview your site in a separate screen, then close it to keep editing.<br /><button type="button" className="btn mobilePreviewInlineBtn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button></div>}
             {step === 0 && (
               <>
@@ -980,7 +1032,7 @@ export default function Builder() {
                 <p>Your website name will be:</p>
                 <div className="notice"><strong>{plans[site.plan]?.label}</strong> will publish {limitText}. Selected sections: {selectedSections.join(', ')}.</div>
                 <div className="notice"><strong>{draftSlugFor(site)}.cookiesdigitalcreations.com</strong></div>
-                <button className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}<a className="btn dark" href="/customer">Open My Drafts</a>{' '}
+                <button className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}<a className="btn dark" href="/customer">My Websites</a>{' '}
                 {site.plan === 'free' ? <button className="btn" onClick={publishFree}>Publish Free Page</button> : (
                   <button
                     type="button"

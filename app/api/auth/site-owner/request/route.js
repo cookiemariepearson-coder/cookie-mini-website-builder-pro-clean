@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../../lib/supabaseAdmin';
 import { rateLimit, rateLimitResponse } from '../../../../../lib/rateLimit.mjs';
 import { safeCustomerReturnPath } from '../../../../../lib/commerceConfig.mjs';
-import { builderCheckoutConfirmationUrl, builderCustomerConfirmationUrl, canonicalBuilderOrigin } from '../../../../../lib/builderCheckoutAuth.mjs';
+import { builderCheckoutConfirmationUrl, builderCustomerConfirmationUrl, canonicalBuilderOrigin, normalizeBuilderCustomerAuthMode } from '../../../../../lib/builderCheckoutAuth.mjs';
+import { siteOwnerAccountExists } from '../../../../../lib/customerAuthUtils.mjs';
 import { sendResendEmail } from '../../../../../lib/resendEmail.mjs';
 import {
   checkoutIntentEmailHash,
@@ -49,6 +50,7 @@ export async function POST(req) {
     const rootDomain = String(process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'cookiesdigitalcreations.com').trim().toLowerCase();
     const origin = canonicalBuilderOrigin(requestUrl, rootDomain);
     const returnPath = safeCustomerReturnPath(body.returnPath);
+    const authMode = normalizeBuilderCustomerAuthMode(body.authMode);
     const supabase = getSupabaseAdmin();
     let intentId = normalizeWebsiteCheckoutIntentId(body.intentId);
     const requestedDraftSlug = normalizeCheckoutDraftSlug(body.draftSlug);
@@ -126,6 +128,16 @@ export async function POST(req) {
       });
       traceWebsiteCheckout('AUTH_EMAIL_PROVIDER_ACCEPTED', intentForTrace || { id: intentId, status: 'pending_auth' });
     } else {
+      const accountExists = await siteOwnerAccountExists(supabase, email);
+      if (authMode === 'signin' && !accountExists) {
+        console.info('[builder-customer-auth]', { event: 'AUTH_REQUEST_ACCEPTED_PRIVACY_PROTECTED', authMode: 'signin' });
+        return NextResponse.json({
+          ok: true,
+          requestStatus: 'accepted',
+          deliveryStatus: 'privacy-protected',
+          message: 'Request accepted. If this email belongs to a Mini Website Builder account, a secure sign-in link will arrive shortly. Check spam, or choose Create Free Account if you are new.'
+        });
+      }
       const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
         type: 'magiclink',
         email
@@ -135,7 +147,8 @@ export async function POST(req) {
         origin,
         returnPath,
         tokenHash: linkData?.properties?.hashed_token,
-        type: linkData?.properties?.verification_type
+        type: linkData?.properties?.verification_type,
+        authMode
       });
       if (!confirmationUrl) throw new Error('Builder customer authentication link could not be generated.');
       const authCorrelationId = checkoutIntentEmailHash(email).slice(0, 16);
@@ -147,17 +160,25 @@ export async function POST(req) {
         notification: 'builder-customer-auth',
         requestId: authCorrelationId,
         idempotencyKey: `builder-customer-auth-${authCorrelationId}-${Date.now().toString(36)}`,
-        subject: 'Open your Cookie Mini Website Builder drafts',
-        html: `<h2>Open My Drafts securely</h2><p>Use the secure button below to verify your email and return to Cookie Mini Website Builder Pro.</p><p><a href="${escapeHtml(confirmationUrl)}" style="display:inline-block;padding:13px 20px;background:#f28a1e;color:#20172f;text-decoration:none;border-radius:999px;font-weight:800">Verify Email and Open My Drafts</a></p><p>This one-time link expires shortly. If you did not request it, you can ignore this email.</p><p>Questions? Contact hello@cookiesdigitalcreations.com.</p>`
+        subject: authMode === 'create'
+          ? 'Create your Cookies Digital Creations website account'
+          : 'Your secure Mini Website Builder sign-in link',
+        html: authMode === 'create'
+          ? `<h2>Create your free Mini Website Builder account</h2><p>Cookies Digital Creations received a request to create a free account for Cookie Mini Website Builder Pro.</p><p><a href="${escapeHtml(confirmationUrl)}" style="display:inline-block;padding:13px 20px;background:#f28a1e;color:#20172f;text-decoration:none;border-radius:999px;font-weight:800">Create Account and Return to My Website</a></p><p>This one-time link is temporary. If you did not request it, ignore this email.</p><p>Support: hello@cookiesdigitalcreations.com.</p>`
+          : `<h2>Sign in to Mini Website Builder</h2><p>Cookies Digital Creations received a request to open saved websites, drafts, purchases, and publishing controls.</p><p><a href="${escapeHtml(confirmationUrl)}" style="display:inline-block;padding:13px 20px;background:#f28a1e;color:#20172f;text-decoration:none;border-radius:999px;font-weight:800">Sign In and Open My Websites</a></p><p>This one-time link is temporary. If you did not request it, ignore this email.</p><p>Support: hello@cookiesdigitalcreations.com.</p>`
       });
-      console.info('[builder-customer-auth]', { event: 'AUTH_EMAIL_PROVIDER_ACCEPTED', returnTarget: returnPath === '/customer' ? 'drafts' : returnPath === '/video-studio' ? 'video-studio' : 'builder' });
+      console.info('[builder-customer-auth]', { event: 'AUTH_EMAIL_PROVIDER_ACCEPTED', authMode, returnTarget: returnPath === '/customer' ? 'websites' : returnPath === '/video-studio' ? 'video-studio' : 'builder' });
     }
     return NextResponse.json({
       ok: true,
       checkoutIntentSaved: Boolean(intentId),
+      requestStatus: 'accepted',
+      deliveryStatus: 'provider-accepted',
       message: intentId
         ? 'Check your email and tap the secure sign-in link. Your selected plan and website are saved, and checkout will continue after verification.'
-        : 'Check your email and tap the secure sign-in link. You can then manage websites saved with that email.'
+        : authMode === 'create'
+          ? 'Check your email. The email provider accepted your request and sent a secure link to create your account and return to your website.'
+          : 'Check your email. The email provider accepted your request and sent a secure sign-in link to open My Websites.'
     });
   } catch (error) {
     console.error('Customer sign-in request failed', error);
