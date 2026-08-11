@@ -40,10 +40,10 @@ Do not reopen these completed journeys without evidence of a regression.
 ## In progress — Done-for-You catalog checkout configuration
 
 - [x] Free Launch Page — `$99 one-time setup` checkout configured and owner-verified.
-- [x] Starter Pro — `$249 one-time setup` production setting reported configured; product-page verification remains part of the current focused pass.
-- [ ] Business — `$499 one-time setup`; `DFY_BUSINESS_CHECKOUT_URL` has no usable verified production destination.
-- [ ] Premium — `$899 one-time setup`; `DFY_PREMIUM_CHECKOUT_URL` has no usable verified production destination.
-- [ ] Extra Page Add-On — `$125 one-time setup`; `DFY_EXTRA_PAGE_CHECKOUT_URL` has no usable verified production destination.
+- [x] Starter Pro — `$249 one-time setup` production setting and live Gumroad product page verified.
+- [x] Business — `$499 one-time setup`; `DFY_BUSINESS_CHECKOUT_URL` configured and the live Builder handoff verified against the published one-time Gumroad product.
+- [x] Premium — `$899 one-time setup`; `DFY_PREMIUM_CHECKOUT_URL` configured and the live Builder handoff verified against the published one-time Gumroad product.
+- [ ] Extra Page Add-On — `$125 one-time setup`; no corresponding one-time Gumroad product exists, so `DFY_EXTRA_PAGE_CHECKOUT_URL` remains intentionally unset and the safe support-follow-up path remains active.
 
 Do not substitute the Business or Premium monthly website subscriptions, the monthly Extra Page subscription, AI Video, or another DFY product for these one-time setup purchases.
 
