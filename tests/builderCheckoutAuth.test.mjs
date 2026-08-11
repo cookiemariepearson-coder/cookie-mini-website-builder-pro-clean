@@ -37,7 +37,9 @@ test('Builder checkout email link keeps its opaque intent in the query and secre
 test('invalid intent, token, and verification types cannot construct a checkout authentication link', () => {
   assert.equal(builderCheckoutConfirmationUrl({ origin: 'https://www.cookiesdigitalcreations.com', intentId: 'wrong', tokenHash: TOKEN_HASH, type: 'magiclink' }), '');
   assert.equal(normalizeBuilderCheckoutAuthToken('short'), '');
-  assert.equal(normalizeBuilderCheckoutAuthType('signup'), '');
+  assert.equal(normalizeBuilderCheckoutAuthType('signup'), 'signup');
+  assert.equal(normalizeBuilderCheckoutAuthType('recovery'), 'recovery');
+  assert.equal(normalizeBuilderCheckoutAuthType('forged'), '');
   assert.equal(normalizeBuilderCheckoutAuthType('magiclink'), 'magiclink');
 });
 

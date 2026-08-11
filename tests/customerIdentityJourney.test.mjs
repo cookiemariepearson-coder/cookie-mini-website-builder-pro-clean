@@ -69,7 +69,7 @@ test('guest drafts are local-first, versioned, recoverable, and honestly labeled
   assert.match(builder, /localDraftVersion: 1/);
   assert.match(builder, /updatedAt: new Date\(\)\.toISOString\(\)/);
   assert.match(builder, /Saved on this device/);
-  assert.match(builder, /saved only in this browser/);
+  assert.match(builder, /save permanently, purchase, or publish/);
   assert.match(builder, /We could not save this draft in your browser/);
   assert.match(builder, /cookieGuestDraftClaimV1/);
 });
@@ -97,10 +97,10 @@ test('guest claim transfer is idempotent and preserves a recovery copy until ser
 });
 
 test('expired guest claim credentials are replaced without blocking account access', async () => {
-  const customer = await source('app/customer/page.js');
-  assert.match(customer, /response\.status === 410/);
-  assert.match(customer, /localStorage\.removeItem\(GUEST_CLAIM_KEY\)/);
-  assert.match(customer, /Your browser draft remains on this device and can be saved again after sign-in/);
+  const modal = await source('components/AccountModalProvider.js');
+  assert.match(modal, /response\.status === 410/);
+  assert.match(modal, /localStorage\.removeItem\(GUEST_CLAIM_KEY\)/);
+  assert.match(modal, /return prepareGuestDraftClaim\(\)/);
 });
 
 test('a safely verified legacy owner can receive owner_id during guest transfer', async () => {
@@ -145,7 +145,8 @@ test('guest publishing and paid checkout still require authenticated server rout
     source('app/api/site/publish/route.js'),
     source('app/api/checkout/intent/continue/route.js')
   ]);
-  assert.match(builder, /if \(!ownerAccessToken\(\)\)/);
+  assert.match(builder, /if \(!hasOwnerSession\)/);
+  assert.match(builder, /openAccountModal/);
   assert.match(publish, /getVerifiedSiteOwner/);
   assert.match(publish, /APPROVED_WEBSITE_PRODUCTS/);
   assert.match(checkout, /getVerifiedSiteOwner/);

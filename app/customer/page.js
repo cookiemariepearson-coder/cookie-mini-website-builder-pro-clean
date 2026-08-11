@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import Nav from '../../lib/Nav';
 import { PENDING_CHECKOUT_STORAGE_KEY, createPendingCheckoutIntent, customerReturnPath, pendingCheckoutReturnPath } from '../../lib/commerceConfig.mjs';
+import { useAccountModal } from '../../components/AccountModalProvider';
 
 const ROOT = 'cookiesdigitalcreations.com';
 const DRAFT_KEY = 'cookieDraftSite';
 const DRAFTS_INDEX_KEY = 'cookieDraftSitesIndex';
-const AUTH_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
 const GUEST_CLAIM_KEY = 'cookieGuestDraftClaimV1';
 
 function normalizeSubdomain(input = '') {
@@ -35,7 +35,7 @@ function effectiveStatus(site = {}) {
 }
 
 export default function Customer() {
-  const [email, setEmail] = useState('');
+  const { accountState, accountEmail, openAccountModal } = useAccountModal();
   const [query, setQuery] = useState('');
   const [msg, setMsg] = useState('');
   const [sites, setSites] = useState([]);
@@ -46,7 +46,6 @@ export default function Customer() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [verifiedEmail, setVerifiedEmail] = useState('');
   const [authLoading, setAuthLoading] = useState(true);
-  const [linkSending, setLinkSending] = useState(false);
   const [pendingPurchase, setPendingPurchase] = useState(null);
   const [authMode, setAuthMode] = useState('signin');
   const autoLoadedOwnerRef = useRef('');
@@ -55,20 +54,7 @@ export default function Customer() {
     async function restoreSecureSession() {
       const params = new URLSearchParams(window.location.search);
       setAuthMode(params.get('mode') === 'create' ? 'create' : 'signin');
-      const authHash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-      const fragmentToken = authHash.get('access_token') || '';
-      const fragmentError = authHash.get('error_description') || authHash.get('error') || '';
-      if (fragmentToken) {
-        localStorage.setItem(AUTH_TOKEN_KEY, fragmentToken);
-        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-      }
-      const token = fragmentToken || localStorage.getItem(AUTH_TOKEN_KEY) || '';
       const checkoutIntentId = params.get('intent') || '';
-      if (!token && checkoutIntentId) {
-        const draft = params.get('draft') || '';
-        window.location.replace(`/checkout/continue?intent=${encodeURIComponent(checkoutIntentId)}${draft ? `&draft=${encodeURIComponent(draft)}` : ''}`);
-        return;
-      }
       const queryReturnPath = customerReturnPath(params.get('return'), params.get('checkout'), params.get('draft'));
       const requestedReturnPath = queryReturnPath !== '/customer'
         ? queryReturnPath
@@ -77,32 +63,29 @@ export default function Customer() {
         const intent = createPendingCheckoutIntent(params.get('checkout'), params.get('draft'));
         if (intent) localStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify(intent));
       }
-      if (!token) {
-        if (fragmentError) {
-          setMsg(fragmentError);
-        } else if (checkoutIntentId) {
-          setMsg('Verify your email to continue the saved paid-plan checkout. Your selected plan and website are preserved.');
-        } else if (requestedReturnPath !== '/customer') {
-          setMsg(requestedReturnPath.startsWith('/builder')
-            ? 'Verify your email to continue to the selected paid-plan checkout. Your plan and browser draft are preserved.'
-            : 'Verify your email to continue to AI Video Studio with your website plan.');
-        }
+      if (accountState === 'checking') return;
+      if (accountState !== 'signed-in') {
+        const draft = params.get('draft') || '';
+        const destination = checkoutIntentId
+          ? `/checkout/continue?intent=${encodeURIComponent(checkoutIntentId)}${draft ? `&draft=${encodeURIComponent(draft)}` : ''}`
+          : requestedReturnPath;
+        setMsg('Sign in to open My Websites. Only your own customer records will load.');
         setAuthLoading(false);
+        if (params.has('mode') || checkoutIntentId || requestedReturnPath !== '/customer') {
+          openAccountModal({ mode: params.get('mode') === 'create' ? 'create' : 'signin', destination });
+        }
         return;
       }
       try {
-        const res = await fetch('/api/auth/site-owner/session', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await fetch('/api/auth/site-owner/session', { cache: 'no-store' });
         const data = await res.json();
         if (data.ok) {
-          const claimResult = await claimGuestDraft(token);
+          const claimResult = await claimGuestDraft();
           setVerifiedEmail(data.email);
-          setEmail(data.email);
           if (checkoutIntentId) {
             const resumeResponse = await fetch('/api/checkout/intent/resume', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ intentId: checkoutIntentId })
             });
             const resumed = await resumeResponse.json();
@@ -113,27 +96,11 @@ export default function Customer() {
             }
             setMsg(resumed.error || 'The saved checkout could not resume. Your website draft is still safe.');
           }
-          if (fragmentToken && !checkoutIntentId) {
-            const activeResponse = await fetch('/api/checkout/intent/active', { headers: { Authorization: `Bearer ${token}` } });
-            const active = await activeResponse.json();
-            if (active.ok && active.intent?.id) {
-              const resumeResponse = await fetch('/api/checkout/intent/resume', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ intentId: active.intent.id })
-              });
-              const resumed = await resumeResponse.json();
-              if (resumed.ok && resumed.builderPath) {
-                window.location.replace(resumed.builderPath);
-                return;
-              }
-            }
-          }
           let continuationPath = requestedReturnPath;
           if (continuationPath === '/customer') {
             try {
               const continuationResponse = await fetch('/api/auth/site-owner/continuation', {
-                headers: { Authorization: `Bearer ${token}` }
+                cache: 'no-store'
               });
               const continuation = await continuationResponse.json();
               if (continuation.ok && continuation.returnPath) continuationPath = continuation.returnPath;
@@ -144,7 +111,7 @@ export default function Customer() {
             return;
           }
           try {
-            const activeResponse = await fetch('/api/checkout/intent/active', { headers: { Authorization: `Bearer ${token}` } });
+            const activeResponse = await fetch('/api/checkout/intent/active');
             const active = await activeResponse.json();
             if (active.ok && active.intent) {
               setPendingPurchase(active.intent);
@@ -157,8 +124,7 @@ export default function Customer() {
               : 'Email verified. My Websites is ready.');
           }
         } else {
-          localStorage.removeItem(AUTH_TOKEN_KEY);
-          setMsg(data.error || 'Your secure sign-in expired. Request a new email link to open My Drafts.');
+          setMsg(data.error || 'Your secure sign-in expired. Sign in again to open My Websites.');
         }
       } catch {
         setMsg('Your secure session could not be checked. Your drafts are still safe; please retry or request a new sign-in link.');
@@ -175,7 +141,7 @@ export default function Customer() {
       const list = Object.entries(index).map(([slug, draft]) => ({ slug, draft })).sort((a, b) => String(b.draft?.updatedAt || '').localeCompare(String(a.draft?.updatedAt || '')));
       setBrowserDrafts(list);
     } catch {}
-  }, []);
+  }, [accountState, accountEmail, openAccountModal]);
 
   useEffect(() => {
     if (!verifiedEmail) return;
@@ -194,11 +160,7 @@ export default function Customer() {
   }, [verifiedEmail]);
 
   function secureHeaders() {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY) || '';
-    return {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`
-    };
+    return { 'Content-Type': 'application/json' };
   }
 
   async function ensureGuestDraftClaim() {
@@ -233,14 +195,14 @@ export default function Customer() {
     return claim;
   }
 
-  async function claimGuestDraft(token) {
+  async function claimGuestDraft() {
     let claim = null;
     try { claim = JSON.parse(localStorage.getItem(GUEST_CLAIM_KEY) || 'null'); } catch {}
-    if (!claim?.claimId || !claim?.claimToken || !token) return null;
+    if (!claim?.claimId || !claim?.claimToken) return null;
     try {
       const response = await fetch('/api/site/guest-draft/claim', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ claimId: claim.claimId, claimToken: claim.claimToken })
       });
       const result = await response.json();
@@ -254,65 +216,12 @@ export default function Customer() {
     }
   }
 
-  async function requestSecureLink() {
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail) {
-      setMsg('Enter your email address so we can send your secure sign-in link.');
-      return;
-    }
-    setLinkSending(true);
-    setMsg(authMode === 'create' ? 'Preparing your browser draft and secure account link...' : 'Requesting your secure sign-in link...');
-    try {
-      let transferWarning = '';
-      try {
-        await ensureGuestDraftClaim();
-      } catch {
-        transferWarning = ' Your browser draft remains on this device and can be saved again after sign-in.';
-      }
-      const params = new URLSearchParams(window.location.search);
-      const checkoutIntentId = params.get('intent') || '';
-      const queryReturnPath = customerReturnPath(params.get('return'), params.get('checkout'), params.get('draft'));
-      const returnPath = queryReturnPath !== '/customer'
-        ? queryReturnPath
-        : pendingCheckoutReturnPath(localStorage.getItem(PENDING_CHECKOUT_STORAGE_KEY));
-      const res = await fetch('/api/auth/site-owner/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, returnPath, intentId: checkoutIntentId, draftSlug: params.get('draft') || '', authMode })
-      });
-      const data = await res.json();
-      setMsg(data.ok ? `${data.message}${transferWarning}` : (data.error || 'The secure email link could not be sent.'));
-    } catch (error) {
-      setMsg(`The secure email link could not be sent: ${error.message}`);
-    } finally {
-      setLinkSending(false);
-    }
-  }
-
-  async function signOut() {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY) || '';
-    try {
-      await fetch('/api/auth/site-owner/signout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-    } catch {}
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    autoLoadedOwnerRef.current = '';
-    setVerifiedEmail('');
-    setSites([]);
-    setMsg('Signed out. Your private websites now require a new secure email link.');
-  }
-
   async function findSites(liveSearch = false) {
     if (!verifiedEmail) {
       setMsg('Verify your email before searching for saved websites.');
       return;
     }
-    const cleanEmail = verifiedEmail;
     const cleanSlug = normalizeSubdomain(query);
-    if (!cleanEmail && !cleanSlug) {
-      setMsg('Enter your email address or website name/subdomain. You can use just the name, like cookies-kitchen-digital-recipes, or the full link.');
-      setSites([]);
-      return;
-    }
     setLoading(true);
     setSavedOpen(true);
     setMsg(liveSearch && query ? 'Filtering saved websites as you type...' : 'Loading your websites and drafts...');
@@ -320,7 +229,7 @@ export default function Customer() {
       const res = await fetch('/api/site/search', {
         method: 'POST',
         headers: secureHeaders(),
-        body: JSON.stringify({ email: cleanEmail, query: cleanSlug })
+        body: JSON.stringify({ query: cleanSlug, status: statusFilter })
       });
       const data = await res.json();
       if (!data.ok) {
@@ -374,7 +283,7 @@ export default function Customer() {
   const visibleSites = sites.filter(site => {
     const status = effectiveStatus(site);
     const matchesStatus = statusFilter === 'all' || statusFilter === status || (statusFilter === 'published' && status === 'live');
-    return matchesStatus && (matchesWords(site.slug) || matchesWords(site.business_name) || matchesWords(site.site?.businessName));
+    return matchesStatus && (matchesWords(site.slug) || matchesWords(site.business_name) || matchesWords(site.site?.businessName) || matchesWords(site.plan) || matchesWords(status));
   });
   const shownBrowserDrafts = browserDrafts.filter(item => {
     if (sites.some(site => site.slug === item.slug)) return false;
@@ -424,36 +333,20 @@ export default function Customer() {
           <h1>My Websites</h1>
           <p>Open your customer-owned drafts, published websites, purchases, and publishing controls in one secure place.</p>
           <div className="customerSearchTips">
-            <div><strong>Email only</strong><span>Use the email that owns the website.</span></div>
-            <div><strong>A few words</strong><span>Type any part you remember, like kitchen or tadda.</span></div>
+            <div><strong>Your account only</strong><span>Your secure session automatically limits results to websites you own.</span></div>
+            <div><strong>A few words</strong><span>Type any part of your website name, plan, status, or address.</span></div>
             <div><strong>Full link</strong><span>Paste the whole subdomain if you have it.</span></div>
           </div>
           <div className="notice success">
-            <strong>{verifiedEmail ? 'Secure customer access' : authMode === 'create' ? 'Create Free Account' : 'Sign In'}</strong><br />
+            <strong>{verifiedEmail ? 'Secure customer access' : 'Sign in to open My Websites'}</strong><br />
             {authLoading ? (
               <span>Checking your secure session...</span>
             ) : verifiedEmail ? (
-              <>
-                <span>Verified as {verifiedEmail}. Only websites saved with this email can be managed.</span>
-                <div className="navRow"><button className="btn light" type="button" onClick={signOut}>Sign Out</button></div>
-              </>
+              <span>Signed in as {verifiedEmail}. Only websites owned by this account can be managed.</span>
             ) : (
               <>
-                <span>{authMode === 'create'
-                  ? 'Create your free account to save your website, reopen it later, access it from another device, purchase a plan, and publish when you’re ready.'
-                  : 'Sign in securely to open your saved websites, drafts, purchases, and publishing controls.'}</span>
-                <div className="authChoiceRow" aria-label="Choose account access">
-                  <a className={`btn ${authMode === 'signin' ? '' : 'light'}`} href="/customer?mode=signin">Sign In</a>
-                  <a className={`btn ${authMode === 'create' ? '' : 'light'}`} href="/customer?mode=create">Create Free Account</a>
-                </div>
-                <div className="navRow">
-                  <button className="btn" type="button" onClick={requestSecureLink} disabled={linkSending}>
-                    {linkSending
-                      ? 'Requesting Secure Link...'
-                      : authMode === 'create' ? 'Email My Secure Account Link' : 'Email My Secure Sign-In Link'}
-                  </button>
-                </div>
-                <p className="mutedText">Secure links are temporary and one-time use. If you entered the wrong email, correct it below before requesting another link.</p>
+                <span>Use the shared account window to sign in with your password or create a free account.</span>
+                <div className="navRow"><button className="btn" type="button" onClick={() => openAccountModal({ mode: authMode, destination: '/customer' })}>Open Customer Sign In</button></div>
               </>
             )}
           </div>
@@ -464,22 +357,17 @@ export default function Customer() {
               <div className="navRow"><a className="btn" href={pendingPurchase.builderPath}>Continue Purchase</a></div>
             </div>
           )}
-          <div className="row">
+          {verifiedEmail && <div className="row">
             <div className="field">
-              <label htmlFor="customer-auth-email">{authMode === 'create' ? 'Email for your free account' : 'Account email'}</label>
-              <input id="customer-auth-email" type="email" autoComplete="email" placeholder="your@email.com" value={email} onChange={e => setEmail(e.target.value)} disabled={Boolean(verifiedEmail)} />
+              <label htmlFor="my-websites-search">Search my websites</label>
+              <input id="my-websites-search" placeholder="Website name, plan, status, or address" value={query} onChange={e => setQuery(e.target.value)} autoComplete="off" />
             </div>
-            <div className="field">
-              <label>Type a few letters, words, or the website link</label>
-              <input placeholder="Example: kitchen, tadda, or the full link" value={query} onChange={e => setQuery(e.target.value)} autoComplete="off" />
-            </div>
-          </div>
+          </div>}
           {query && <div className="notice smallNotice">We will search for: <strong>{normalizeSubdomain(query) || 'enter a website name'}</strong></div>}
           {msg && <div role="status" aria-live="polite" className={`notice ${msg.includes('failed') || msg.includes('No websites') || msg.includes('Enter') ? 'error' : ''}`}>{msg}</div>}
           <div className="navRow">
             <button className="btn" onClick={findSites} disabled={loading || !verifiedEmail}>{loading ? 'Loading My Websites...' : 'Refresh My Websites'}</button>
             <a className="btn dark" href="/builder">Start New Website</a>
-            {verifiedEmail && <a className="btn light" href="/customer/account">Account</a>}
             {browserDraft && <button className="btn dark" onClick={() => continueBrowserDraft(browserDraft)}>Continue Last Browser Draft</button>}
           </div>
         </section>

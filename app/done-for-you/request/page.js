@@ -16,12 +16,19 @@ export default function DoneForYouRequestPage() {
   const [plan, setPlan] = useState('Website Setup Consultation');
   const [form, setForm] = useState({ name: '', business: '', businessType: '', email: '', phone: '', customerAction: '', details: '', contact: 'Email', companyWebsite: '' });
   const [status, setStatus] = useState('');
+  const [statusKind, setStatusKind] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const selected = new URLSearchParams(window.location.search).get('plan');
     if (selected) setPlan(selected);
   }, []);
+
+  useEffect(() => {
+    if (!status || statusKind !== 'success') return;
+    const timer = window.setTimeout(() => setStatus(''), 8500);
+    return () => window.clearTimeout(timer);
+  }, [status, statusKind]);
 
   const estimate = turnaround[plan] || 'Confirmed after your content is reviewed';
   function update(key, value) {
@@ -31,6 +38,7 @@ export default function DoneForYouRequestPage() {
   async function submit(event) {
     event.preventDefault();
     setSubmitting(true);
+    setStatusKind('progress');
     setStatus('Sending your request and confirmation email...');
     try {
       const response = await fetch('/api/done-for-you/request', {
@@ -40,18 +48,18 @@ export default function DoneForYouRequestPage() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) throw new Error(data.error || 'Request failed.');
-      const delivery = data.notificationsAccepted
-        ? 'Your confirmation and owner notification were accepted for delivery.'
-        : 'Your request was saved. One or more email notifications may be delayed.';
+      setForm({ name: '', business: '', businessType: '', email: '', phone: '', customerAction: '', details: '', contact: 'Email', companyWebsite: '' });
+      setStatusKind('success');
       if (data.checkoutRequired && data.checkoutConfigured && data.checkoutUrl) {
-        setStatus(`Request ${data.requestId} received. ${delivery} Opening secure checkout...`);
-        setTimeout(() => window.location.assign(data.checkoutUrl), 1400);
+        setStatus('Request received. Opening secure checkout…');
+        setTimeout(() => window.location.assign(data.checkoutUrl), 900);
       } else if (data.checkoutRequired) {
-        setStatus(`Request ${data.requestId} received. ${delivery} Secure checkout is temporarily unavailable, so Cookie Digital Creations will contact you with the correct payment step. You were not charged.`);
+        setStatus('Request received. We’ll email you the next step.');
       } else {
-        setStatus(`Request ${data.requestId} received. ${delivery}`);
+        setStatus('Request received. We’ll email you the next step.');
       }
     } catch (error) {
+      setStatusKind('error');
       setStatus(error.message || 'The request could not be sent. Please try again.');
     } finally {
       setSubmitting(false);
@@ -95,7 +103,10 @@ export default function DoneForYouRequestPage() {
           <Link className="btn light" href="/done-for-you">Back to Services</Link>
           <button className="btn dark" type="button" data-cookie-ai-open="Help me choose a Done-for-You website service.">Ask Cookie AI First</button>
         </div>
-        {status && <div className={`notice ${status.includes('could not') || status.includes('failed') ? 'error' : ''}`} role={status.includes('could not') || status.includes('failed') ? 'alert' : 'status'} aria-live="polite">{status}</div>}
+        {status && <div className={`notice compactRequestToast ${statusKind === 'error' ? 'error' : statusKind === 'success' ? 'success' : ''}`} role={statusKind === 'error' ? 'alert' : 'status'} aria-live={statusKind === 'error' ? 'assertive' : 'polite'}>
+          <span>{status}</span>
+          {statusKind === 'success' && <button type="button" className="saveStatusDismiss" onClick={() => setStatus('')} aria-label="Dismiss request confirmation">×</button>}
+        </div>}
         <p className="requestNote">Paid services continue to secure checkout after the request is received. Your build turnaround begins after payment and all required content are received.</p>
       </form>
     </main>

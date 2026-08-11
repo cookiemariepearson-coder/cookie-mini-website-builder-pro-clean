@@ -4,6 +4,7 @@ import { Children, cloneElement, isValidElement, useEffect, useId, useMemo, useR
 import SitePreview from '../../lib/SitePreview.js';
 import { createDefaultSite, templateLibrary, getTemplate, pageOptions, plans, slugify, sectionPrompts, normalizeSelectedPagesForPlan, planAllowsMedia, planAllowsAiVideo, planSectionLimit, customerActionLimit, customerActionTypes, normalizeCustomerActions } from '../../lib/siteDefaults';
 import { PENDING_CHECKOUT_STORAGE_KEY, createPendingCheckoutIntent, websiteCheckoutRoute } from '../../lib/commerceConfig.mjs';
+import { useAccountModal } from '../../components/AccountModalProvider';
 
 const DRAFT_KEY = 'cookieDraftSite';
 const LAST_STEP_KEY = 'cookieBuilderStep';
@@ -18,10 +19,7 @@ function ownerAccessToken() {
 
 function ownerAuthHeaders() {
   const token = ownerAccessToken();
-  return {
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${token}`
-  };
+  return { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
 function safeParse(raw) {
@@ -136,6 +134,7 @@ async function compressImage(file, maxSize = 900, quality = 0.68) {
 }
 
 export default function Builder() {
+  const { accountState, openAccountModal } = useAccountModal();
   const [step, setStep] = useState(0);
   const [site, setSite] = useState(() => createDefaultSite());
   const [message, setMessage] = useState('');
@@ -153,9 +152,10 @@ export default function Builder() {
   const checkoutBusyRef = useRef(false);
   const tmpl = useMemo(() => getTemplate(site.typeKey, site.styleKey), [site.typeKey, site.styleKey]);
 
+  useEffect(() => { setHasOwnerSession(accountState === 'signed-in'); }, [accountState]);
+
   useEffect(() => {
     async function restore() {
-      setHasOwnerSession(Boolean(ownerAccessToken()));
       const params = new URLSearchParams(window.location.search);
       let requestedCheckout = websiteCheckoutRoute(params.get('checkout')) ? params.get('checkout') : '';
       let checkoutIntentId = params.get('checkoutIntent') || '';
@@ -242,7 +242,7 @@ export default function Builder() {
   }, []);
 
   useEffect(() => {
-    if (!resumeCheckoutRequested || !pendingCheckout || !pendingCheckoutIntent || (pendingCheckout !== 'extra' && site.plan !== pendingCheckout) || !ownerAccessToken()) return;
+    if (!resumeCheckoutRequested || !pendingCheckout || !pendingCheckoutIntent || (pendingCheckout !== 'extra' && site.plan !== pendingCheckout) || !hasOwnerSession) return;
     const intentId = pendingCheckoutIntent;
     setPendingCheckout('');
     setResumeCheckoutRequested(false);
@@ -251,7 +251,7 @@ export default function Builder() {
     else checkoutPlan(intentId);
     // checkoutPlan saves the verified owner's draft before opening checkout.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingCheckout, pendingCheckoutIntent, resumeCheckoutRequested, site.plan]);
+  }, [pendingCheckout, pendingCheckoutIntent, resumeCheckoutRequested, site.plan, hasOwnerSession]);
 
   useEffect(() => {
     function checkSize() {
@@ -279,11 +279,11 @@ export default function Builder() {
     // Slower, lightweight autosave keeps the builder from freezing while typing or uploading images.
     const handle = setTimeout(() => {
       const localDraft = persistLocal('Draft auto-saved.', true);
-      if (!ownerAccessToken() && localDraft) void syncGuestDraftClaim(localDraft, true);
+      if (!hasOwnerSession && localDraft) void syncGuestDraftClaim(localDraft, true);
     }, 13000);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [site, step]);
+  }, [site, step, hasOwnerSession]);
 
   useEffect(() => {
     // No browser "Leave site?" popup. The builder already saves local drafts
@@ -511,7 +511,7 @@ export default function Builder() {
   }
 
   async function syncGuestDraftClaim(draft, quiet = false) {
-    if (!draft || ownerAccessToken()) return null;
+    if (!draft || hasOwnerSession) return null;
     let existing = null;
     try { existing = safeParse(localStorage.getItem(GUEST_CLAIM_KEY)); } catch {}
     try {
@@ -540,8 +540,8 @@ export default function Builder() {
   }
 
   async function saveDraftOnline(draft, quiet = false) {
-    if (!ownerAccessToken()) {
-      throw new Error('Verify your email from My Website before saving online.');
+    if (!hasOwnerSession) {
+      throw new Error('Sign in from the account window before saving online.');
     }
     const res = await fetch('/api/site/draft', {
       method: 'POST',
@@ -567,7 +567,7 @@ export default function Builder() {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft));
       localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draft.slug);
       saveLocalDraftIndex(lightDraft);
-      if (!ownerAccessToken()) {
+      if (!hasOwnerSession) {
         await syncGuestDraftClaim(lightDraft);
       } else {
         await saveDraftOnline(draft);
@@ -603,10 +603,10 @@ export default function Builder() {
   }
 
   async function publishFree() {
-    if (!ownerAccessToken()) {
+    if (!hasOwnerSession) {
       persistLocal('Draft saved before secure email verification.');
-      setMessage('Verify your email before publishing. Opening secure customer access now...');
-      setTimeout(() => { window.location.href = '/customer?mode=create&return=builder'; }, 700);
+      setMessage('Sign in or create an account before publishing. Your browser draft is safe.');
+      openAccountModal({ mode: 'create', destination: '/builder' });
       return;
     }
     const businessSlug = slugify(site.businessName || '');
@@ -687,10 +687,10 @@ export default function Builder() {
       setMessage(error.message || 'Secure checkout could not start. Your draft is still safe.');
       return;
     }
-    if (!ownerAccessToken()) {
+    if (!hasOwnerSession) {
       persistLocal('Draft saved before secure email verification.');
       setMessage('Verify your email before the add-on checkout so it is attached to the correct website.');
-      setTimeout(() => { window.location.href = `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draftSlug)}`; }, 700);
+      openAccountModal({ mode: 'signin', destination: `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draftSlug)}` });
       return;
     }
     const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlug, draftName: site.draftName || site.businessName, status: 'draft' };
@@ -735,10 +735,10 @@ export default function Builder() {
       checkoutBusyRef.current = false;
       return;
     }
-    if (!ownerAccessToken()) {
+    if (!hasOwnerSession) {
       persistLocal('Draft saved before secure email verification.');
       setMessage('Verify your email before checkout so the paid website belongs securely to you.');
-      setTimeout(() => { window.location.href = `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draftSlug)}`; }, 700);
+      openAccountModal({ mode: 'signin', destination: `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draftSlug)}` });
       return;
     }
     const incompleteActions = missingActionLinks(site);
@@ -825,7 +825,7 @@ export default function Builder() {
         <button className="btn light" onClick={saveDraft} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Draft'}</button>
         {isSmallBuilderScreen && <button className="btn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button>}
         {planAllowsAiVideo(site.plan) ? <button className="btn light aiStudioBuilderBtn" onClick={goVideo}>AI Video Studio</button> : <button className="btn light lockedBtn aiStudioBuilderBtn" onClick={goVideo}>AI Video Upgrade</button>}
-        <a className="btn light" href="/customer">My Websites</a>
+        <button className="btn light" type="button" onClick={() => hasOwnerSession ? window.location.assign('/customer') : openAccountModal({ mode: 'signin', destination: '/customer' })}>My Websites</button>
         <button className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
         {showCurrentDraft && (
           <div className="notice smallNotice currentDraftNotice" role="status">
@@ -847,11 +847,7 @@ export default function Builder() {
             {!hasOwnerSession && (
               <div className="notice guestDraftNotice" role="status">
                 <strong>Saved on this device</strong><br />
-                This draft is saved only in this browser. Create a free account to save it permanently and open it on other devices.
-                <div className="navRow">
-                  <a className="btn" href="/customer?mode=create&return=builder">Create Free Account</a>{' '}
-                  <a className="btn light" href="/customer?mode=signin&return=builder">Sign In</a>
-                </div>
+                Saved on this device. Sign in or create an account when you want to save permanently, purchase, or publish.
               </div>
             )}
             {isSmallBuilderScreen && <div className="notice mobilePreviewNotice"><strong>Mobile tip:</strong> Tap the button below to preview your site in a separate screen, then close it to keep editing.<br /><button type="button" className="btn mobilePreviewInlineBtn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button></div>}
@@ -1032,7 +1028,7 @@ export default function Builder() {
                 <p>Your website name will be:</p>
                 <div className="notice"><strong>{plans[site.plan]?.label}</strong> will publish {limitText}. Selected sections: {selectedSections.join(', ')}.</div>
                 <div className="notice"><strong>{draftSlugFor(site)}.cookiesdigitalcreations.com</strong></div>
-                <button className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}<a className="btn dark" href="/customer">My Websites</a>{' '}
+                <button className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}
                 {site.plan === 'free' ? <button className="btn" onClick={publishFree}>Publish Free Page</button> : (
                   <button
                     type="button"

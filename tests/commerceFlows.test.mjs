@@ -105,7 +105,8 @@ test('Done-for-You keeps the request path alive when checkout is not configured'
   assert.match(api, /Your request is safely received\. Secure checkout is temporarily unavailable/);
   assert.match(api, /checkoutConfigured: Boolean\(checkoutUrl\)/);
   assert.doesNotMatch(api, /Your request was not submitted or charged/);
-  assert.match(page, /Cookie Digital Creations will contact you with the correct payment step/);
+  assert.match(page, /Request received\. We’ll email you the next step\./);
+  assert.match(page, /setTimeout\(\(\) => setStatus\(''\), 8500\)/);
   assert.match(api, /createCustomerRequest/);
   assert.match(api, /notificationsAccepted/);
 });

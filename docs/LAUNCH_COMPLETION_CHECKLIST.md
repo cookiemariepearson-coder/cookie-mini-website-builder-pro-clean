@@ -43,9 +43,23 @@ Do not reopen these completed journeys without evidence of a regression.
 - [x] Starter Pro — `$249 one-time setup` production setting and live Gumroad product page verified.
 - [x] Business — `$499 one-time setup`; `DFY_BUSINESS_CHECKOUT_URL` configured and the live Builder handoff verified against the published one-time Gumroad product.
 - [x] Premium — `$899 one-time setup`; `DFY_PREMIUM_CHECKOUT_URL` configured and the live Builder handoff verified against the published one-time Gumroad product.
-- [ ] Extra Page Add-On — `$125 one-time setup`; no corresponding one-time Gumroad product exists, so `DFY_EXTRA_PAGE_CHECKOUT_URL` remains intentionally unset and the safe support-follow-up path remains active.
+- [ ] Extra Page Add-On — `$125 one-time setup`; owner reported the product created, but the connected `cookiepearson` Gumroad catalog still does not display the one-time product and production still has no `DFY_EXTRA_PAGE_CHECKOUT_URL`. The safe support-follow-up path remains active; the separate `$10/month` Extra Page subscription is not substituted.
 
 Do not substitute the Business or Premium monthly website subscriptions, the monthly Extra Page subscription, AI Video, or another DFY product for these one-time setup purchases.
+
+## In progress — clean password account experience
+
+- [x] Shared Mini Builder account modal implemented for desktop and mobile.
+- [x] Builder and My Websites duplicate Create Account / Sign In button blocks removed.
+- [x] Returning customers use Supabase password sign-in without a routine email link.
+- [x] New accounts receive one Builder-owned email confirmation.
+- [x] Existing customers can set or reset a password without changing their Supabase user ID.
+- [x] Customer sessions moved to a Secure, HttpOnly, SameSite cookie; existing browser bearer sessions are adopted once and removed from local storage.
+- [x] My Websites search uses the authenticated owner and cannot accept a public email identity.
+- [x] Owner website/request searches remain admin-protected and bounded.
+- [x] Compact Done-for-You success messages dismiss automatically after 8.5 seconds; stored requests and email request IDs remain unchanged.
+- [ ] Owner live verification of the modal, initial confirmation, existing-user password setup, returning password sign-in, and customer/owner search.
+- [ ] Enable Supabase leaked-password protection if the project plan supports it; the current security advisor reports it disabled.
 
 ## Remaining after the current phase
 

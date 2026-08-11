@@ -28,6 +28,7 @@ export default function CustomerRequestsAdminPage() {
   const [requests, setRequests] = useState([]);
   const [configuration, setConfiguration] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
   const [message, setMessage] = useState('Checking your secure owner session...');
   const [loading, setLoading] = useState(false);
 
@@ -78,9 +79,15 @@ export default function CustomerRequestsAdminPage() {
     }
   }
 
-  const visibleRequests = useMemo(() => requests.filter((item) => (
-    filter === 'all' || item.request_type === filter || item.notification_status === filter
-  )), [requests, filter]);
+  const visibleRequests = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return requests.filter((item) => {
+      const matchesFilter = filter === 'all' || item.request_type === filter || item.notification_status === filter;
+      const matchesSearch = !term || [item.request_id, item.customer_email, item.customer_name, item.business_name, item.service, item.business_type]
+        .join(' ').toLowerCase().includes(term);
+      return matchesFilter && matchesSearch;
+    });
+  }, [requests, filter, search]);
 
   return <>
     <Nav />
@@ -108,6 +115,7 @@ export default function CustomerRequestsAdminPage() {
         <section className="adminPanel">
           <div className="row" style={{ alignItems: 'end' }}>
             <div className="field"><label htmlFor="request-filter">Show requests</label><select id="request-filter" value={filter} onChange={(event) => setFilter(event.target.value)}><option value="all">All</option><option value="contact">Contact Us</option><option value="done-for-you">Done-for-You</option><option value="partial">Partially delivered</option><option value="rejected">Email delayed</option></select></div>
+            <div className="field"><label htmlFor="request-search">Owner search</label><input id="request-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Email, name, website, service, or request ID" autoComplete="off" /></div>
             <button className="btn dark" type="button" disabled={loading} onClick={load}>{loading ? 'Refreshing...' : 'Refresh Requests'}</button>
           </div>
           <div className="notice" role="status" aria-live="polite">{message}</div>

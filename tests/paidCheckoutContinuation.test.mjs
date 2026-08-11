@@ -101,7 +101,6 @@ test('11. auth callback and dashboard fallback both resume the durable intent', 
   assert.match(confirm, /fetch\('\/api\/auth\/site-owner\/confirm'/);
   assert.match(confirm, /fetch\('\/api\/checkout\/intent\/resume'/);
   assert.match(callback, /fetch\('\/api\/checkout\/intent\/resume'/);
-  assert.match(customer, /window\.location\.hash/);
   assert.match(customer, /fetch\('\/api\/checkout\/intent\/active'/);
   assert.match(customer, /Continue Purchase/);
 });
@@ -162,12 +161,12 @@ test('17. fresh incognito checkout uses a dedicated verification page rather tha
   ]);
   assert.match(builder, /\/checkout\/continue\?intent=/);
   assert.match(continuationPage, /Continue Your Website Purchase/);
-  assert.match(continuationPage, /Email My Secure Checkout Link/);
-  assert.match(continuationPage, /\/api\/auth\/site-owner\/request/);
+  assert.match(continuationPage, /Sign In and Continue Purchase/);
+  assert.match(continuationPage, /openAccountModal/);
   assert.match(continuationPage, /!data\.ok \|\| !data\.intentId/);
   assert.match(continuationPage, /id: data\.intentId, plan: data\.plan, draftSlug: data\.draftSlug/);
   assert.doesNotMatch(continuationPage, /!data\.ok \|\| !data\.intent\)/);
-  assert.match(customer, /window\.location\.replace\(`\/checkout\/continue\?intent=/);
+  assert.match(customer, /`\/checkout\/continue\?intent=\$\{encodeURIComponent\(checkoutIntentId\)\}/);
 });
 
 test('18. website-plan checkout redirects and continuation share one authoritative commerce map', async () => {
