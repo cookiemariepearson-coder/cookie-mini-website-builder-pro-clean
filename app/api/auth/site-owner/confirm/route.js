@@ -9,6 +9,7 @@ import {
   traceWebsiteCheckout,
   websiteCheckoutIntentState
 } from '../../../../../lib/websiteCheckoutIntent.mjs';
+import { SITE_OWNER_SESSION_COOKIE, siteOwnerSessionCookieOptions } from '../../../../../lib/siteOwnerAuth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -50,9 +51,11 @@ export async function POST(request) {
     }
 
     if (intentId) traceWebsiteCheckout('AUTH_CONFIRM_SUCCEEDED', intent);
-    return NextResponse.json({ ok: true, accessToken: data.session.access_token, returnPath, authMode }, {
+    const response = NextResponse.json({ ok: true, returnPath, authMode }, {
       headers: { 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' }
     });
+    response.cookies.set(SITE_OWNER_SESSION_COOKIE, data.session.access_token, siteOwnerSessionCookieOptions(data.session.expires_in));
+    return response;
   } catch (error) {
     console.error('[website-checkout-auth] confirmation failed', { message: error?.message || String(error) });
     return NextResponse.json({ ok: false, error: 'Your email could not be verified right now. Your website and plan are still saved; please request a new secure link.' }, { status: 500 });

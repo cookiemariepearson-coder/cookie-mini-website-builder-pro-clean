@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Nav from '../../../../lib/Nav';
 
-const AUTH_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
 const GUEST_CLAIM_KEY = 'cookieGuestDraftClaimV1';
 
 export default function BuilderCheckoutAuthConfirm() {
@@ -41,12 +40,11 @@ export default function BuilderCheckoutAuthConfirm() {
           body: JSON.stringify({ intentId, returnPath, tokenHash, type, authMode })
         });
         const confirmation = await confirmationResponse.json();
-        if (!confirmation.ok || !confirmation.accessToken) {
+        if (!confirmation.ok) {
           setMessage(confirmation.error || 'This secure email link could not be verified. Request a new link from your saved checkout.');
           return;
         }
 
-        localStorage.setItem(AUTH_TOKEN_KEY, confirmation.accessToken);
         if (!intentId) {
           let claimed = false;
           try {
@@ -55,7 +53,7 @@ export default function BuilderCheckoutAuthConfirm() {
               setMessage('Account verified. Saving this browser draft permanently…');
               const claimResponse = await fetch('/api/site/guest-draft/claim', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${confirmation.accessToken}` },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ claimId: claim.claimId, claimToken: claim.claimToken })
               });
               const claimResult = await claimResponse.json();
@@ -74,7 +72,7 @@ export default function BuilderCheckoutAuthConfirm() {
         setMessage('Email verified. Restoring your exact plan and website…');
         const resumeResponse = await fetch('/api/checkout/intent/resume', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${confirmation.accessToken}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ intentId })
         });
         const resumed = await resumeResponse.json();

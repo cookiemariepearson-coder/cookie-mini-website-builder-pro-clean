@@ -99,7 +99,6 @@ test('auth callback, dashboard fallback and restored sessions recover server-sid
   assert.match(confirm, /\/api\/auth\/site-owner\/confirm/);
   assert.match(confirm, /\/api\/checkout\/intent\/resume/);
   assert.match(callback, /\/api\/checkout\/intent\/resume/);
-  assert.match(customer, /window\.location\.hash/);
   assert.match(customer, /\/api\/checkout\/intent\/active/);
   assert.match(customer, /Continue Purchase/);
   assert.match(resume, /checkoutIntentBelongsToOwner/);

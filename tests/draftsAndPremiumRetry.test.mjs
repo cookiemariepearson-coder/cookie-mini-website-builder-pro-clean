@@ -66,19 +66,17 @@ test('fresh Pricing intent may bind its placeholder draft to the current browser
   assert.match(start, /\.is\('email_hash', null\)/);
 });
 
-test('signed-out My Websites requests a Builder-owned secure account link', async () => {
-  const [customer, request, confirm] = await Promise.all([
+test('signed-out My Websites opens the Builder-owned password account modal', async () => {
+  const [customer, password, modal] = await Promise.all([
     source('app/customer/page.js'),
-    source('app/api/auth/site-owner/request/route.js'),
-    source('app/customer/auth/confirm/page.js')
+    source('app/api/auth/site-owner/password/route.js'),
+    source('components/AccountModalProvider.js')
   ]);
-  assert.match(customer, /Email My Secure Sign-In Link/);
-  assert.match(request, /builderCustomerConfirmationUrl/);
-  assert.match(request, /Your secure Mini Website Builder sign-in link/);
-  assert.match(request, /Create your Cookies Digital Creations website account/);
-  assert.doesNotMatch(request, /signInWithOtp/);
-  assert.match(confirm, /Open My Websites Securely/);
-  assert.match(confirm, /guest-draft\/claim/);
+  assert.match(customer, /Open Customer Sign In/);
+  assert.match(customer, /openAccountModal/);
+  assert.match(password, /signInWithPassword/);
+  assert.match(password, /type: 'signup'/);
+  assert.match(modal, /guest-draft\/claim/);
 });
 
 test('verified owner automatically loads saved drafts without a second search click', async () => {

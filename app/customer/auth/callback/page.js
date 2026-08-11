@@ -3,8 +3,6 @@
 import { useEffect, useState } from 'react';
 import { PENDING_CHECKOUT_STORAGE_KEY, resolveCustomerContinuation } from '../../../../lib/commerceConfig.mjs';
 
-const AUTH_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
-
 export default function CustomerAuthCallback() {
   const [message, setMessage] = useState('Verifying your secure email link...');
 
@@ -25,13 +23,17 @@ export default function CustomerAuthCallback() {
         return;
       }
 
-      localStorage.setItem(AUTH_TOKEN_KEY, token);
       window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+      const adoptionResponse = await fetch('/api/auth/site-owner/session', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+      if (!adoptionResponse.ok) {
+        setMessage('This secure sign-in link is invalid or expired. Return to My Websites and sign in again.');
+        return;
+      }
       if (intentId) {
         try {
           const response = await fetch('/api/checkout/intent/resume', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ intentId })
           });
           const recovered = await response.json();
@@ -50,7 +52,7 @@ export default function CustomerAuthCallback() {
       if (returnPath === '/customer') {
         try {
           const response = await fetch('/api/auth/site-owner/continuation', {
-            headers: { Authorization: `Bearer ${token}` }
+            cache: 'no-store'
           });
           const recovered = await response.json();
           if (recovered.ok && recovered.returnPath) returnPath = recovered.returnPath;

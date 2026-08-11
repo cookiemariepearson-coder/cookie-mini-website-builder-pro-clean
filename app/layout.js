@@ -12,7 +12,9 @@ import './cookie-ai-assistant.css';
 import './done-for-you.css';
 import './website-experience-refresh.css';
 import './admin-warm-refresh.css';
+import './account-modal.css';
 import CookieAiAssistant from '../components/CookieAiAssistant';
+import AccountModalProvider from '../components/AccountModalProvider';
 
 export const metadata = {
   metadataBase: new URL('https://www.cookiesdigitalcreations.com'),
@@ -42,8 +44,10 @@ export default function RootLayout({ children }) {
         <meta name="impact-site-verification" content="6a804b9b-3376-4cc7-8b0f-9c6d95497d97" />
       </head>
       <body>
-        {children}
-        <CookieAiAssistant />
+        <AccountModalProvider>
+          {children}
+          <CookieAiAssistant />
+        </AccountModalProvider>
       </body>
     </html>
   );

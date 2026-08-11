@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Nav from '../../../lib/Nav';
 
-const AUTH_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
 const LOCAL_DRAFT_KEYS = ['cookieDraftSite', 'cookieDraftSitesIndex', 'cookieBuilderStep', 'cookieBuilderCurrentSlug', 'cookieGuestDraftClaimV1'];
 const AI_HISTORY_KEYS = ['cookieAiAssistantV2Messages', 'cookieAiAssistantPlanState'];
 
@@ -14,19 +13,14 @@ export default function CustomerAccountPage() {
   const [websites, setWebsites] = useState([]);
 
   useEffect(() => {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY) || '';
-    if (!token) {
-      setStatus('Sign in to view account controls.');
-      return;
-    }
-    fetch('/api/auth/site-owner/session', { headers: { Authorization: `Bearer ${token}` } })
+    fetch('/api/auth/site-owner/session', { cache: 'no-store' })
       .then(response => response.json())
       .then(data => {
         if (!data.ok) throw new Error(data.error || 'Session expired.');
         setEmail(data.email || '');
         return fetch('/api/site/search', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: '' })
         }).then(response => response.json()).then(result => {
           setWebsites(result.ok ? (result.sites || []) : []);
@@ -36,13 +30,9 @@ export default function CustomerAccountPage() {
       .catch(() => setStatus('Your secure session expired. Sign in again to use account controls.'));
   }, []);
 
-  function authHeaders() {
-    return { Authorization: `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY) || ''}` };
-  }
-
   async function exportData() {
     setStatus('Preparing your account export…');
-    const response = await fetch('/api/account/export', { headers: authHeaders() });
+    const response = await fetch('/api/account/export');
     if (!response.ok) {
       const result = await response.json().catch(() => ({}));
       setStatus(result.error || 'Your export could not be prepared.');
@@ -67,7 +57,7 @@ export default function CustomerAccountPage() {
     setStatus('Sending your confirmed deletion request…');
     const response = await fetch('/api/account/delete-request', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ confirmation })
     });
     const result = await response.json();

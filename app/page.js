@@ -3,6 +3,7 @@ import Nav from '../lib/Nav';
 import OwnerFooter from '../lib/OwnerFooter';
 import LandingWelcomeExperience from '../components/LandingWelcomeExperience';
 import CustomerAccountLink from '../components/CustomerAccountLink';
+import { AccountAction } from '../components/AccountModalProvider';
 
 const planTiles = [
   ['Free Launch Page', '$0', 'Up to 3 selected sections', '1 action button'],
@@ -44,7 +45,7 @@ export default function Home(){
               order from you, buy from you, request a quote, or get started.
             </p>
             <div className="heroButtonRow">
-              <Link className="btn" href="/builder">Start Building Free</Link>
+              <AccountAction className="btn" destination="/builder" guestAllowed mode="create">Start Building Free</AccountAction>
               <Link className="btn dark" href="/pricing">View Website Plans</Link>
               <Link className="btn light" href="/checkout/ai-video">AI Video Studio — $5</Link>
             </div>
@@ -134,7 +135,7 @@ export default function Home(){
             <article>
               <strong>Build It Yourself</strong>
               <p>Choose a template, add your information, watch the live preview, save your draft, and publish when ready.</p>
-              <Link className="btn" href="/builder">Start Building Free</Link>
+              <AccountAction className="btn" destination="/builder" guestAllowed mode="create">Start Building Free</AccountAction>
             </article>
             <article>
               <strong>Done for You</strong>
@@ -147,12 +148,12 @@ export default function Home(){
         <section className="brandSection accountHowItWorks" aria-labelledby="accounts-work-heading">
           <span className="kicker">How accounts work</span>
           <h2 id="accounts-work-heading">Build first. Create an account when you are ready.</h2>
-          <p>You can start building without an account. Your draft will be saved temporarily in your current browser. Create a free account when you want to save permanently, use another device, purchase a plan, or publish. Returning customers can sign in with a secure email link—no password required.</p>
+          <p>You can start building without an account. Your draft will be saved temporarily in your current browser. Create a free account when you want to save permanently, use another device, purchase a plan, or publish. Returning customers sign in with their email and password.</p>
           <p className="privacyAccountNote">We use your email to create and protect your account, return you to your saved websites, and connect verified purchases to the correct website. Please review our <Link href="/privacy">Privacy Policy</Link> for complete details.</p>
           <div className="accountHowItWorksActions">
-            <Link className="btn" href="/builder">Start Building Free</Link>
-            <Link className="btn light" href="/customer?mode=create">Create Free Account</Link>
-            <Link className="btn dark" href="/customer?mode=signin">Sign In</Link>
+            <AccountAction className="btn" destination="/builder" guestAllowed mode="create">Start Building Free</AccountAction>
+            <AccountAction className="btn light" destination="/customer" mode="create">Create Free Account</AccountAction>
+            <AccountAction className="btn dark" destination="/customer" mode="signin">Sign In</AccountAction>
           </div>
         </section>
 
