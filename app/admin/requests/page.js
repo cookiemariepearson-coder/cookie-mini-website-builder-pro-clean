@@ -14,6 +14,14 @@ function statusLabel(value) {
   return 'Pending';
 }
 
+function configurationLabel(item) {
+  if (item.configured) return 'Configured';
+  if (item.reason === 'missing') return 'Missing';
+  if (item.reason === 'subscription-or-ai-video-conflict') return 'Blocked: wrong subscription or AI Video product';
+  if (item.reason === 'duplicate-dfy-product') return `Blocked: duplicates ${item.conflictsWith || 'another DFY product'}`;
+  return 'Invalid Gumroad URL';
+}
+
 export default function CustomerRequestsAdminPage() {
   const [email, setEmail] = useState('');
   const [authorized, setAuthorized] = useState(false);
@@ -107,7 +115,8 @@ export default function CustomerRequestsAdminPage() {
 
         <section className="adminPanel">
           <h2>Done-for-You checkout readiness</h2>
-          <div className="tableWrap"><table className="table"><thead><tr><th>Service</th><th>Production setting</th><th>Status</th></tr></thead><tbody>{configuration.map((item) => <tr key={item.service}><td>{item.service}</td><td><code>{item.environmentVariable}</code></td><td>{item.configured ? 'Configured' : 'Missing or invalid'}</td></tr>)}</tbody></table></div>
+          <p>Each setting must point to its own one-time Done-for-You Gumroad product. Monthly website subscriptions and AI Video are rejected automatically.</p>
+          <div className="tableWrap"><table className="table"><thead><tr><th>Service</th><th>Approved setup</th><th>Production setting</th><th>Status</th></tr></thead><tbody>{configuration.map((item) => <tr key={item.service}><td>{item.service}<br /><small>{item.purchaseType}</small></td><td>{item.setupPrice}</td><td><code>{item.environmentVariable}</code></td><td>{configurationLabel(item)}</td></tr>)}</tbody></table></div>
         </section>
 
         <section className="adminPanel">

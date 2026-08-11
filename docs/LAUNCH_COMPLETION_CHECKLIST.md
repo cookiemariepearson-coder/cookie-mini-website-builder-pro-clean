@@ -29,12 +29,23 @@ Protected production baseline for the Customer Account Journey:
 
 Do not reopen these completed journeys without evidence of a regression.
 
-## In progress — next launch-readiness phase
+## Completed support-request reliability
 
-- [ ] Contact, Done-for-You, and support-notification reliability.
-  - Automated route, persistence, provider-acceptance, rate-limit, and public-navigation coverage exists.
-  - Complete the focused production-readiness review and deployment.
-  - One real owner delivery check may still be required because automated provider acceptance does not prove inbox delivery.
+- [x] Contact, consultation, and Free Launch Page request reliability — owner production pass on August 11, 2026.
+  - Contact, consultation, and Free Launch Page requests were stored separately.
+  - Owner and customer emails were received.
+  - Customer Requests displayed the stored records.
+  - The Free Launch Page email opened the approved $99 one-time Gumroad product.
+
+## In progress — Done-for-You catalog checkout configuration
+
+- [x] Free Launch Page — `$99 one-time setup` checkout configured and owner-verified.
+- [x] Starter Pro — `$249 one-time setup` production setting reported configured; product-page verification remains part of the current focused pass.
+- [ ] Business — `$499 one-time setup`; `DFY_BUSINESS_CHECKOUT_URL` has no usable verified production destination.
+- [ ] Premium — `$899 one-time setup`; `DFY_PREMIUM_CHECKOUT_URL` has no usable verified production destination.
+- [ ] Extra Page Add-On — `$125 one-time setup`; `DFY_EXTRA_PAGE_CHECKOUT_URL` has no usable verified production destination.
+
+Do not substitute the Business or Premium monthly website subscriptions, the monthly Extra Page subscription, AI Video, or another DFY product for these one-time setup purchases.
 
 ## Remaining after the current phase
 

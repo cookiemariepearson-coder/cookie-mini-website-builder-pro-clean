@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
-import { cleanCheckoutUrl, DFY_CHECKOUT_ENV_BY_SERVICE } from '../../../../lib/commerceConfig.mjs';
+import { DFY_CHECKOUT_ENV_BY_SERVICE } from '../../../../lib/commerceConfig.mjs';
+import { resolveDfyCheckout } from '../../../../lib/dfyCommerce.mjs';
 import { sendResendEmail } from '../../../../lib/resendEmail.mjs';
 import { createCustomerRequest, updateCustomerRequest } from '../../../../lib/customerRequestStore.mjs';
 import { createCustomerRequestId } from '../../../../lib/customerRequestId.mjs';
@@ -61,9 +62,10 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'Email confirmation is temporarily unavailable. Please try again shortly.' }, { status: 503 });
     }
 
-    const checkoutUrl = service.checkoutEnv ? cleanCheckoutUrl(process.env[service.checkoutEnv]) : '';
-    if (service.checkoutEnv && !checkoutUrl) {
-      console.error('[done-for-you] checkout URL missing or invalid', { plan, environmentVariable: service.checkoutEnv });
+    const checkout = service.checkoutEnv ? resolveDfyCheckout(plan, process.env) : { configured: false, url: '', reason: 'not-required' };
+    const checkoutUrl = checkout.url;
+    if (service.checkoutEnv && !checkout.configured) {
+      console.error('[done-for-you] checkout unavailable', { plan, environmentVariable: service.checkoutEnv, reason: checkout.reason });
     }
     const requestId = createCustomerRequestId('DFY');
     const storedRequest = await createCustomerRequest({
@@ -104,6 +106,9 @@ export async function POST(request) {
       <p><strong>Name:</strong> ${safe.name}<br><strong>Business:</strong> ${safe.business}<br><strong>Business type:</strong> ${safe.businessType}<br><strong>Email:</strong> ${safe.email}<br><strong>Phone:</strong> ${safe.phone || 'Not provided'}<br><strong>Preferred contact:</strong> ${safe.contact}</p>
       <p><strong>Customer action:</strong> ${safe.customerAction}</p>
       <p><strong>Website details:</strong><br>${safe.details.replace(/\n/g, '<br>')}</p>`;
+    const ownerCheckoutAction = service.checkoutEnv && !checkoutUrl
+      ? `<p><strong>Owner action required:</strong> This customer needs manual checkout assistance. Verify the exact ${escapeHtml(plan)} Done-for-You ${escapeHtml(service.setup)} Gumroad product before updating ${escapeHtml(service.checkoutEnv)}. Do not substitute a monthly website subscription or another product.</p>`
+      : '';
 
     const [adminResult, customerResult] = await Promise.allSettled([
       sendResendEmail({
@@ -115,7 +120,7 @@ export async function POST(request) {
         requestId,
         idempotencyKey: `dfy-admin-${requestId}`,
         subject: `Done-for-You request: ${plan} — ${form.business}`,
-        html: `<h2>New Done-for-You Website Request</h2>${detailRows}<p><strong>Checkout configured:</strong> ${checkoutUrl ? 'Yes' : 'No'}</p>`
+        html: `<h2>New Done-for-You Website Request</h2>${detailRows}<p><strong>Checkout configured:</strong> ${checkoutUrl ? 'Yes' : 'No'}</p>${ownerCheckoutAction}`
       }),
       sendResendEmail({
         apiKey,

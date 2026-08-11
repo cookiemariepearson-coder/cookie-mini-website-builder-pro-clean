@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getVerifiedAdmin } from '../../../../lib/siteOwnerAuth';
-import { cleanCheckoutUrl, DFY_CHECKOUT_ENV_BY_SERVICE } from '../../../../lib/commerceConfig.mjs';
+import { getDfyCheckoutConfiguration } from '../../../../lib/dfyCommerce.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,10 +23,14 @@ export async function POST(request) {
       .limit(250);
     if (error) throw error;
 
-    const checkoutConfiguration = Object.entries(DFY_CHECKOUT_ENV_BY_SERVICE).map(([service, environmentVariable]) => ({
-      service,
-      environmentVariable,
-      configured: Boolean(cleanCheckoutUrl(process.env[environmentVariable]))
+    const checkoutConfiguration = getDfyCheckoutConfiguration(process.env).map((item) => ({
+      service: item.service,
+      environmentVariable: item.envName,
+      configured: item.configured,
+      reason: item.reason,
+      conflictsWith: item.conflictsWith || '',
+      setupPrice: item.setupPrice,
+      purchaseType: item.purchaseType
     }));
 
     return response({ ok: true, requests: data || [], checkoutConfiguration });
