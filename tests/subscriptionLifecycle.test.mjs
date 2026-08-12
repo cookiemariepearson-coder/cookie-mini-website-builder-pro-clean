@@ -236,17 +236,27 @@ test('event claiming and failed retries are idempotent and database-atomic', asy
 });
 
 test('owner review is authenticated, masked, and requires preview before reconcile', async () => {
-  const [route, list, service, manual] = await Promise.all([
+  const [route, list, service, manual, adminUpdate, checkoutVerify, registerWebhooks, siteDraft, siteGet, sitePublish, siteSave] = await Promise.all([
     source('app/api/admin/subscriptions/events/route.js'),
     source('app/api/admin/subscriptions/list/route.js'),
     source('lib/gumroadSubscriptionService.mjs'),
-    source('app/api/admin/subscriptions/manual-update/route.js')
+    source('app/api/admin/subscriptions/manual-update/route.js'),
+    source('app/api/admin/update/route.js'),
+    source('app/api/checkout/verify/route.js'),
+    source('app/api/gumroad/register-webhooks/route.js'),
+    source('app/api/site/draft/route.js'),
+    source('app/api/site/get/route.js'),
+    source('app/api/site/publish/route.js'),
+    source('app/api/site/save/route.js')
   ]);
   assert.match(route, /getVerifiedAdmin/);
   assert.match(list, /maskCustomerIdentifier/);
   assert.doesNotMatch(list, /select\('\*'\)/);
   assert.match(service, /Run Recheck before applying reconciliation/);
   assert.doesNotMatch(manual, /safe\.plan|safe\.access_status|safe\.subscription_status/);
+  for (const privateRoute of [route, list, manual, adminUpdate, checkoutVerify, registerWebhooks, siteDraft, siteGet, sitePublish, siteSave]) {
+    assert.match(privateRoute, /'Cache-Control': 'private, no-store, max-age=0'/);
+  }
 });
 
 test('migration keeps event data server-only and adds unique provider identities', async () => {

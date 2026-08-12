@@ -7,6 +7,10 @@ import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
 import { validateSiteMedia } from '../../../../lib/mediaValidation.mjs';
 import { extraPageAccess } from '../../../../lib/subscriptionLifecycle.mjs';
 
+function privateResponse(body, status = 200) {
+  return NextResponse.json(body, { status, headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
+}
+
 function friendlyError(message='') {
   return 'The online draft could not be saved. Your browser copy is still available; please try again shortly.';
 }
@@ -14,7 +18,7 @@ function friendlyError(message='') {
 export async function POST(req) {
   try {
     const owner = await getVerifiedSiteOwner(req);
-    if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
+    if (!owner.ok) return privateResponse({ ok: false, error: owner.error }, owner.status);
 
     const limited = rateLimit(req, { name: 'site-draft', limit: 30, windowMs: 15 * 60 * 1000, subject: owner.user.id });
     if (!limited.ok) return rateLimitResponse(limited, 'Please wait a few minutes before saving this draft again.');
@@ -22,13 +26,13 @@ export async function POST(req) {
     const body = await req.json();
     const site = body.site || body;
     const mediaCheck = validateSiteMedia(site);
-    if (!mediaCheck.ok) return NextResponse.json({ ok: false, error: mediaCheck.error }, { status: 400 });
+    if (!mediaCheck.ok) return privateResponse({ ok: false, error: mediaCheck.error }, 400);
     const slug = slugify(site.slug || site.businessName);
     const supabase = getSupabaseAdmin();
     const { data: existing, error: lookupError } = await supabase.from('websites').select('*').eq('slug', slug).maybeSingle();
     if (lookupError) throw lookupError;
     if (existing && !siteBelongsToOwner(existing, owner)) {
-      return NextResponse.json({ ok: false, error: 'That website address already belongs to a different verified email. Choose another business or website name.' }, { status: 403 });
+      return privateResponse({ ok: false, error: 'That website address already belongs to a different verified email. Choose another business or website name.' }, 403);
     }
 
     const activeExtraPages = extraPageAccess(existing || {}).allowance;
@@ -49,9 +53,9 @@ export async function POST(req) {
     const { error } = await supabase.from('websites').upsert(row, { onConflict: 'slug' });
     if (error) throw error;
     await sendAdminNotification({ subject: `Draft saved: ${row.business_name || slug}`, event: 'Website draft saved', slug, businessName: row.business_name, customerEmail: row.customer_email, details: `Plan: ${row.plan}` });
-    return NextResponse.json({ ok: true, slug });
+    return privateResponse({ ok: true, slug });
   } catch (e) {
     console.error('[site-draft] save failed', { message: e?.message || String(e) });
-    return NextResponse.json({ ok: false, error: friendlyError() }, { status: 500 });
+    return privateResponse({ ok: false, error: friendlyError() }, 500);
   }
 }

@@ -7,28 +7,32 @@ import { validateSiteMedia } from '../../../../lib/mediaValidation.mjs';
 import { normalizeSelectedPagesForPlan } from '../../../../lib/siteDefaults';
 import { extraPageAccess, websitePlanAccess } from '../../../../lib/subscriptionLifecycle.mjs';
 
+function privateResponse(body, status = 200) {
+  return NextResponse.json(body, { status, headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
+}
+
 export async function POST(req) {
   try {
     const owner = await getVerifiedSiteOwner(req);
-    if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
+    if (!owner.ok) return privateResponse({ ok: false, error: owner.error }, owner.status);
     const limited = rateLimit(req, { name: 'site-save', limit: 20, windowMs: 15 * 60 * 1000, subject: owner.user.id });
     if (!limited.ok) return rateLimitResponse(limited, 'Please wait a few minutes before republishing again.');
 
     const body = await req.json();
     const { slug, site } = body;
-    if (!slug || !site) return NextResponse.json({ ok:false,error:'Missing slug or site' }, { status:400 });
+    if (!slug || !site) return privateResponse({ ok:false,error:'Missing slug or site' }, 400);
     const mediaCheck = validateSiteMedia(site);
-    if (!mediaCheck.ok) return NextResponse.json({ ok: false, error: mediaCheck.error }, { status: 400 });
+    if (!mediaCheck.ok) return privateResponse({ ok: false, error: mediaCheck.error }, 400);
     const supabase = getSupabaseAdmin();
     const { data: existing, error: lookupError } = await supabase.from('websites').select('*').eq('slug', slug).maybeSingle();
     if (lookupError) throw lookupError;
-    if (!existing) return NextResponse.json({ ok: false, error: 'Website not found.' }, { status: 404 });
+    if (!existing) return privateResponse({ ok: false, error: 'Website not found.' }, 404);
     if (!siteBelongsToOwner(existing, owner)) {
-      return NextResponse.json({ ok: false, error: 'This website belongs to a different verified email.' }, { status: 403 });
+      return privateResponse({ ok: false, error: 'This website belongs to a different verified email.' }, 403);
     }
 
     if (websitePlanAccess(existing).paid && !websitePlanAccess(existing).active) {
-      return NextResponse.json({ ok: false, error: 'This paid plan is not currently active. Your edits remain on this screen; check the membership from your Gumroad receipt or Library.' }, { status: 402 });
+      return privateResponse({ ok: false, error: 'This paid plan is not currently active. Your edits remain on this screen; check the membership from your Gumroad receipt or Library.' }, 402);
     }
 
     const authoritativePlan = existing.plan || 'free';
@@ -54,7 +58,7 @@ export async function POST(req) {
       : updateQuery.is('owner_id', null).ilike('customer_email', owner.email);
     const { data: updated, error } = await updateQuery.select('slug').maybeSingle();
     if (error) throw error;
-    if (!updated) return NextResponse.json({ ok: false, error: 'You do not have access to republish this website.' }, { status: 403 });
+    if (!updated) return privateResponse({ ok: false, error: 'You do not have access to republish this website.' }, 403);
     await sendAdminNotification({
       subject: `Website updated: ${site.businessName || slug}`,
       event: 'Website edited and republished',
@@ -63,9 +67,9 @@ export async function POST(req) {
       customerEmail: owner.email,
       details: 'An owner or authorized editor saved changes through the website editor.'
     });
-    return NextResponse.json({ ok:true });
+    return privateResponse({ ok:true });
   } catch(e) {
     console.error('[site-save] republish failed', { message: e?.message || String(e) });
-    return NextResponse.json({ ok:false,error:'The website could not be republished. Your changes are still on this screen; please try again shortly.' }, { status:500 });
+    return privateResponse({ ok:false,error:'The website could not be republished. Your changes are still on this screen; please try again shortly.' }, 500);
   }
 }
