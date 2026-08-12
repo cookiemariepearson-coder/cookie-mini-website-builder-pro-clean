@@ -4,7 +4,7 @@ import { DFY_CHECKOUT_ENV_BY_SERVICE } from '../../../../lib/commerceConfig.mjs'
 import { resolveDfyCheckout } from '../../../../lib/dfyCommerce.mjs';
 import { sendResendEmail } from '../../../../lib/resendEmail.mjs';
 import { createCustomerRequest, updateCustomerRequest } from '../../../../lib/customerRequestStore.mjs';
-import { createCustomerRequestId } from '../../../../lib/customerRequestId.mjs';
+import { createCustomerRequestId, customerRequestIdFromSubmission } from '../../../../lib/customerRequestId.mjs';
 import { customerNotificationOutcome } from '../../../../lib/customerNotificationOutcome.mjs';
 
 export const dynamic = 'force-dynamic';
@@ -34,6 +34,7 @@ export async function POST(request) {
 
     const plan = clean(body.plan, 80);
     const service = services[plan];
+    const idempotentRequestId = customerRequestIdFromSubmission('DFY', body.submissionId);
     const form = {
       name: clean(body.name, 160),
       business: clean(body.business, 200),
@@ -67,7 +68,7 @@ export async function POST(request) {
     if (service.checkoutEnv && !checkout.configured) {
       console.error('[done-for-you] checkout unavailable', { plan, environmentVariable: service.checkoutEnv, reason: checkout.reason });
     }
-    const requestId = createCustomerRequestId('DFY');
+    const requestId = idempotentRequestId || createCustomerRequestId('DFY');
     const storedRequest = await createCustomerRequest({
       request_id: requestId,
       request_type: 'done-for-you',
@@ -84,6 +85,23 @@ export async function POST(request) {
       checkout_configured: Boolean(checkoutUrl),
       notification_status: 'pending'
     });
+    if (!storedRequest.ok && storedRequest.status === 409 && idempotentRequestId) {
+      console.info(JSON.stringify({ level: 'info', event: 'customer_request_duplicate_ignored', requestId, requestType: 'done-for-you' }));
+      return NextResponse.json({
+        ok: true,
+        duplicate: true,
+        requestId,
+        checkoutUrl,
+        checkoutRequired: Boolean(service.checkoutEnv),
+        checkoutConfigured: Boolean(checkoutUrl),
+        notificationsAccepted: false,
+        notificationStatus: 'already-received',
+        adminNotificationAccepted: false,
+        customerNotificationAccepted: false,
+        requestStored: true,
+        turnaround: service.turnaround
+      });
+    }
     if (!storedRequest.ok) {
       console.error(JSON.stringify({ level: 'error', event: 'customer_request_storage_failed', requestId, requestType: 'done-for-you', status: storedRequest.status, configurationMissing: Boolean(storedRequest.missing) }));
     } else {

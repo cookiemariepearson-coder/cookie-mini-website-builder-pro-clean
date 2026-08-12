@@ -19,6 +19,7 @@ async function source(path) {
 test('Builder checkout auth always uses the canonical Builder origin', () => {
   assert.equal(canonicalBuilderOrigin('https://cookiesdigitalcreations.com/api/auth', 'cookiesdigitalcreations.com'), 'https://www.cookiesdigitalcreations.com');
   assert.equal(canonicalBuilderOrigin('https://www.cookiesdigitalcreations.com/api/auth', 'cookiesdigitalcreations.com'), 'https://www.cookiesdigitalcreations.com');
+  assert.equal(canonicalBuilderOrigin('https://connect.cookiesdigitalcreations.com/api/auth', 'cookiesdigitalcreations.com'), 'https://www.cookiesdigitalcreations.com');
   assert.equal(canonicalBuilderOrigin('https://preview.example/api/auth', 'cookiesdigitalcreations.com'), 'https://preview.example');
 });
 

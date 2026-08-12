@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Nav from '../../lib/Nav';
-import { PENDING_CHECKOUT_STORAGE_KEY, createPendingCheckoutIntent, customerReturnPath, pendingCheckoutReturnPath } from '../../lib/commerceConfig.mjs';
+import { PENDING_CHECKOUT_STORAGE_KEY, createPendingCheckoutIntent, customerReturnPath, pendingCheckoutReturnPath, safeCustomerReturnPath } from '../../lib/commerceConfig.mjs';
 import { useAccountModal } from '../../components/AccountModalProvider';
 
 const ROOT = 'cookiesdigitalcreations.com';
@@ -55,7 +55,10 @@ export default function Customer() {
       const params = new URLSearchParams(window.location.search);
       setAuthMode(params.get('mode') === 'create' ? 'create' : 'signin');
       const checkoutIntentId = params.get('intent') || '';
-      const queryReturnPath = customerReturnPath(params.get('return'), params.get('checkout'), params.get('draft'));
+      const explicitReturn = params.get('return') || '';
+      const queryReturnPath = explicitReturn.startsWith('/')
+        ? safeCustomerReturnPath(explicitReturn)
+        : customerReturnPath(explicitReturn, params.get('checkout'), params.get('draft'));
       const requestedReturnPath = queryReturnPath !== '/customer'
         ? queryReturnPath
         : pendingCheckoutReturnPath(localStorage.getItem(PENDING_CHECKOUT_STORAGE_KEY));
