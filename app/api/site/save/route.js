@@ -39,15 +39,19 @@ export async function POST(req) {
       customerEmail: owner.email,
       status: 'published'
     };
-    const { data: updated, error } = await supabase.from('websites').update({
+    let updateQuery = supabase.from('websites').update({
       customer_email: owner.email,
       owner_id: owner.user.id,
       business_name: protectedSite.businessName || null,
       site: protectedSite,
       updated_at: new Date().toISOString()
-    }).eq('slug', slug).select('slug').maybeSingle();
+    }).eq('id', existing.id);
+    updateQuery = existing.owner_id
+      ? updateQuery.eq('owner_id', owner.user.id)
+      : updateQuery.is('owner_id', null).ilike('customer_email', owner.email);
+    const { data: updated, error } = await updateQuery.select('slug').maybeSingle();
     if (error) throw error;
-    if (!updated) return NextResponse.json({ ok: false, error: 'Website was not updated.' }, { status: 404 });
+    if (!updated) return NextResponse.json({ ok: false, error: 'You do not have access to republish this website.' }, { status: 403 });
     await sendAdminNotification({
       subject: `Website updated: ${site.businessName || slug}`,
       event: 'Website edited and republished',
