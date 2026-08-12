@@ -3,6 +3,13 @@ import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { slugify } from '../../../../lib/siteDefaults';
 import { getVerifiedSiteOwner } from '../../../../lib/siteOwnerAuth';
 
+function privateResponse(body, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: { 'Cache-Control': 'private, no-store, max-age=0' }
+  });
+}
+
 function normalizeSlug(input = '') {
   let value = String(input || '').trim().toLowerCase();
   value = value.replace(/^https?:\/\//, '').replace(/^www\./, '');
@@ -27,7 +34,7 @@ export async function POST(req) {
   try {
     const owner = await getVerifiedSiteOwner(req);
     if (!owner.ok) {
-      return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
+      return privateResponse({ ok: false, error: owner.error }, owner.status);
     }
 
     const body = await req.json();
@@ -35,7 +42,7 @@ export async function POST(req) {
     const rawQuery = String(body.query || body.slug || '').trim();
     const slug = rawQuery ? normalizeSlug(rawQuery) : '';
     if (!email && !slug) {
-      return NextResponse.json({ ok: false, error: 'Enter an email address or website name/subdomain.' }, { status: 400 });
+      return privateResponse({ ok: false, error: 'Enter an email address or website name/subdomain.' }, 400);
     }
     const supabase = getSupabaseAdmin();
     const found = new Map();
@@ -87,9 +94,9 @@ export async function POST(req) {
       site: siteFromRow(row)
     }));
 
-    return NextResponse.json({ ok: true, sites });
+    return privateResponse({ ok: true, sites });
   } catch (e) {
     console.error('[site-search] lookup failed', { message: e?.message || String(e) });
-    return NextResponse.json({ ok: false, error: 'Saved websites could not be searched right now. Please try again shortly.' }, { status: 500 });
+    return privateResponse({ ok: false, error: 'Saved websites could not be searched right now. Please try again shortly.' }, 500);
   }
 }

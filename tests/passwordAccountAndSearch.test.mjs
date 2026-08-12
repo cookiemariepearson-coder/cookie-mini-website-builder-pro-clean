@@ -84,10 +84,12 @@ test('account returns accept only validated Builder-owned destinations', () => {
 });
 
 test('customer website search derives identity from the verified server session only', async () => {
-  const route = await source('app/api/site/search/route.js');
+  const [route, session] = await Promise.all([source('app/api/site/search/route.js'), source('app/api/auth/site-owner/session/route.js')]);
   assert.match(route, /const email = owner\.email/);
   assert.match(route, /\.eq\('owner_id', owner\.user\.id\)/);
   assert.doesNotMatch(route, /body\.email/);
+  assert.match(route, /private, no-store, max-age=0/);
+  assert.match(session, /private, no-store, max-age=0/g);
 });
 
 test('My Websites searches owned names, slugs, plans and statuses without an email field', async () => {
