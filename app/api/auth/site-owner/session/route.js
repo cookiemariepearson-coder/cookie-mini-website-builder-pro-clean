@@ -4,7 +4,10 @@ import { getVerifiedSiteOwner, SITE_OWNER_SESSION_COOKIE, siteOwnerSessionCookie
 export async function GET(req) {
   const owner = await getVerifiedSiteOwner(req);
   if (!owner.ok) {
-    return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
+    return NextResponse.json({ ok: false, error: owner.error }, {
+      status: owner.status,
+      headers: { 'Cache-Control': 'private, no-store, max-age=0' }
+    });
   }
 
   const response = NextResponse.json({ ok: true, email: owner.email, userId: owner.user.id }, {
