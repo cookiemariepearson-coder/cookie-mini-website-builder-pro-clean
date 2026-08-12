@@ -1,6 +1,6 @@
 # Cookie Mini Website Builder Pro — Launch Completion Checklist
 
-Last updated: August 11, 2026
+Last updated: August 12, 2026
 
 This checklist distinguishes automated verification from real owner production testing. A phase is marked complete only when its required customer journey has the appropriate production evidence.
 
@@ -43,7 +43,7 @@ Do not reopen these completed journeys without evidence of a regression.
 - [x] Starter Pro — `$249 one-time setup` production setting and live Gumroad product page verified.
 - [x] Business — `$499 one-time setup`; `DFY_BUSINESS_CHECKOUT_URL` configured and the live Builder handoff verified against the published one-time Gumroad product.
 - [x] Premium — `$899 one-time setup`; `DFY_PREMIUM_CHECKOUT_URL` configured and the live Builder handoff verified against the published one-time Gumroad product.
-- [ ] Extra Page Add-On — `$125 one-time setup`; owner reported the product created, but the connected `cookiepearson` Gumroad catalog still does not display the one-time product and production still has no `DFY_EXTRA_PAGE_CHECKOUT_URL`. The safe support-follow-up path remains active; the separate `$10/month` Extra Page subscription is not substituted.
+- [x] Extra Page Add-On — `$125 one-time setup`; the exact public product `https://cookiepearson.gumroad.com/l/dfy-extra-page-addon` is verified as a one-time Done-for-You product and carried by `DFY_EXTRA_PAGE_CHECKOUT_URL` in the Vercel runtime configuration. The separate `$10/month` Extra Page subscription remains unchanged.
 
 Do not substitute the Business or Premium monthly website subscriptions, the monthly Extra Page subscription, AI Video, or another DFY product for these one-time setup purchases.
 
@@ -58,7 +58,7 @@ Do not substitute the Business or Premium monthly website subscriptions, the mon
 - [x] My Websites search uses the authenticated owner and cannot accept a public email identity.
 - [x] Owner website/request searches remain admin-protected and bounded.
 - [x] Compact Done-for-You success messages dismiss automatically after 8.5 seconds; stored requests and email request IDs remain unchanged.
-- [ ] Owner live verification of the modal, initial confirmation, existing-user password setup, returning password sign-in, and customer/owner search.
+- [ ] Owner live verification of existing-user password setup, returning password sign-in, and final edit/republish. The August 12 returning sign-in attempt failed before password setup/reset was completed; the repaired same-user recovery journey still requires the owner retest.
 - [ ] Enable Supabase leaked-password protection if the project plan supports it; the current security advisor reports it disabled.
 
 ## Remaining after the current phase

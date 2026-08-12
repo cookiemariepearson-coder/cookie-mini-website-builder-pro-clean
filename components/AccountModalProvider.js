@@ -218,7 +218,7 @@ export default function AccountModalProvider({ children }) {
     ? 'Save your websites, open them on another device, purchase a plan, and publish when you’re ready.'
     : mode === 'reset'
       ? 'We’ll email a one-time recovery link. Your existing websites and purchases stay with the same account.'
-      : 'Sign in to open your saved websites and continue building.';
+      : 'Sign in to open your saved websites and continue building. Previously signed in with an email link? Set your password here once.';
 
   return <AccountModalContext.Provider value={contextValue}>
     <div className="accountModalBackground" inert={open ? '' : undefined} aria-hidden={open ? 'true' : undefined}>{children}</div>
@@ -245,7 +245,7 @@ export default function AccountModalProvider({ children }) {
         {error && <div className="notice error accountModalMessage" role="alert">{error}</div>}
         {message && <div className="notice success accountModalMessage" role="status" aria-live="polite">{message}</div>}
         <div className="accountModalChoices">
-          {mode === 'signin' && <><button type="button" onClick={() => { setMode('reset'); setMessage(''); setError(''); }}>Forgot Password? / Set Password</button><button type="button" onClick={() => { setMode('create'); setMessage(''); setError(''); }}>Need an account? Create Free Account</button></>}
+          {mode === 'signin' && <><button type="button" onClick={() => { setMode('reset'); setMessage(''); setError(''); }}>Set or Reset Password</button><button type="button" onClick={() => { setMode('create'); setMessage(''); setError(''); }}>Need an account? Create Free Account</button></>}
           {mode === 'create' && <button type="button" onClick={() => { setMode('signin'); setMessage(''); setError(''); }}>Already have an account? Sign In</button>}
           {mode === 'reset' && <button type="button" onClick={() => { setMode('signin'); setMessage(''); setError(''); }}>Return to Sign In</button>}
           {guestAllowed && <button type="button" onClick={continueGuest}>Continue as Guest</button>}

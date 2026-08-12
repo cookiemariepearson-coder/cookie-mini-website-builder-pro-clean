@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { getDfyCheckoutConfiguration, resolveDfyCheckout } from '../lib/dfyCommerce.mjs';
+import { customerRequestIdFromSubmission } from '../lib/customerRequestId.mjs';
 
 const distinctDfy = {
   DFY_FREE_LAUNCH_CHECKOUT_URL: 'https://cookiepearson.gumroad.com/l/dfy-free',
@@ -110,4 +111,40 @@ test('selecting an emailed checkout link does not create a second customer reque
   assert.equal(requestCreation, 1);
   assert.match(route, /<a href="\$\{escapeHtml\(checkoutUrl\)\}"/);
   assert.doesNotMatch(route, /href="\/api\/done-for-you\/request/);
+});
+
+test('the verified DFY Extra Page permalink resolves only as the $125 one-time setup add-on', () => {
+  const url = 'https://cookiepearson.gumroad.com/l/dfy-extra-page-addon';
+  const result = resolveDfyCheckout('Extra Page Add-On', {
+    ...distinctDfy,
+    DFY_EXTRA_PAGE_CHECKOUT_URL: url,
+    NEXT_PUBLIC_EXTRA_PAGE_SUBSCRIPTION_CHECKOUT_URL: 'https://cookiepearson.gumroad.com/l/extra-page-monthly'
+  });
+  assert.equal(result.configured, true);
+  assert.equal(result.url, url);
+  assert.equal(result.setupPrice, '$125 one-time setup');
+  assert.equal(result.purchaseType, 'one-time setup add-on');
+});
+
+test('Vercel runtime configuration carries only the approved public DFY Extra Page permalink', async () => {
+  const configuration = JSON.parse(await source('vercel.json'));
+  assert.deepEqual(configuration.env, {
+    DFY_EXTRA_PAGE_CHECKOUT_URL: 'https://cookiepearson.gumroad.com/l/dfy-extra-page-addon'
+  });
+});
+
+test('repeat DFY submissions reuse one stored request and skip duplicate notifications', async () => {
+  const submissionId = '11111111-1111-4111-8111-111111111111';
+  assert.equal(customerRequestIdFromSubmission('DFY', submissionId), 'DFY-11111111111141118111111111111111');
+  assert.equal(customerRequestIdFromSubmission('DFY', 'not-a-client-id'), '');
+  const [page, route] = await Promise.all([
+    source('app/done-for-you/request/page.js'),
+    source('app/api/done-for-you/request/route.js')
+  ]);
+  assert.match(page, /if \(submitting\) return/);
+  assert.match(page, /submissionIdRef\.current/);
+  assert.match(route, /storedRequest\.status === 409 && idempotentRequestId/);
+  assert.match(route, /customer_request_duplicate_ignored/);
+  const duplicateBranch = route.slice(route.indexOf("storedRequest.status === 409"), route.indexOf("if (!storedRequest.ok)"));
+  assert.doesNotMatch(duplicateBranch, /sendResendEmail/);
 });

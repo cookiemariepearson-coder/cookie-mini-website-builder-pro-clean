@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Nav from '../../../lib/Nav';
 
@@ -18,6 +18,7 @@ export default function DoneForYouRequestPage() {
   const [status, setStatus] = useState('');
   const [statusKind, setStatusKind] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const submissionIdRef = useRef('');
 
   useEffect(() => {
     const selected = new URLSearchParams(window.location.search).get('plan');
@@ -37,6 +38,9 @@ export default function DoneForYouRequestPage() {
 
   async function submit(event) {
     event.preventDefault();
+    if (submitting) return;
+    if (!submissionIdRef.current) submissionIdRef.current = window.crypto.randomUUID();
+    const submissionId = submissionIdRef.current;
     setSubmitting(true);
     setStatusKind('progress');
     setStatus('Sending your request and confirmation email...');
@@ -44,10 +48,11 @@ export default function DoneForYouRequestPage() {
       const response = await fetch('/api/done-for-you/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, ...form })
+        body: JSON.stringify({ plan, ...form, submissionId })
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) throw new Error(data.error || 'Request failed.');
+      submissionIdRef.current = '';
       setForm({ name: '', business: '', businessType: '', email: '', phone: '', customerAction: '', details: '', contact: 'Email', companyWebsite: '' });
       setStatusKind('success');
       if (data.checkoutRequired && data.checkoutConfigured && data.checkoutUrl) {

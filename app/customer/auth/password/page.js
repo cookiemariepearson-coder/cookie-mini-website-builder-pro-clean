@@ -5,6 +5,7 @@ import Nav from '../../../../lib/Nav';
 
 export default function CustomerPasswordRecoveryPage() {
   const [password, setPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [tokenHash, setTokenHash] = useState('');
   const [type, setType] = useState('');
@@ -22,6 +23,10 @@ export default function CustomerPasswordRecoveryPage() {
 
   async function submit(event) {
     event.preventDefault();
+    if (password !== passwordConfirmation) {
+      setMessage('The two password entries do not match.');
+      return;
+    }
     setBusy(true);
     setMessage('Updating your password securely…');
     try {
@@ -32,8 +37,11 @@ export default function CustomerPasswordRecoveryPage() {
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok || !result.ok) throw new Error(result.error || 'Your password could not be updated.');
-      setMessage('Password saved. Opening your Mini Website Builder account…');
-      window.location.replace(result.returnPath || '/customer');
+      setMessage('Password saved. Returning you to secure sign in…');
+      const signIn = new URL('/customer', window.location.origin);
+      signIn.searchParams.set('mode', 'signin');
+      if (result.returnPath && result.returnPath !== '/customer') signIn.searchParams.set('return', result.returnPath);
+      window.location.replace(`${signIn.pathname}${signIn.search}`);
     } catch (error) {
       setMessage(error.message || 'Your password could not be updated. Request a new recovery link.');
     } finally {
@@ -55,6 +63,10 @@ export default function CustomerPasswordRecoveryPage() {
             <button className="btn light passwordToggle" type="button" aria-pressed={showPassword} onClick={() => setShowPassword(value => !value)}>{showPassword ? 'Hide' : 'Show'}</button>
           </div>
           <small>Use at least 10 characters. Pasting from a password manager is supported.</small>
+        </div>
+        <div className="field">
+          <label htmlFor="recovery-password-confirmation">Confirm new password</label>
+          <input id="recovery-password-confirmation" type={showPassword ? 'text' : 'password'} required minLength={10} autoComplete="new-password" value={passwordConfirmation} onChange={event => setPasswordConfirmation(event.target.value)} />
         </div>
         <button className="btn" type="submit" disabled={busy || !tokenHash || type !== 'recovery'}>{busy ? 'Saving…' : 'Save Password'}</button>
       </form>

@@ -64,11 +64,14 @@ test('existing passwordless customers reset the same Supabase user instead of cr
   assert.match(update, /auth\.verifyOtp/);
   assert.match(update, /updateUserById\(data\.user\.id, \{ password \}\)/);
   assert.doesNotMatch(update, /createUser|insert\(/);
+  assert.doesNotMatch(update, /\.cookies\.set\(/);
 });
 
 test('password recovery strips the secret fragment before submission and rejects replayed links', async () => {
   const [page, update] = await Promise.all([source('app/customer/auth/password/page.js'), source('app/api/auth/site-owner/password/update/route.js')]);
   assert.match(page, /window\.history\.replaceState/);
+  assert.match(page, /mode', 'signin'/);
+  assert.match(page, /signIn\.searchParams\.set\('return', result\.returnPath\)/);
   assert.match(update, /invalid, expired, or already used/);
   assert.match(update, /type !== 'recovery'/);
 });

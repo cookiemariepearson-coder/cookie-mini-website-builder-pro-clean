@@ -15,7 +15,8 @@ test('landing navigation and hero expose one shared account control', async () =
 
 test('shared modal provides create, password sign-in, recovery, and guest choices', async () => {
   const modal = await source('components/AccountModalProvider.js');
-  for (const label of ['Create your free account', 'Welcome back', 'Set or reset your password', 'Continue as Guest', 'Forgot Password?', 'Privacy Policy']) assert.match(modal, new RegExp(label.replace(/[?]/g, '\\?')));
+  for (const label of ['Create your free account', 'Welcome back', 'Set or reset your password', 'Continue as Guest', 'Set or Reset Password', 'Privacy Policy']) assert.match(modal, new RegExp(label.replace(/[?]/g, '\\?')));
+  assert.match(modal, /Previously signed in with an email link\? Set your password here once\./);
   assert.match(modal, /autoComplete=\{mode === 'create' \? 'new-password' : 'current-password'\}/);
   assert.match(modal, /minLength=\{mode === 'create' \? 10/);
 });

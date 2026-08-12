@@ -1,5 +1,9 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "npm install --registry=https://registry.npmjs.org --no-audit --no-fund",
-  "buildCommand": "npm run build"
+  "buildCommand": "npm run build",
+  "env": {
+    "DFY_EXTRA_PAGE_CHECKOUT_URL": "https://cookiepearson.gumroad.com/l/dfy-extra-page-addon"
+  }
 }
