@@ -31,6 +31,7 @@ function effectiveStatus(site = {}) {
   const access = String(site.access_status || '').toLowerCase();
   if (access === 'archived') return 'archived';
   if (access === 'paused') return 'paused';
+  if (site.subscription && site.subscription.active === false && ['starter', 'business', 'premium'].includes(String(site.plan || '').toLowerCase())) return 'paused';
   return String(site.status || 'draft').toLowerCase();
 }
 
@@ -313,6 +314,15 @@ export default function Customer() {
           <h3>{row.business_name || row.site?.businessName || row.slug}</h3>
           <p><strong>Website:</strong> {row.slug}.{ROOT}</p>
           <p><strong>Plan:</strong> {row.plan || 'free'} {row.monthly_price ? `• $${row.monthly_price}/mo` : ''}</p>
+          {row.subscription && <div className="notice">
+            <strong>Subscription:</strong> {row.subscription.label}<br />
+            {row.subscription.startedAt && <span>Started: {new Date(row.subscription.startedAt).toLocaleDateString()}<br /></span>}
+            {row.subscription.renewalAt && <span>Next renewal: {new Date(row.subscription.renewalAt).toLocaleDateString()}<br /></span>}
+            {row.subscription.endAt && <span>Paid-through / end: {new Date(row.subscription.endAt).toLocaleDateString()}<br /></span>}
+            <span>Verified extra pages: {row.subscription.extraPages || 0}</span><br />
+            <span>{row.subscription.nextStep}</span><br />
+            <small>{row.subscription.management}</small>
+          </div>}
           {row.updated_at && <p className="mutedText">Last updated: {new Date(row.updated_at).toLocaleString()}</p>}
         </div>
         <div className="savedActions">

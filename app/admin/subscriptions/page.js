@@ -3,9 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Nav from '../../../lib/Nav';
 
-const subscriptionOptions = ['active', 'unverified', 'canceled', 'ended', 'refunded', 'disputed', 'paused'];
-const accessOptions = ['active', 'paused', 'archived'];
-const siteStatusOptions = ['published', 'paused', 'draft', 'archived'];
 const planOptions = ['free', 'starter', 'business', 'premium'];
 
 const cardStyle = {
@@ -36,7 +33,7 @@ function siteTitle(w) {
 }
 
 function siteEmail(w) {
-  return w.customer_email || w.email || w.gumroad_email || '';
+  return w.customer || '';
 }
 
 function isArchived(w) {
@@ -119,6 +116,31 @@ export default function GumroadSubscriptionsAdmin() {
     await load();
   }
 
+  async function eventAction(eventId, action) {
+    let note = '';
+    if (action === 'add_note') {
+      note = window.prompt('Add a short private review note. Do not paste passwords, license keys, or payment details.') || '';
+      if (!note) return;
+    }
+    setMsg(action === 'recheck' ? 'Checking the provider record without changing access…' : 'Saving event review…');
+    const res = await fetch('/api/admin/subscriptions/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eventId, action, note })
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      setMsg(data.error || 'Event review failed.');
+      return;
+    }
+    setMsg(data.preview
+      ? `Recheck complete: ${data.state || data.reason || 'provider evidence reviewed'}. Review the result, then choose Reconcile if it is correct.`
+      : action === 'reconcile'
+        ? `Reconciliation complete: ${data.state || data.reason || 'reviewed'}.`
+        : 'Event review saved.');
+    await load();
+  }
+
   async function registerHooks() {
     setRegistering(true);
     setMsg('');
@@ -158,7 +180,7 @@ export default function GumroadSubscriptionsAdmin() {
   const activeCount = websites.filter(w => w.access_status === 'active' && w.status === 'published').length;
   const pausedCount = websites.filter(w => w.access_status === 'paused' || w.status === 'paused').length;
   const archiveCount = websites.filter(isArchived).length;
-  const unmatchedEvents = events.filter(e => !e.matched_slug).length;
+  const unmatchedEvents = events.filter(e => e.reviewStatus === 'unresolved').length;
 
   const filteredSites = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -229,46 +251,15 @@ export default function GumroadSubscriptionsAdmin() {
         </div>
 
         <div className="siteControlsGrid">
-          <div className="field compactField">
-            <label>Plan</label>
-            <select value={w.plan || 'free'} onChange={e => update(slug, { plan: e.target.value })}>{planOptions.map(x => <option key={x}>{x}</option>)}</select>
-          </div>
-
-          <div className="field compactField">
-            <label>Subscription</label>
-            <select value={w.subscription_status || 'unverified'} onChange={e => update(slug, { subscription_status: e.target.value })}>{subscriptionOptions.map(x => <option key={x}>{x}</option>)}</select>
-          </div>
-
-          <div className="field compactField">
-            <label>Access</label>
-            <select
-              value={w.access_status || 'active'}
-              onChange={e => {
-                const next = e.target.value;
-                update(slug, {
-                  access_status: next,
-                  status: next === 'active' ? 'published' : next,
-                  paused_reason: next === 'paused' ? 'Paused manually by admin.' : next === 'archived' ? 'Archived manually by admin.' : ''
-                }, next === 'archived' ? 'Website moved to Archive.' : 'Saved access update.');
-              }}
-            >{accessOptions.map(x => <option key={x}>{x}</option>)}</select>
-          </div>
-
-          <div className="field compactField">
-            <label>Site Status</label>
-            <select value={w.status || 'published'} onChange={e => update(slug, { status: e.target.value, access_status: e.target.value === 'archived' ? 'archived' : w.access_status })}>{siteStatusOptions.map(x => <option key={x}>{x}</option>)}</select>
-          </div>
+          <div><strong>Started</strong><br /><small>{formatDate(w.subscription_started_at)}</small></div>
+          <div><strong>Next renewal</strong><br /><small>{formatDate(w.subscription_next_renewal_at)}</small></div>
+          <div><strong>Paid-through / end</strong><br /><small>{formatDate(w.subscription_end_at)}</small></div>
+          <div><strong>Extra pages</strong><br /><small>{w.extra_pages || 0} · {w.extra_page_subscription_status || 'none'} {w.extra_page_subscription_end_at ? `through ${formatDate(w.extra_page_subscription_end_at)}` : ''}</small></div>
         </div>
 
         <div className="adminCardActions">
           <a className="smallBtn" href={`https://${slug}.cookiesdigitalcreations.com`} target="_blank" rel="noreferrer">Open Site</a>
-          <button className="smallBtn" onClick={() => update(slug, { access_status: 'paused', status: 'paused', paused_reason: 'Paused manually by admin.' }, 'Website paused.')}>Pause</button>
-          <button className="smallBtn" onClick={() => update(slug, { access_status: 'active', status: 'published', paused_reason: '' }, 'Website reactivated.')}>Reactivate</button>
-          {mode === 'archive' ? (
-            <button className="smallBtn gold" onClick={() => update(slug, { access_status: 'active', status: 'published', paused_reason: '' }, 'Website retrieved from Archive.')}>Retrieve from Archive</button>
-          ) : (
-            <button className="smallBtn danger" onClick={() => update(slug, { access_status: 'archived', status: 'archived', paused_reason: 'Archived manually by admin.' }, 'Website moved to Archive.')}>Archive</button>
-          )}
+          <a className="smallBtn" href="/admin">Open Customer Record</a>
           {mode === 'hidden' ? (
             <button className="smallBtn" onClick={() => unhideSite(slug)}>Unhide</button>
           ) : mode !== 'archive' ? (
@@ -279,7 +270,7 @@ export default function GumroadSubscriptionsAdmin() {
         <div className="field compactField notesField">
           <label>Private Notes</label>
           <textarea rows={3} defaultValue={w.admin_notes || ''} onBlur={e => update(slug, { admin_notes: e.target.value }, 'Private note saved.')} placeholder="Private admin notes" />
-          <small>Gumroad: {w.gumroad_product_name || 'No product yet'} / {w.gumroad_last_event || 'No event'} {w.gumroad_last_event_at ? formatDate(w.gumroad_last_event_at) : ''}</small>
+          <small>Verified product: {w.gumroad_product_name || 'Not verified'} · Last event: {w.gumroad_last_event || 'None'} {w.gumroad_last_event_at ? formatDate(w.gumroad_last_event_at) : ''}. Plan and access are provider-controlled.</small>
         </div>
       </article>
     );
@@ -393,14 +384,25 @@ export default function GumroadSubscriptionsAdmin() {
             </section>
 
             <section className="card">
-              <h2>Recent Gumroad Events</h2>
-              <p>Events with no matched website need manual review. The checkout custom field should be named <strong>Website name or subdomain you are upgrading</strong>.</p>
+              <h2>Gumroad Event Review</h2>
+              <p>Customer details are masked. Recheck reads provider evidence without changing access; Reconcile is available only after that preview and applies exact verified matches idempotently.</p>
               <div style={{ display: 'grid', gap: 12 }}>
                 {events.map((e, i) => (
                   <div key={e.id || i} style={cardStyle}>
-                    <strong>{e.resource_name || 'event'}</strong> · <small>{formatDate(e.processed_at)}</small><br />
-                    <small>Email: {e.email || '—'} | Product: {e.product_name || '—'} | Matched: {e.matched_slug || 'Needs review'}</small>
-                    <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, background: '#170c24', color: '#fff', padding: 12, borderRadius: 12 }}>{e.action_taken || ''}</pre>
+                    <div className="quickBadges">{pill(e.category)} {pill(e.reviewStatus)} {pill(e.processingStatus)}</div>
+                    <strong>{e.product}</strong> · <small>Received {formatDate(e.receivedAt)}</small><br />
+                    <small>Provider time: {formatDate(e.providerEventAt)} · Customer: {e.customer} · Website: {e.website || 'Unmatched'}</small>
+                    <p><strong>Review:</strong> {e.reason}</p>
+                    <p><strong>Safe next step:</strong> {e.recommendedAction}</p>
+                    {e.note && <p><strong>Private note:</strong> {e.note}</p>}
+                    <div className="adminCardActions">
+                      <button className="smallBtn" onClick={() => eventAction(e.id, 'recheck')} disabled={!e.canReconcile}>Recheck</button>
+                      <button className="smallBtn gold" onClick={() => eventAction(e.id, 'reconcile')} disabled={!e.canReconcile}>Reconcile</button>
+                      <button className="smallBtn" onClick={() => eventAction(e.id, 'mark_reviewed')}>Mark Reviewed</button>
+                      <button className="smallBtn" onClick={() => eventAction(e.id, 'leave_unresolved')}>Leave Unresolved</button>
+                      <button className="smallBtn" onClick={() => eventAction(e.id, 'add_note')}>Add Note</button>
+                      {e.website && <a className="smallBtn" href={`https://${e.website}.cookiesdigitalcreations.com`} target="_blank" rel="noreferrer">Open Related Site</a>}
+                    </div>
                   </div>
                 ))}
                 {events.length === 0 && <div className="notice">No Gumroad events received yet.</div>}
@@ -408,10 +410,8 @@ export default function GumroadSubscriptionsAdmin() {
             </section>
 
             <section className="card">
-              <h2>Webhook URL</h2>
-              <p>Use this endpoint for Gumroad resource subscriptions if you set them manually:</p>
-              <pre style={{ whiteSpace: 'pre-wrap' }}>https://www.cookiesdigitalcreations.com/api/gumroad/webhook?resource=sale</pre>
-              <p>Create one subscription for each resource: sale, refund, cancellation, subscription_ended, subscription_restarted, subscription_updated, dispute, and dispute_won.</p>
+              <h2>Webhook Coverage</h2>
+              <p>The secure registration action maintains sale, refund, cancellation, subscription ended, subscription restarted, subscription updated, dispute, and dispute won subscriptions. The authenticated webhook URL is intentionally not displayed.</p>
             </section>
           </>
         )}

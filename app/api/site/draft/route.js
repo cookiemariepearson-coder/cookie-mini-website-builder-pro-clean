@@ -5,6 +5,7 @@ import { sendAdminNotification } from '../../../../lib/adminNotifications';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
 import { validateSiteMedia } from '../../../../lib/mediaValidation.mjs';
+import { extraPageAccess } from '../../../../lib/subscriptionLifecycle.mjs';
 
 function friendlyError(message='') {
   return 'The online draft could not be saved. Your browser copy is still available; please try again shortly.';
@@ -30,9 +31,7 @@ export async function POST(req) {
       return NextResponse.json({ ok: false, error: 'That website address already belongs to a different verified email. Choose another business or website name.' }, { status: 403 });
     }
 
-    const activeExtraPages = String(existing?.extra_page_subscription_status || '').toLowerCase() === 'active'
-      ? Math.max(0, Number(existing?.extra_pages) || 0)
-      : 0;
+    const activeExtraPages = extraPageAccess(existing || {}).allowance;
     const protectedSite = { ...site, slug, customerEmail: owner.email, extraPages: activeExtraPages, status: 'draft' };
     const authoritativePlan = existing?.plan || 'free';
     const row = {

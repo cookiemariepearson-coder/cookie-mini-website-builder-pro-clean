@@ -10,7 +10,6 @@ const planNames = {
   business: 'Business',
   premium: 'Premium'
 };
-const statuses = ['published', 'paused', 'draft', 'archived'];
 
 function siteUrl(slug) {
   return `https://${slug}.cookiesdigitalcreations.com`;
@@ -321,37 +320,20 @@ export default function Admin() {
 
             {tab === 'plans' && (
               <section className="adminPanel adminDataPanel" style={card}>
-                <h2>Plans & Status Controls</h2>
-                <p>Use this when someone upgrades, cancels, buys an extra page, or needs their site paused/reactivated.</p>
+                <h2>Verified Plans &amp; Status</h2>
+                <p>Plans, subscription state, extra-page allowances, and paid access are read-only here. Use Subscriptions &amp; Access to review exact Gumroad evidence.</p>
                 <div className="tableWrap">
                   <table className="table">
-                    <thead><tr><th>Website</th><th>Plan</th><th>Status</th><th>Extra Pages</th><th>Monthly Price</th><th>Save</th></tr></thead>
+                    <thead><tr><th>Website</th><th>Plan</th><th>Site Status</th><th>Subscription</th><th>Access</th><th>Extra Pages</th><th>Monthly Price</th></tr></thead>
                     <tbody>{filtered.map((s) => (
                       <tr key={s.slug}>
                         <td><strong>{s.business_name || s.slug}</strong><br /><small>{s.slug}</small></td>
-                        <td>
-                          <select value={s.plan || 'free'} onChange={(e) => {
-                            const plan = e.target.value;
-                            patchLocal(s.slug, { plan, monthly_price: planPrices[plan] || 0 });
-                          }}>
-                            {Object.keys(planNames).map((p) => <option key={p} value={p}>{planNames[p]}</option>)}
-                          </select>
-                        </td>
-                        <td>
-                          <select value={s.status || 'published'} onChange={(e) => patchLocal(s.slug, { status: e.target.value })}>
-                            {statuses.map((p) => <option key={p} value={p}>{p}</option>)}
-                          </select>
-                        </td>
-                        <td><input style={{ width: 90 }} type="number" min="0" value={s.extra_pages || 0} onChange={(e) => patchLocal(s.slug, { extra_pages: Number(e.target.value) })} /></td>
-                        <td><input style={{ width: 110 }} type="number" min="0" value={s.monthly_price ?? planPrices[s.plan || 'free'] ?? 0} onChange={(e) => patchLocal(s.slug, { monthly_price: Number(e.target.value) })} /></td>
-                        <td>
-                          <button className="btn" onClick={() => update(s.slug, {
-                            plan: s.plan || 'free',
-                            status: s.status || 'published',
-                            extra_pages: Number(s.extra_pages || 0),
-                            monthly_price: Number(s.monthly_price ?? planPrices[s.plan || 'free'] ?? 0)
-                          })}>{savingSlug === s.slug ? 'Saving...' : 'Save'}</button>
-                        </td>
+                        <td>{planNames[s.plan] || s.plan || 'Free Launch Page'}</td>
+                        <td>{s.status || 'draft'}</td>
+                        <td>{s.subscription_status || 'unverified'}</td>
+                        <td>{s.access_status || 'active'}</td>
+                        <td>{Number(s.extra_pages || 0)}</td>
+                        <td>${Number(s.monthly_price ?? planPrices[s.plan || 'free'] ?? 0)}/mo</td>
                       </tr>
                     ))}</tbody>
                   </table>

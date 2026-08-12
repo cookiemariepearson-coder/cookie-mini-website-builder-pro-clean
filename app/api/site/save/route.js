@@ -5,6 +5,7 @@ import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOw
 import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
 import { validateSiteMedia } from '../../../../lib/mediaValidation.mjs';
 import { normalizeSelectedPagesForPlan } from '../../../../lib/siteDefaults';
+import { extraPageAccess, websitePlanAccess } from '../../../../lib/subscriptionLifecycle.mjs';
 
 export async function POST(req) {
   try {
@@ -26,10 +27,12 @@ export async function POST(req) {
       return NextResponse.json({ ok: false, error: 'This website belongs to a different verified email.' }, { status: 403 });
     }
 
+    if (websitePlanAccess(existing).paid && !websitePlanAccess(existing).active) {
+      return NextResponse.json({ ok: false, error: 'This paid plan is not currently active. Your edits remain on this screen; check the membership from your Gumroad receipt or Library.' }, { status: 402 });
+    }
+
     const authoritativePlan = existing.plan || 'free';
-    const activeExtraPages = String(existing.extra_page_subscription_status || '').toLowerCase() === 'active'
-      ? Math.max(0, Number(existing.extra_pages) || 0)
-      : 0;
+    const activeExtraPages = extraPageAccess(existing).allowance;
     const protectedSite = {
       ...site,
       slug,

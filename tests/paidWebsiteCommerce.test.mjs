@@ -107,14 +107,22 @@ test('auth callback, dashboard fallback and restored sessions recover server-sid
 });
 
 test('website webhook requires approved product, exact website and verified owner email', async () => {
-  const webhook = await source('app/api/gumroad/webhook/route.js');
-  assert.match(webhook, /identifyWebsiteProduct\(payload\)/);
-  assert.match(webhook, /logged_only_non_website_product/);
-  assert.match(webhook, /unmatched_verified_owner_email_mismatch/);
-  assert.match(webhook, /unmatched_missing_website_identity/);
-  assert.doesNotMatch(webhook, /\.eq\('customer_email', email\)/);
-  assert.doesNotMatch(webhook, /seller_email/);
-  assert.match(webhook, /sanitizeGumroadPayload\(payload\)/);
+  const [webhook, service] = await Promise.all([
+    source('app/api/gumroad/webhook/route.js'),
+    source('lib/gumroadSubscriptionService.mjs')
+  ]);
+  assert.match(webhook, /claimGumroadEvent/);
+  assert.match(webhook, /SUPPORTED_RESOURCES/);
+  assert.match(webhook, /resource_identity_mismatch/);
+  assert.match(service, /identifyWebsiteProduct\(payload\)/);
+  assert.match(service, /unmatched_or_unapproved_product/);
+  assert.match(service, /unmatched_verified_owner_email_mismatch/);
+  assert.match(service, /unmatched_missing_website_identity/);
+  assert.match(service, /unmatched_existing_subscription_identity_conflict/);
+  assert.match(service, /resource: event\.resource_name/);
+  assert.doesNotMatch(service, /\.eq\('customer_email', eventEmail\)/);
+  assert.doesNotMatch(service, /seller_email/);
+  assert.match(service, /sanitizeGumroadPayload\(payload\)/);
 });
 
 test('paid publishing requires the exact product bound to the selected plan', async () => {
@@ -122,7 +130,7 @@ test('paid publishing requires the exact product bound to the selected plan', as
     source('app/api/site/publish/route.js'),
     source('app/api/checkout/verify/route.js')
   ]);
-  assert.match(publish, /APPROVED_WEBSITE_PRODUCTS\[requestedPlan\]\?\.productId/);
+  assert.match(publish, /websitePlanAccess\(existing\)\.active/);
   assert.match(verify, /productMatches/);
   assert.match(verify, /APPROVED_WEBSITE_PRODUCTS\[expected\]/);
 });
@@ -140,7 +148,7 @@ test('client draft state cannot grant a paid plan or extra-page allowance', asyn
   assert.match(save, /authoritativePlan = existing\.plan \|\| 'free'/);
   assert.doesNotMatch(save, /plan: site\.plan/);
   assert.doesNotMatch(save, /extra_pages: Number\(site\.extraPages/);
-  assert.match(getSite, /extra_page_subscription_status/);
+  assert.match(getSite, /extraPageAccess\(row\)\.allowance/);
   assert.doesNotMatch(editor, /NEXT_PUBLIC_EXTRA_PAGE_SUBSCRIPTION_CHECKOUT_URL/);
   assert.match(editor, /Purchase Extra Page/);
 });

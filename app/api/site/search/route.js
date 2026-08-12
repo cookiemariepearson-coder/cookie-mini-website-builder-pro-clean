@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { slugify } from '../../../../lib/siteDefaults';
 import { getVerifiedSiteOwner } from '../../../../lib/siteOwnerAuth';
+import { customerSubscriptionSummary } from '../../../../lib/subscriptionLifecycle.mjs';
 
 function privateResponse(body, status = 200) {
   return NextResponse.json(body, {
@@ -90,6 +91,7 @@ export async function POST(req) {
       subscription_status: row.subscription_status || 'unverified',
       monthly_price: row.monthly_price || 0,
       extra_pages: row.extra_pages || 0,
+      subscription: customerSubscriptionSummary(row),
       updated_at: row.updated_at,
       site: siteFromRow(row)
     }));
