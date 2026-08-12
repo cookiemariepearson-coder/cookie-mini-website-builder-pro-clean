@@ -37,11 +37,16 @@ export async function POST(req) {
         body: form.toString()
       });
       const data = await response.json().catch(() => ({ success:false, error:'Could not parse Gumroad response.' }));
-      results.push({ resource, status: response.status, data });
+      results.push({
+        resource,
+        status: response.status,
+        success: response.ok && data.success === true,
+        error: response.ok && data.success === true ? null : String(data.error || 'Provider registration failed.').slice(0, 200)
+      });
     }
     return NextResponse.json({ ok:true, results });
   } catch (error) {
-    console.error('[gumroad-register] registration failed', { message: error?.message || String(error) });
+    console.error('[gumroad-register] registration failed', { code: String(error?.code || 'registration_failed').slice(0, 100) });
     return NextResponse.json({ ok:false, error:'Gumroad webhooks could not be registered.' }, { status:500 });
   }
 }

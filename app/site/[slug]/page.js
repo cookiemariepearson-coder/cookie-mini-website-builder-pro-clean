@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import SitePreview from '../../../lib/SitePreview.js';
 import { getSupabaseAdmin } from '../../../lib/supabaseAdmin';
+import { websitePlanAccess } from '../../../lib/subscriptionLifecycle.mjs';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -41,12 +42,11 @@ function normalizeSiteRow(row = {}, slug = '') {
 function isBlocked(row = {}) {
   const status = String(row.status || '').toLowerCase();
   const access = String(row.access_status || '').toLowerCase();
-  const subscription = String(row.subscription_status || '').toLowerCase();
   const plan = String(row.plan || row.site?.plan || '').toLowerCase();
 
   if (['paused','archived','deleted','inactive'].includes(status)) return true;
   if (['paused','archived','deleted','inactive'].includes(access)) return true;
-  if (plan !== 'free' && ['canceled','ended','refunded','disputed','paused'].includes(subscription)) return true;
+  if (plan !== 'free' && !websitePlanAccess(row).active) return true;
   return false;
 }
 

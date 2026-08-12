@@ -58,12 +58,12 @@ Do not substitute the Business or Premium monthly website subscriptions, the mon
 - [x] My Websites search uses the authenticated owner and cannot accept a public email identity.
 - [x] Owner website/request searches remain admin-protected and bounded.
 - [x] Compact Done-for-You success messages dismiss automatically after 8.5 seconds; stored requests and email request IDs remain unchanged.
-- [ ] Owner live verification of existing-user password setup, returning password sign-in, and final edit/republish. The August 12 returning sign-in attempt failed before password setup/reset was completed; the repaired same-user recovery journey still requires the owner retest.
+- [x] Owner live verification passed for the newest reset email, password setup, returning password sign-in, My Websites, edit/republish, sign out, and editor reauthentication.
 - [ ] Enable Supabase leaked-password protection if the project plan supports it; the current security advisor reports it disabled.
 
 ## Remaining after the current phase
 
-- [ ] Owner/admin subscription operations and unmatched-event review.
+- [x] Owner/admin subscription lifecycle operations and unmatched-event review implemented with masked review data, read-only provider recheck, preview-gated reconciliation, idempotent processing, and no arbitrary plan/access assignment. Production deployment and owner smoke verification are tracked separately from implementation.
 - [ ] Cookie AI Assistant final live accuracy and safe-response validation.
 - [ ] Final mobile/accessibility production sweep for any routes not already owner-verified.
 - [ ] SEO, policy/legal review, launch documentation, and soft-launch monitoring.

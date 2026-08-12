@@ -4,29 +4,21 @@ import { getVerifiedAdmin } from '../../../../../lib/siteOwnerAuth';
 
 export const dynamic = 'force-dynamic';
 
-const allowed = new Set(['active','unverified','canceled','ended','refunded','disputed','paused']);
-
-export async function POST(req) {
+export async function POST(request) {
   try {
-    const admin = await getVerifiedAdmin(req);
-    if (!admin.ok) return NextResponse.json({ ok:false, error:admin.error }, { status:admin.status });
-    const { slug, updates } = await req.json();
-    if (!slug) return NextResponse.json({ ok:false, error:'Missing website slug.' }, { status:400 });
-    const safe = {};
-    if (updates?.subscription_status && allowed.has(updates.subscription_status)) safe.subscription_status = updates.subscription_status;
-    if (updates?.access_status && ['active','paused','archived'].includes(updates.access_status)) safe.access_status = updates.access_status;
-    if (updates?.status && ['published','paused','draft','archived'].includes(updates.status)) safe.status = updates.status;
-    if (typeof updates?.paused_reason === 'string') safe.paused_reason = updates.paused_reason.slice(0, 500);
-    if (typeof updates?.admin_notes === 'string') safe.admin_notes = updates.admin_notes.slice(0, 2000);
-    if (updates?.plan && ['free','starter','business','premium'].includes(updates.plan)) safe.plan = updates.plan;
-    if (Number.isFinite(Number(updates?.extra_pages))) safe.extra_pages = Number(updates.extra_pages);
-    safe.updated_at = new Date().toISOString();
-    const supabase = getSupabaseAdmin();
-    const { error } = await supabase.from('websites').update(safe).eq('slug', slug);
+    const admin = await getVerifiedAdmin(request);
+    if (!admin.ok) return NextResponse.json({ ok: false, error: admin.error }, { status: admin.status });
+    const { slug, updates } = await request.json();
+    if (!slug) return NextResponse.json({ ok: false, error: 'Missing website slug.' }, { status: 400 });
+    if (typeof updates?.admin_notes !== 'string') {
+      return NextResponse.json({ ok: false, error: 'Subscription access can only change from verified Gumroad evidence.' }, { status: 400 });
+    }
+    const safe = { admin_notes: updates.admin_notes.slice(0, 2000), updated_at: new Date().toISOString() };
+    const { error } = await getSupabaseAdmin().from('websites').update(safe).eq('slug', slug);
     if (error) throw error;
-    return NextResponse.json({ ok:true });
+    return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('[admin-subscriptions] manual update failed', { message: error?.message || String(error) });
-    return NextResponse.json({ ok:false, error:'The subscription record could not be updated.' }, { status:500 });
+    console.error('[admin-subscriptions] note update failed', { code: String(error?.code || 'note_update_failed').slice(0, 100) });
+    return NextResponse.json({ ok: false, error: 'The private note could not be updated.' }, { status: 500 });
   }
 }

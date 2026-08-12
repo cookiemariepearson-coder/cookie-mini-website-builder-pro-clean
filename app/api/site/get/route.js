@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
+import { extraPageAccess } from '../../../../lib/subscriptionLifecycle.mjs';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,9 +20,7 @@ function fallbackSite(row){
     offers: [{title:'Main Service',text:'Describe your offer.'},{title:'Highlights',text:'Share why customers choose you.'},{title:'Contact',text:'Tell people how to reach you.'}],
     sections: {}
   };
-  const activeExtraPages = String(row.extra_page_subscription_status || '').toLowerCase() === 'active'
-    ? Math.max(0, Number(row.extra_pages) || 0)
-    : 0;
+  const activeExtraPages = extraPageAccess(row).allowance;
   return { ...saved, plan: row.plan || saved.plan || 'free', extraPages: activeExtraPages };
 }
 

@@ -148,7 +148,7 @@ test('guest publishing and paid checkout still require authenticated server rout
   assert.match(builder, /if \(!hasOwnerSession\)/);
   assert.match(builder, /openAccountModal/);
   assert.match(publish, /getVerifiedSiteOwner/);
-  assert.match(publish, /APPROVED_WEBSITE_PRODUCTS/);
+  assert.match(publish, /websitePlanAccess/);
   assert.match(checkout, /getVerifiedSiteOwner/);
   assert.match(checkout, /siteBelongsToOwner/);
 });
