@@ -16,10 +16,24 @@ export async function POST(request) {
     const slug = slugify(body.slug || '');
     const action = String(body.action || '').toLowerCase();
     if (!slug || !['archive', 'delete'].includes(action)) return NextResponse.json({ ok: false, error: 'Choose a valid website action.' }, { status: 400 });
-    const { data: site, error } = await owner.supabase.from('websites').select('*').eq('slug', slug).maybeSingle();
+    const { data: foundSite, error } = await owner.supabase.from('websites').select('*').eq('slug', slug).maybeSingle();
     if (error) throw error;
-    if (!site) return NextResponse.json({ ok: false, error: 'Website not found.' }, { status: 404 });
-    if (!siteBelongsToOwner(site, owner)) return NextResponse.json({ ok: false, error: 'This website belongs to a different customer.' }, { status: 403 });
+    if (!foundSite) return NextResponse.json({ ok: false, error: 'Website not found.' }, { status: 404 });
+    if (!siteBelongsToOwner(foundSite, owner)) return NextResponse.json({ ok: false, error: 'You do not have access to manage this website.' }, { status: 403 });
+    let site = foundSite;
+    if (!site.owner_id) {
+      const { data: claimed, error: claimError } = await owner.supabase
+        .from('websites')
+        .update({ owner_id: owner.user.id, customer_email: owner.email, updated_at: new Date().toISOString() })
+        .eq('id', site.id)
+        .is('owner_id', null)
+        .ilike('customer_email', owner.email)
+        .select('*')
+        .maybeSingle();
+      if (claimError) throw claimError;
+      if (!claimed) return NextResponse.json({ ok: false, error: 'You do not have access to manage this website.' }, { status: 403 });
+      site = claimed;
+    }
 
     if (action === 'archive') {
       const { error: archiveError } = await owner.supabase.from('websites').update({ access_status: 'archived', status: 'archived', updated_at: new Date().toISOString() }).eq('id', site.id).eq('owner_id', owner.user.id);

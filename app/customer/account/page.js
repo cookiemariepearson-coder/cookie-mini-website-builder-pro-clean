@@ -2,17 +2,26 @@
 
 import { useEffect, useState } from 'react';
 import Nav from '../../../lib/Nav';
+import { useAccountModal } from '../../../components/AccountModalProvider';
 
 const LOCAL_DRAFT_KEYS = ['cookieDraftSite', 'cookieDraftSitesIndex', 'cookieBuilderStep', 'cookieBuilderCurrentSlug', 'cookieGuestDraftClaimV1'];
 const AI_HISTORY_KEYS = ['cookieAiAssistantV2Messages', 'cookieAiAssistantPlanState'];
 
 export default function CustomerAccountPage() {
+  const { accountState, accountEmail, openAccountModal } = useAccountModal();
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('Checking your secure account…');
   const [confirmation, setConfirmation] = useState('');
   const [websites, setWebsites] = useState([]);
 
   useEffect(() => {
+    if (accountState === 'checking') return;
+    if (accountState !== 'signed-in') {
+      setEmail('');
+      setWebsites([]);
+      setStatus('Sign in to use customer account controls.');
+      return;
+    }
     fetch('/api/auth/site-owner/session', { cache: 'no-store' })
       .then(response => response.json())
       .then(data => {
@@ -28,7 +37,7 @@ export default function CustomerAccountPage() {
         });
       })
       .catch(() => setStatus('Your secure session expired. Sign in again to use account controls.'));
-  }, []);
+  }, [accountEmail, accountState]);
 
   async function exportData() {
     setStatus('Preparing your account export…');
@@ -73,6 +82,7 @@ export default function CustomerAccountPage() {
           <h1>Account</h1>
           <p>Manage your Mini Website Builder session, browser-local information, data export, and support requests.</p>
           <div className="notice" role="status" aria-live="polite">{status}</div>
+          {accountState === 'signed-out' && <p><button className="btn" type="button" onClick={() => openAccountModal({ mode: 'signin', destination: '/customer/account' })}>Sign In and Return to Account</button></p>}
           <div className="accountControlGrid">
             <article><h2>Account email</h2><p>{email || 'Sign in required'}</p><a className="btn light" href="/customer">My Websites</a></article>
             <article><h2>Plans &amp; websites</h2>{websites.length ? <ul>{websites.map(site => <li key={site.slug}><strong>{site.business_name || site.slug}</strong>: {site.plan || 'free'} — {site.status || 'draft'}</li>)}</ul> : <p>No customer-owned cloud websites loaded.</p>}</article>

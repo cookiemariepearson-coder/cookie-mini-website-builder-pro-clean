@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 function fallbackSite(row){
   const saved = row.site || {
     businessName: row.business_name || row.businessName || 'Published Website',
@@ -28,20 +31,27 @@ export async function GET(req) {
     const slug = searchParams.get('slug');
     const ownerOnly = searchParams.get('owner') === '1';
     if (!slug) return NextResponse.json({ ok:false,error:'Missing slug' }, { status:400 });
-    const supabase = getSupabaseAdmin();
+    let owner = null;
+    if (ownerOnly) {
+      owner = await getVerifiedSiteOwner(req);
+      if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
+    }
+    const supabase = owner?.supabase || getSupabaseAdmin();
     const { data, error } = await supabase.from('websites').select('*').eq('slug', slug).maybeSingle();
     if (error) throw error;
     if (!data) return NextResponse.json({ ok:false,error:'Not found' }, { status:404 });
 
     if (ownerOnly || String(data.status || '').toLowerCase() !== 'published') {
-      const owner = await getVerifiedSiteOwner(req);
+      owner = owner || await getVerifiedSiteOwner(req);
       if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
       if (!siteBelongsToOwner(data, owner)) {
-        return NextResponse.json({ ok: false, error: 'This website belongs to a different verified email.' }, { status: 403 });
+        return NextResponse.json({ ok: false, error: 'You do not have access to manage this website.' }, { status: 403 });
       }
     }
 
-    return NextResponse.json({ ok:true, row:data, site: fallbackSite(data) });
+    return NextResponse.json({ ok:true, row:data, site: fallbackSite(data) }, {
+      headers: { 'Cache-Control': ownerOnly ? 'private, no-store, max-age=0' : 'public, max-age=0, must-revalidate' }
+    });
   } catch(e) {
     console.error('[site-get] load failed', { message: e?.message || String(e) });
     return NextResponse.json({ ok:false,error:'The website could not be loaded right now. Please refresh and try again.' }, { status:500 });
