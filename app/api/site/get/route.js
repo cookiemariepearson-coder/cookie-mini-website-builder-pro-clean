@@ -4,6 +4,10 @@ import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOw
 import { extraPageAccess } from '../../../../lib/subscriptionLifecycle.mjs';
 
 export const dynamic = 'force-dynamic';
+
+function privateResponse(body, status = 200) {
+  return NextResponse.json(body, { status, headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
+}
 export const runtime = 'nodejs';
 
 function fallbackSite(row){
@@ -29,22 +33,22 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const slug = searchParams.get('slug');
     const ownerOnly = searchParams.get('owner') === '1';
-    if (!slug) return NextResponse.json({ ok:false,error:'Missing slug' }, { status:400 });
+    if (!slug) return privateResponse({ ok:false,error:'Missing slug' }, 400);
     let owner = null;
     if (ownerOnly) {
       owner = await getVerifiedSiteOwner(req);
-      if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
+      if (!owner.ok) return privateResponse({ ok: false, error: owner.error }, owner.status);
     }
     const supabase = owner?.supabase || getSupabaseAdmin();
     const { data, error } = await supabase.from('websites').select('*').eq('slug', slug).maybeSingle();
     if (error) throw error;
-    if (!data) return NextResponse.json({ ok:false,error:'Not found' }, { status:404 });
+    if (!data) return privateResponse({ ok:false,error:'Not found' }, 404);
 
     if (ownerOnly || String(data.status || '').toLowerCase() !== 'published') {
       owner = owner || await getVerifiedSiteOwner(req);
-      if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
+      if (!owner.ok) return privateResponse({ ok: false, error: owner.error }, owner.status);
       if (!siteBelongsToOwner(data, owner)) {
-        return NextResponse.json({ ok: false, error: 'You do not have access to manage this website.' }, { status: 403 });
+        return privateResponse({ ok: false, error: 'You do not have access to manage this website.' }, 403);
       }
     }
 
@@ -53,6 +57,6 @@ export async function GET(req) {
     });
   } catch(e) {
     console.error('[site-get] load failed', { message: e?.message || String(e) });
-    return NextResponse.json({ ok:false,error:'The website could not be loaded right now. Please refresh and try again.' }, { status:500 });
+    return privateResponse({ ok:false,error:'The website could not be loaded right now. Please refresh and try again shortly.' }, 500);
   }
 }

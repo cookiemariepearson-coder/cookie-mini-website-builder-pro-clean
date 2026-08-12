@@ -5,6 +5,10 @@ export const dynamic = 'force-dynamic';
 
 const RESOURCES = ['sale','refund','cancellation','subscription_ended','subscription_restarted','subscription_updated','dispute','dispute_won'];
 
+function privateResponse(body, status = 200) {
+  return NextResponse.json(body, { status, headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
+}
+
 function baseUrl(req) {
   const root = process.env.NEXT_PUBLIC_ROOT_DOMAIN || '';
   if (root) return `https://www.${root}`;
@@ -14,16 +18,16 @@ function baseUrl(req) {
 export async function POST(req) {
   try {
     const admin = await getVerifiedAdmin(req);
-    if (!admin.ok) return NextResponse.json({ ok:false, error:admin.error }, { status:admin.status });
+    if (!admin.ok) return privateResponse({ ok:false, error:admin.error }, admin.status);
     const token = process.env.GUMROAD_ACCESS_TOKEN;
     if (!token) {
       console.error('[gumroad-register] access configuration missing');
-      return NextResponse.json({ ok:false, error:'Gumroad webhook registration is not configured.' }, { status:503 });
+      return privateResponse({ ok:false, error:'Gumroad webhook registration is not configured.' }, 503);
     }
     const webhookSecret = String(process.env.GUMROAD_WEBHOOK_SECRET || '').trim();
     if (!webhookSecret) {
       console.error('[gumroad-register] signing configuration missing');
-      return NextResponse.json({ ok:false, error:'Gumroad webhook registration is not configured.' }, { status:503 });
+      return privateResponse({ ok:false, error:'Gumroad webhook registration is not configured.' }, 503);
     }
 
     const results = [];
@@ -44,9 +48,9 @@ export async function POST(req) {
         error: response.ok && data.success === true ? null : String(data.error || 'Provider registration failed.').slice(0, 200)
       });
     }
-    return NextResponse.json({ ok:true, results });
+    return privateResponse({ ok:true, results });
   } catch (error) {
     console.error('[gumroad-register] registration failed', { code: String(error?.code || 'registration_failed').slice(0, 100) });
-    return NextResponse.json({ ok:false, error:'Gumroad webhooks could not be registered.' }, { status:500 });
+    return privateResponse({ ok:false, error:'Gumroad webhooks could not be registered.' }, 500);
   }
 }

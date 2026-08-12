@@ -6,6 +6,10 @@ import { publicEventSummary } from '../../../../../lib/gumroadSubscriptionServic
 
 export const dynamic = 'force-dynamic';
 
+function privateResponse(body, status = 200) {
+  return NextResponse.json(body, { status, headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
+}
+
 function websiteSummary(row = {}) {
   return {
     slug: row.slug,
@@ -33,7 +37,7 @@ function websiteSummary(row = {}) {
 export async function POST(request) {
   try {
     const admin = await getVerifiedAdmin(request);
-    if (!admin.ok) return NextResponse.json({ ok: false, error: admin.error }, { status: admin.status });
+    if (!admin.ok) return privateResponse({ ok: false, error: admin.error }, admin.status);
     const supabase = getSupabaseAdmin();
     const websiteFields = 'id,slug,business_name,customer_email,plan,status,access_status,subscription_status,subscription_started_at,subscription_next_renewal_at,subscription_end_at,extra_page_subscription_status,extra_page_subscription_end_at,extra_pages,monthly_price,gumroad_product_name,gumroad_last_event,gumroad_last_event_at,admin_notes,updated_at';
     const eventFields = 'id,event_key,provider_event_id,resource_name,event_category,email,sale_id,subscription_id,product_name,matched_slug,matched_plan,action_taken,provider_event_at,received_at,processed_at,processing_status,review_status,review_reason,safe_action,internal_note,last_reconciled_at,reconciliation_source';
@@ -43,13 +47,13 @@ export async function POST(request) {
     ]);
     if (websiteError) throw websiteError;
     if (eventError) throw eventError;
-    return NextResponse.json({
+    return privateResponse({
       ok: true,
       websites: (websites || []).map(websiteSummary),
       events: (events || []).map(publicEventSummary)
-    }, { headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
+    });
   } catch (error) {
     console.error('[admin-subscriptions] load failed', { code: String(error?.code || 'load_failed').slice(0, 100) });
-    return NextResponse.json({ ok: false, error: 'Subscription records could not be loaded.' }, { status: 500 });
+    return privateResponse({ ok: false, error: 'Subscription records could not be loaded.' }, 500);
   }
 }

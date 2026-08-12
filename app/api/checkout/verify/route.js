@@ -8,15 +8,19 @@ export const dynamic = 'force-dynamic';
 
 function clean(value = '') { return String(value || '').trim().toLowerCase(); }
 
+function privateResponse(body, status = 200) {
+  return NextResponse.json(body, { status, headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
+}
+
 export async function POST(request) {
   try {
     const owner = await getVerifiedSiteOwner(request);
-    if (!owner.ok) return NextResponse.json({ ok: false, verified: false, error: owner.error }, { status: owner.status });
+    if (!owner.ok) return privateResponse({ ok: false, verified: false, error: owner.error }, owner.status);
     const body = await request.json();
     const slug = clean(body.slug);
     const email = owner.email;
     const expected = clean(body.plan);
-    if (!slug && !email) return NextResponse.json({ ok: false, verified: false, error: 'Missing website or purchase email.' }, { status: 400 });
+    if (!slug && !email) return privateResponse({ ok: false, verified: false, error: 'Missing website or purchase email.' }, 400);
 
     const supabase = getSupabaseAdmin();
     let query = supabase.from('websites').select('*').limit(1);
@@ -24,9 +28,9 @@ export async function POST(request) {
     const { data, error } = await query;
     if (error) throw error;
     const website = data?.[0];
-    if (!website) return NextResponse.json({ ok: true, verified: false, pending: true, error: 'The Gumroad purchase has not matched this website yet.' });
+    if (!website) return privateResponse({ ok: true, verified: false, pending: true, error: 'The Gumroad purchase has not matched this website yet.' });
     if (!siteBelongsToOwner(website, owner)) {
-      return NextResponse.json({ ok: false, verified: false, error: 'This website belongs to a different verified email.' }, { status: 403 });
+      return privateResponse({ ok: false, verified: false, error: 'This website belongs to a different verified email.' }, 403);
     }
 
     const emailMatches = [website.customer_email, website.gumroad_email].map(clean).includes(email);
@@ -40,7 +44,7 @@ export async function POST(request) {
       : Boolean(expectedProduct?.productId && clean(website.gumroad_product_id) === clean(expectedProduct.productId));
     const verified = emailMatches && active && planMatches && productMatches;
 
-    return NextResponse.json({
+    return privateResponse({
       ok: true,
       verified,
       pending: !verified,
@@ -49,6 +53,6 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error('[checkout-verify] verification failed', { message: error?.message || String(error) });
-    return NextResponse.json({ ok: false, verified: false, error: 'Payment confirmation could not be checked right now. Your draft remains saved; please try again shortly.' }, { status: 500 });
+    return privateResponse({ ok: false, verified: false, error: 'Payment confirmation could not be checked right now. Your draft remains saved; please try again shortly.' }, 500);
   }
 }
