@@ -1,6 +1,6 @@
 # Cookie Mini Website Builder Pro — Launch Completion Checklist
 
-Last updated: August 12, 2026
+Last updated: August 13, 2026
 
 This checklist distinguishes automated verification from real owner production testing. A phase is marked complete only when its required customer journey has the appropriate production evidence.
 
@@ -59,14 +59,24 @@ Do not substitute the Business or Premium monthly website subscriptions, the mon
 - [x] Owner website/request searches remain admin-protected and bounded.
 - [x] Compact Done-for-You success messages dismiss automatically after 8.5 seconds; stored requests and email request IDs remain unchanged.
 - [x] Owner live verification passed for the newest reset email, password setup, returning password sign-in, My Websites, edit/republish, sign out, and editor reauthentication.
+- [x] Canonical owner-password phase — owner production pass on August 13, 2026:
+  - received the newest owner recovery email;
+  - set a new password without changing the canonical Supabase identity;
+  - signed into `/admin/subscriptions` and loaded the protected dashboard;
+  - locked the Owner Dashboard and confirmed access was removed; and
+  - signed back in successfully with the new password.
 - [ ] Enable Supabase leaked-password protection if the project plan supports it; the current security advisor reports it disabled.
 
-## Remaining after the current phase
+## Launch security and final readiness
 
 - [x] Owner/admin subscription lifecycle operations and unmatched-event review implemented with masked review data, read-only provider recheck, preview-gated reconciliation, idempotent processing, and no arbitrary plan/access assignment. Production deployment and owner smoke verification are tracked separately from implementation.
-- [ ] Cookie AI Assistant final live accuracy and safe-response validation.
-- [ ] Final mobile/accessibility production sweep for any routes not already owner-verified.
-- [ ] SEO, policy/legal review, launch documentation, and soft-launch monitoring.
+- [x] Encrypted logical backup, Storage inventory, checksum verification, isolated-restore guards, retention schedule, and recovery documentation implemented. The first private backup and isolated restore drill require the owner-controlled destination and recovery key.
+- [x] `handle_new_arcade_user()` ownership/dependencies investigated and its direct anonymous/authenticated RPC exposure removed without changing the Auth trigger behavior.
+- [x] Cookie AI Assistant accuracy, prompt-boundary, privacy-copy, and safe-response validation completed.
+- [x] Final automated mobile/accessibility sweep completed, including Cookie AI keyboard, focus, dialog, touch-target, and dynamic-viewport protections. Production route checks are recorded in the deployment report.
+- [x] SEO/discoverability metadata, structured data, sitemap, policy consistency, launch-security documentation, and soft-launch technical review completed.
+- [ ] Obtain qualified legal review before a broad public launch; the completed repository review is technical and is not legal advice.
+- [ ] Begin the documented soft-launch monitoring routine after the owner stores the first encrypted backup off-repository.
 
 ## Launch evidence rule
 

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Nav from '../../../lib/Nav';
 
-export const metadata = { title: 'AI Video Studio Policy | Cookie Mini Website Builder Pro' };
+export const metadata = { title: 'AI Video Studio Policy', alternates: { canonical: '/legal/ai-video' } };
 
 export default function PolicyPage(){
   return (
@@ -11,19 +11,19 @@ export default function PolicyPage(){
         <section className="dashboard">
           <span className="kicker">AI Policy</span>
           <h1>AI Video Studio Policy</h1>
-          <p><strong>Last updated:</strong> July 2026</p>
+          <p><strong>Last updated:</strong> August 2026</p>
           
           <h2>1. AI Video Studio Overview</h2>
           <p>AI Video Studio helps customers plan video content by creating ideas, hooks, captions, scripts, shot lists, voiceover wording, and video prompts. Some eligible plans may also connect to third-party video generation services such as HeyGen to create real AI-generated videos.</p>
 
           <h2>2. Standalone AI Video Studio</h2>
-          <p>The standalone $5 AI Video Studio option opens the creative planning studio. It is designed for brainstorming, scripting, captions, prompts, and video direction. Real HeyGen video generation is reserved for eligible website plans, owner testing, or other clearly stated paid access.</p>
+          <p>The verified standalone $5 one-time AI Video Studio purchase includes creative planning tools and one real AI-generated video. Generation remains subject to third-party processing, moderation, technical availability, and the one-credit limit; a successful render or particular result is not guaranteed.</p>
 
           <h2>3. HeyGen and Third-Party AI Services</h2>
           <p>When real video generation is available, content may be sent to third-party AI video services for processing, moderation, rendering, storage, and delivery. Those third-party services have their own terms, privacy policies, acceptable use rules, moderation systems, data practices, subscriptions, usage caps, feature limits, output rules, and support processes.</p>
 
           <h2>4. Plan Limits and Credits</h2>
-          <p>Business and Premium plans may include different monthly real video limits. Video credits, limits, processing times, and availability may change based on platform costs, third-party provider rules, usage, technical limits, moderation results, or plan changes.</p>
+          <p>The standalone purchase includes one real-video credit. Business and Premium plans may include different monthly real-video limits. Video credits, limits, processing times, and availability may change based on platform costs, third-party provider rules, usage, technical limits, moderation results, or plan changes.</p>
 
           <h2>5. Customer Content and Permissions</h2>
           <p>Customers are responsible for all prompts, scripts, images, voices, likenesses, names, business information, offers, claims, and media submitted for AI video use. Customers must have all rights, licenses, consents, and permissions needed for anything they submit or generate.</p>

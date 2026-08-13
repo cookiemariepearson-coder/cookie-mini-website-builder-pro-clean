@@ -85,7 +85,7 @@ export default function CheckoutSuccess() {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (!raw) {
         setIsPublishing(false);
-        setError('No website draft was found in this browser. Open My Website and search by your email to find saved drafts.');
+        setError('No website draft was found in this browser. Sign in to My Websites to open only the drafts owned by your verified account.');
         return;
       }
 
@@ -212,7 +212,7 @@ export default function CheckoutSuccess() {
       <div className="navRow checkoutSuccessActions">
         {siteUrl && <a className="btn" href={siteUrl} target="_blank" rel="noreferrer">Open Published Website</a>}
         {publishedSlug && <a className="btn dark" href={`/site/${publishedSlug}`} target="_blank" rel="noreferrer">Open Backup Preview</a>}
-        <a className="btn light" href="/customer">Find My Drafts / Website</a>
+        <a className="btn light" href="/customer">Open My Websites</a>
         {['business','premium'].includes(displayedPlan) && <a className="btn aiStudioSuccessBtn" href={`/video-studio?return=builder&draft=${encodeURIComponent(publishedSlug || '')}`}>Open AI Video Studio</a>}
         <a className="btn light" href="/builder">Back to Builder</a>
         <button className="btn dark" onClick={startFreshDraft}>Start Fresh Draft</button>

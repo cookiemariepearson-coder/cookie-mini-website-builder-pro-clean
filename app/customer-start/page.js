@@ -11,12 +11,18 @@ const steps = [
 ];
 
 const customerTips = [
-  'You can search My Website with just your email address.',
-  'You can also enter only the short website name, like cookies-kitchen-menu.',
+  'Sign in before opening My Websites; only records owned by your verified account will load.',
+  'After signing in, you can filter your own websites by a short website name, like cookies-kitchen-menu.',
   'Drafts and published websites appear together in one list.',
   'Free Launch Page publishes one Home page. More pages require a paid plan.',
-  'AI Video Studio currently creates scripts, captions, prompts, and a downloadable kit.'
+  'A verified $5 standalone AI Video Studio purchase includes planning tools and one real AI-generated video.'
 ];
+
+export const metadata = {
+  title: 'Customer Website Guide',
+  description: 'Learn how to build, save, securely reopen, edit, and publish your Mini Website.',
+  alternates: { canonical: '/customer-start' }
+};
 
 export default function CustomerStart() {
   return <>
@@ -28,7 +34,7 @@ export default function CustomerStart() {
         <p>This guide helps customers know exactly where to build, where to save drafts, and where to return later to edit their website.</p>
         <div className="customerActionRow">
           <Link className="btn" href="/builder">Start Building</Link>
-          <Link className="btn dark" href="/customer">Find My Drafts / Website</Link>
+          <Link className="btn dark" href="/customer">Open My Websites</Link>
           <Link className="btn light" href="/pricing">View Plans</Link>
         </div>
       </section>
@@ -37,7 +43,7 @@ export default function CustomerStart() {
         <div>
           <span className="kicker">Quick reminder</span>
           <h2>How customers return later</h2>
-          <p>Go to <strong>My Website</strong> and search with an email address, website name, or full subdomain. They do not need to remember the full website link.</p>
+          <p>Sign in, then open <strong>My Websites</strong>. Only websites owned by the verified account load; customers can filter that private list by website name, plan, status, or address.</p>
         </div>
         <Link className="btn dark" href="/customer">Open My Website</Link>
       </section>

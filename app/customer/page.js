@@ -240,7 +240,7 @@ export default function Customer() {
         setMsg(data.error || 'Could not find websites.');
         setSites([]);
       } else if (!data.sites?.length) {
-        setMsg('No websites or drafts found yet. Check the email/subdomain spelling, or open the builder to start a new one.');
+        setMsg('No websites or drafts found yet. Try fewer filter words, or open the builder to start a new one.');
         setSites([]);
       } else {
         setSites(data.sites);

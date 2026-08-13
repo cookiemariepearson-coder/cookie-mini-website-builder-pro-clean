@@ -4,3 +4,11 @@ node_modules/
 .env*
 !.env.example
 npm-debug.log*
+
+# Production recovery artifacts must stay encrypted and outside source control.
+backups/
+*.backup.sql
+*.backup.sql.gz
+*.backup.tar.gz
+*.backup.tar.gz.age
+*.backup.sha256

@@ -45,6 +45,12 @@ const websitePlans = [
   },
 ];
 
+export const metadata = {
+  title: 'Website Plans and Pricing',
+  description: 'Compare Free, Starter Pro, Business, Premium, Extra Page, and standalone AI Video Studio options.',
+  alternates: { canonical: '/pricing' }
+};
+
 export default function Pricing(){
   return (
     <>
@@ -80,7 +86,7 @@ export default function Pricing(){
             <span className="kicker">Need video only?</span>
             <h2>AI Video Studio — $5</h2>
             <p>
-              A separate option for customers who want video ideas, hooks, scripts, captions, and scene planning without purchasing a website plan.
+              A one-time option with video planning tools plus one real AI-generated video after purchase verification, without purchasing a website plan. Provider processing, moderation, and availability apply.
             </p>
           </div>
           <Link className="btn dark" href="/checkout/ai-video">Start AI Video Checkout</Link>

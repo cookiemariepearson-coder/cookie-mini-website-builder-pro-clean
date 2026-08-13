@@ -83,6 +83,10 @@ export default function CookieAiAssistant() {
   const [showDetails, setShowDetails] = useState(false);
   const scrollRef = useRef(null);
   const pendingRef = useRef(false);
+  const panelRef = useRef(null);
+  const inputRef = useRef(null);
+  const launcherRef = useRef(null);
+  const openerRef = useRef(null);
 
   useEffect(() => {
     const pathname = window.location.pathname || '/';
@@ -100,13 +104,16 @@ export default function CookieAiAssistant() {
   useEffect(() => {
     function openFromPage(event) {
       const prompt = String(event.detail?.prompt || '').trim();
+      openerRef.current = document.activeElement;
       setOpen(true);
       if (prompt) setInput(prompt);
     }
     function handlePageClick(event) {
       const button = event.target.closest('[data-cookie-ai-open]');
       if (!button) return;
-      openFromPage({ detail: { prompt: button.getAttribute('data-cookie-ai-open') } });
+      openerRef.current = button;
+      setOpen(true);
+      setInput(String(button.getAttribute('data-cookie-ai-open') || '').trim());
     }
     window.addEventListener('open-cookie-ai', openFromPage);
     document.addEventListener('click', handlePageClick);
@@ -115,6 +122,12 @@ export default function CookieAiAssistant() {
       document.removeEventListener('click', handlePageClick);
     };
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const frame = window.requestAnimationFrame(() => inputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [open]);
 
   useEffect(() => {
     try { localStorage.setItem('cookieAiAssistantV2Messages', JSON.stringify(dedupeMessages(messages).slice(-14))); } catch {}
@@ -198,22 +211,55 @@ export default function CookieAiAssistant() {
     setTimeout(() => setCopied(''), 1500);
   }
 
+  function closeAssistant() {
+    setOpen(false);
+    window.requestAnimationFrame(() => (openerRef.current || launcherRef.current)?.focus());
+  }
+
+  function handleDialogKeyDown(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeAssistant();
+      return;
+    }
+    if (event.key !== 'Tab' || !panelRef.current) return;
+    const focusable = [...panelRef.current.querySelectorAll('button:not([disabled]), input:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')];
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   return (
     <div className={`cookieAiAssistant cookieAiV2 ${open ? 'open' : ''}`}>
       {open && (
-        <section className="cookieAiPanel" aria-label="Cookie AI Assistant chat">
+        <section
+          className={`cookieAiPanel ${showDetails ? 'showDetails' : ''}`}
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cookie-ai-title"
+          aria-describedby="cookie-ai-description"
+          onKeyDown={handleDialogKeyDown}
+        >
           <header className="cookieAiHeader">
             <div>
               <span className="cookieAiEyebrow">Cookie Digital Creations</span>
-              <strong>Ask Cookie AI</strong>
+              <strong id="cookie-ai-title">Ask Cookie AI</strong>
               <span>Your website helper</span>
             </div>
-            <button type="button" onClick={() => setOpen(false)} aria-label="Close Cookie AI Assistant">×</button>
+            <button type="button" onClick={closeAssistant} aria-label="Close Cookie AI Assistant">×</button>
           </header>
 
           <div className="cookieAiWelcome">
             <strong>What are you working on?</strong>
-            <span>Ask naturally. I can help with the next step, wording, plans, or buttons.</span>
+            <span id="cookie-ai-description">Ask naturally. I can help with the next step, wording, plans, or buttons.</span>
           </div>
 
           <button className="cookieAiDetailsToggle" type="button" aria-expanded={showDetails} onClick={() => setShowDetails(value => !value)}>
@@ -221,7 +267,8 @@ export default function CookieAiAssistant() {
           </button>
           {showDetails && <div className="cookieAiLeadFields">
             <input value={businessName} onChange={event => setBusinessName(event.target.value)} placeholder="Business name" aria-label="Business name optional" />
-            <input value={email} onChange={event => setEmail(event.target.value)} placeholder="Email" aria-label="Email optional" />
+            <input type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="Email (optional)" aria-label="Email optional" />
+            <small>Your optional details and chat may be stored to answer and improve support. Never enter passwords or payment-card details.</small>
           </div>}
 
           <div className="cookieAiQuick">
@@ -249,6 +296,7 @@ export default function CookieAiAssistant() {
             }}
           >
             <input
+              ref={inputRef}
               value={input}
               onChange={event => setInput(event.target.value)}
               placeholder="Type your question here..."
@@ -270,7 +318,21 @@ export default function CookieAiAssistant() {
         </section>
       )}
 
-      <button className="cookieAiLauncher" type="button" onClick={() => setOpen(value => !value)} aria-expanded={open} aria-label={open ? 'Close Cookie AI Assistant' : 'Open Cookie AI Assistant'}>
+      <button
+        className="cookieAiLauncher"
+        ref={launcherRef}
+        type="button"
+        onClick={() => {
+          if (open) closeAssistant();
+          else {
+            openerRef.current = launcherRef.current;
+            setOpen(true);
+          }
+        }}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={open ? 'Close Cookie AI Assistant' : 'Open Cookie AI Assistant'}
+      >
         <span>💬</span>
         <strong>Ask Cookie AI</strong>
       </button>

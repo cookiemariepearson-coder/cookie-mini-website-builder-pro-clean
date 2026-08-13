@@ -23,8 +23,8 @@ export default function SubscriptionPage() {
       <PolicySection title="3. Cancellations">
         <p>Customers are responsible for canceling their subscription through Gumroad if they no longer want to continue. After cancellation, the website may stay active through the paid period or be paused/archived depending on the subscription event, plan, and admin decision.</p>
       </PolicySection>
-      <PolicySection title="4. Manual owner controls">
-        <p>The owner/admin may manually correct plans, reactivate, pause, archive, retrieve, hide, or add notes to a website when needed for customer support, payment matching, cancellation review, or platform safety.</p>
+      <PolicySection title="4. Owner review controls">
+        <p>The owner/admin may review, pause, archive, retrieve, hide, or add notes to a website for customer support, payment matching, cancellation review, or platform safety. Paid entitlement corrections or reactivation require exact authoritative provider evidence and the protected reconciliation process; unsupported records remain unverified rather than receiving manually assigned access.</p>
       </PolicySection>
       <PolicySection title="5. Extra pages or sections">
         <p>Additional section/page space may require the Extra Page Add-On unless included under the current plan. If the add-on ends or is refunded, extra access may be paused or removed.</p>

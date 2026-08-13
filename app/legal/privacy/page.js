@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Nav from '../../../lib/Nav';
 
-export const metadata = { title: 'Privacy Policy | Cookie Mini Website Builder Pro' };
+export const metadata = { title: 'Privacy Policy', alternates: { canonical: '/legal/privacy' } };
 
 export default function PolicyPage(){
   return (
@@ -11,7 +11,7 @@ export default function PolicyPage(){
         <section className="dashboard">
           <span className="kicker">Privacy</span>
           <h1>Privacy Policy</h1>
-          <p><strong>Last updated:</strong> July 2026</p>
+          <p><strong>Last updated:</strong> August 2026</p>
           
           <h2>1. Overview</h2>
           <p>This Privacy Policy explains how Cookie Mini Website Builder Pro may collect, use, store, share, and protect information when customers use the website builder, customer dashboard, admin tools, checkout routes, AI Video Studio, published websites, and support features.</p>
@@ -28,6 +28,9 @@ export default function PolicyPage(){
           <h2>5. AI Video Studio Data</h2>
           <p>When customers use AI Video Studio, they may provide business names, promotional details, target audience, script prompts, video style preferences, voice style preferences, email, website slug, and related information. Eligible users may submit content to third-party AI video services for processing. Customers should not submit sensitive personal data, private information, or content they do not have permission to use.</p>
 
+          <h2>5A. Cookie AI Assistant Data</h2>
+          <p>Cookie AI Assistant may store customer messages, assistant answers, the page where the conversation occurred, a general request category, and optional business name or email details the customer chooses to provide. This information may be used to answer questions, prevent abuse, identify requests needing human support, improve accuracy, and troubleshoot the service. Customers should not enter passwords, payment-card details, secret keys, private tokens, or other sensitive information in chat.</p>
+
           <h2>6. Uploaded Images, Videos, and Media Links</h2>
           <p>Customers are responsible for media they upload or link. Media may be stored, processed, displayed, compressed, cached, transmitted, or published so the platform can provide builder previews, dashboards, published websites, and support.</p>
 
@@ -35,7 +38,7 @@ export default function PolicyPage(){
           <p>If a website owner adds an order, booking, payment, menu, quote, phone, text, email, or custom link, visitors who click those links may leave the Cookie Mini Website Builder environment and interact with third-party services. Those services have their own privacy policies and data practices.</p>
 
           <h2>8. Local Storage and Browser Data</h2>
-          <p>The platform may use browser local storage to save drafts, remember website names, store temporary builder state, remember AI Video Studio access on a device, or improve the customer experience. Clearing browser data may remove local drafts or access markers on that device.</p>
+          <p>The platform may use browser local storage to save drafts, remember website names, store temporary builder or Cookie AI conversation state, or improve the customer experience. Browser storage does not grant paid, customer, or owner authorization; protected access is verified by the server. Clearing browser data may remove local drafts or temporary interface state on that device.</p>
 
           <h2>9. How Information Is Used</h2>
           <p>Information may be used to provide the builder, save drafts, publish websites, verify plan access, route checkout success pages, display customer websites, provide AI Video Studio features, communicate support, prevent misuse, improve the platform, comply with legal obligations, and protect the platform and users.</p>

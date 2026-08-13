@@ -1,4 +1,5 @@
 const BASE_URL = 'https://www.cookiesdigitalcreations.com';
+const LAST_REVIEWED = new Date('2026-08-13T00:00:00.000Z');
 
 export default function sitemap() {
   const publicPages = [
@@ -22,7 +23,7 @@ export default function sitemap() {
 
   return publicPages.map((path) => ({
     url: `${BASE_URL}${path}`,
-    lastModified: new Date(),
+    lastModified: LAST_REVIEWED,
     changeFrequency: path ? 'monthly' : 'weekly',
     priority: path ? 0.6 : 1
   }));
