@@ -1,7 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { access, readFile } from 'node:fs/promises';
-import { ownerPasswordRecoveryUrl, safeAdminReturnPath } from '../lib/adminAuth.mjs';
+import {
+  CANONICAL_ADMIN_EMAIL,
+  isCanonicalOwnerEmail,
+  legacyOwnerEnvironmentSummary,
+  normalizeOwnerEmail,
+  ownerPasswordRecoveryUrl,
+  safeAdminReturnPath
+} from '../lib/adminAuth.mjs';
 
 const source = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -27,6 +34,26 @@ test('owner recovery links use only the approved owner password route and keep t
   assert.equal(ownerPasswordRecoveryUrl({ origin: 'https://www.cookiesdigitalcreations.com', tokenHash, type: 'magiclink' }), '');
 });
 
+test('one canonical owner identity is enforced regardless of legacy environment entries', () => {
+  assert.equal(CANONICAL_ADMIN_EMAIL, 'hello@cookiesdigitalcreations.com');
+  assert.equal(normalizeOwnerEmail('  HELLO@CookiesDigitalCreations.com  '), CANONICAL_ADMIN_EMAIL);
+  assert.equal(isCanonicalOwnerEmail(' HELLO@COOKIESDIGITALCREATIONS.COM '), true);
+  assert.equal(isCanonicalOwnerEmail('former-owner@example.invalid'), false);
+
+  const summary = legacyOwnerEnvironmentSummary({
+    ADMIN_EMAILS: 'former-owner@example.invalid, HELLO@COOKIESDIGITALCREATIONS.COM ',
+    ADMIN_EMAIL: 'another-owner@example.invalid'
+  });
+  assert.deepEqual(summary, {
+    adminEmailsConfigured: true,
+    adminEmailConfigured: true,
+    legacyEntryCount: 3,
+    legacyCanonicalEntryCount: 1,
+    legacyNonCanonicalEntryCount: 2,
+    effectiveOwnerCount: 1
+  });
+});
+
 test('routine owner sign-in uses Supabase password verification, allowlist verification, and a dedicated secure cookie', async () => {
   const [route, auth] = await Promise.all([
     source('app/api/auth/admin/password/route.js'),
@@ -40,12 +67,14 @@ test('routine owner sign-in uses Supabase password verification, allowlist verif
   assert.match(auth, /httpOnly: true/);
   assert.match(auth, /sameSite: 'lax'/);
   assert.match(auth, /secure: process\.env\.NODE_ENV === 'production'/);
+  assert.match(auth, /isCanonicalOwnerEmail\(email\)/);
+  assert.doesNotMatch(auth, /process\.env\.ADMIN_EMAILS|process\.env\.ADMIN_EMAIL/);
   assert.doesNotMatch(route, /signInWithOtp/);
 });
 
 test('malformed or expired owner cookies fail closed without dereferencing a missing user', async () => {
   const auth = await source('lib/siteOwnerAuth.js');
-  assert.match(auth, /String\(user\?\.email \|\| ''\)/);
+  assert.match(auth, /normalizeOwnerEmail\(user\?\.email\)/);
   assert.match(auth, /if \(error \|\| !data\?\.user \|\| !email\)/);
 });
 

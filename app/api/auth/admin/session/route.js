@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { legacyOwnerEnvironmentSummary } from '../../../../../lib/adminAuth.mjs';
 import { ADMIN_SESSION_COOKIE, adminSessionCookieOptions, getVerifiedAdmin } from '../../../../../lib/siteOwnerAuth';
 import { getSupabaseAdmin } from '../../../../../lib/supabaseAdmin';
 
@@ -9,6 +10,10 @@ function privateResponse(body, status = 200) {
 }
 
 export async function GET(request) {
+  console.info('[owner-password-auth]', {
+    event: 'OWNER_AUTHORIZATION_CONFIGURATION',
+    ...legacyOwnerEnvironmentSummary()
+  });
   const admin = await getVerifiedAdmin(request);
   if (!admin.ok) return privateResponse({ ok: false, error: admin.error }, admin.status);
   return privateResponse({ ok: true });

@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
-import { safeAdminReturnPath, ownerPasswordRecoveryUrl } from '../../../../../lib/adminAuth.mjs';
+import {
+  legacyOwnerEnvironmentSummary,
+  normalizeOwnerEmail,
+  ownerPasswordRecoveryUrl,
+  safeAdminReturnPath
+} from '../../../../../lib/adminAuth.mjs';
 import { canonicalBuilderOrigin } from '../../../../../lib/builderCheckoutAuth.mjs';
 import { siteOwnerAccountExists } from '../../../../../lib/customerAuthUtils.mjs';
 import { rateLimit, rateLimitResponse } from '../../../../../lib/rateLimit.mjs';
@@ -27,7 +32,14 @@ function privateResponse(body, status = 200) {
 }
 
 function validEmail(value = '') {
-  return /^\S+@\S+\.\S+$/.test(String(value || '').trim().toLowerCase());
+  return /^\S+@\S+\.\S+$/.test(normalizeOwnerEmail(value));
+}
+
+function logOwnerAuthorizationConfiguration() {
+  console.info('[owner-password-auth]', {
+    event: 'OWNER_AUTHORIZATION_CONFIGURATION',
+    ...legacyOwnerEnvironmentSummary()
+  });
 }
 
 function escapeHtml(value = '') {
@@ -124,9 +136,10 @@ async function passwordReset(request, { email, returnPath }) {
 
 export async function POST(request) {
   try {
+    logOwnerAuthorizationConfiguration();
     const body = await request.json().catch(() => ({}));
     const action = String(body.action || '').trim().toLowerCase();
-    const email = String(body.email || '').trim().toLowerCase();
+    const email = normalizeOwnerEmail(body.email);
     const password = String(body.password || '');
     const returnPath = safeAdminReturnPath(body.returnPath);
     const captchaToken = String(body.captchaToken || '').trim().slice(0, 4096);
