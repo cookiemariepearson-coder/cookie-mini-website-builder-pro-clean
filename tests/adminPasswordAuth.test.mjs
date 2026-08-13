@@ -43,6 +43,12 @@ test('routine owner sign-in uses Supabase password verification, allowlist verif
   assert.doesNotMatch(route, /signInWithOtp/);
 });
 
+test('malformed or expired owner cookies fail closed without dereferencing a missing user', async () => {
+  const auth = await source('lib/siteOwnerAuth.js');
+  assert.match(auth, /String\(user\?\.email \|\| ''\)/);
+  assert.match(auth, /if \(error \|\| !data\?\.user \|\| !email\)/);
+});
+
 test('routine owner sign-in sends no email and returns privacy-safe errors', async () => {
   const route = await source('app/api/auth/admin/password/route.js');
   const signIn = route.slice(route.indexOf('async function passwordSignIn'), route.indexOf('async function passwordReset'));
