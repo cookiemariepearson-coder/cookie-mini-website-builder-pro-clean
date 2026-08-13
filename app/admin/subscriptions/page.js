@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Nav from '../../../lib/Nav';
+import { lockOwnerDashboard } from '../../../lib/ownerDashboardSession.mjs';
 
 const planOptions = ['free', 'starter', 'business', 'premium'];
 
@@ -168,13 +168,7 @@ export default function GumroadSubscriptionsAdmin() {
   }
 
   async function lockDashboard() {
-    try {
-      await fetch('/api/auth/admin/session', { method: 'DELETE' });
-    } catch {}
-    setReady(false);
-    setWebsites([]);
-    setEvents([]);
-    setMsg('Dashboard locked.');
+    try { await lockOwnerDashboard(); } catch {}
   }
 
   const activeCount = websites.filter(w => w.access_status === 'active' && w.status === 'published').length;
@@ -278,7 +272,6 @@ export default function GumroadSubscriptionsAdmin() {
 
   return (
     <>
-      <Nav />
       <main className="wrap dashboard adminWarmPage adminSubscriptionsWarm" style={{ maxWidth: 1260 }}>
         <section className="adminWarmHero">
           <div><span className="kicker">Owner only</span><h1>Subscriptions &amp; Access</h1><p>Track paid website access, subscription status, Gumroad events, and archived customer sites.</p></div>
@@ -307,7 +300,7 @@ export default function GumroadSubscriptionsAdmin() {
         {ready && (
           <>
             <div className="navRow" style={{ flexWrap: 'wrap', gap: 12 }}>
-              <button className="btn dark" onClick={lockDashboard}>Lock Dashboard</button>
+              <button className="btn dark" onClick={lockDashboard}>Lock Owner Dashboard</button>
               <button className="btn" onClick={load}>Refresh</button>
               <button className="btn light" onClick={registerHooks} disabled={registering}>{registering ? 'Registering...' : 'Register Gumroad Webhooks'}</button>
               <a className="btn light" href="/admin">Back to Admin</a>
