@@ -85,6 +85,12 @@ const servicePlans = [
 
 const requestHref = (plan) => `/done-for-you/request?plan=${encodeURIComponent(plan)}`;
 
+export const metadata = {
+  title: 'Done-for-You Website Services',
+  description: 'Compare one-time setup services for Free, Starter Pro, Business, Premium, and Extra Page websites.',
+  alternates: { canonical: '/done-for-you' }
+};
+
 export default function DoneForYouPricing() {
   return (
     <>

@@ -13,6 +13,11 @@ const planTiles = [
   ['Extra Page Add-On', '$10/mo', 'Per page/section space', 'Grow when you need more']
 ];
 
+export const metadata = {
+  alternates: { canonical: '/' },
+  description: 'Build and publish a mobile-friendly business website with clear booking, ordering, buying, quote, and contact actions.'
+};
+
 export default function Home(){
   const faqs = [
     ['Can I build a website for free?', 'Yes. The Free Launch Page lets you create a simple text-based page with up to three selected sections and one customer action button.'],
@@ -30,6 +35,26 @@ export default function Home(){
       name: question,
       acceptedAnswer: { '@type': 'Answer', text: answer }
     }))
+  };
+  const applicationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'Cookie Mini Website Builder Pro',
+    applicationCategory: 'BusinessApplication',
+    operatingSystem: 'Web',
+    url: 'https://www.cookiesdigitalcreations.com/',
+    provider: {
+      '@type': 'Organization',
+      name: 'Cookie Digital Creations',
+      url: 'https://www.cookiesdigitalcreations.com/'
+    },
+    offers: [
+      { '@type': 'Offer', name: 'Free Launch Page', price: '0', priceCurrency: 'USD' },
+      { '@type': 'Offer', name: 'Starter Pro', price: '19', priceCurrency: 'USD' },
+      { '@type': 'Offer', name: 'Business', price: '30', priceCurrency: 'USD' },
+      { '@type': 'Offer', name: 'Premium', price: '50', priceCurrency: 'USD' },
+      { '@type': 'Offer', name: 'AI Video Studio standalone', price: '5', priceCurrency: 'USD' }
+    ]
   };
   return (
     <>
@@ -104,7 +129,7 @@ export default function Home(){
           <div>
             <span className="kicker">Need video only?</span>
             <h2>Cookie’s AI Video Studio is available separately.</h2>
-            <p>Use the $5 AI Video Studio option for video ideas, hooks, scripts, captions, and scene planning without buying a website plan.</p>
+            <p>Use the $5 one-time AI Video Studio option for planning tools plus one real AI-generated video, without buying a website plan. Provider processing, moderation, and availability apply.</p>
           </div>
           <Link className="btn" href="/checkout/ai-video">Start AI Video Studio</Link>
         </section>
@@ -116,7 +141,7 @@ export default function Home(){
           </div>
           <div className="card">
             <h2>Drafts and dashboard</h2>
-            <p>Customers can save drafts, return by email or website name, and edit published websites.</p>
+            <p>Customers can save drafts, sign in securely to My Websites, filter their own records, and edit published websites.</p>
           </div>
           <div className="card">
             <h2>Built to convert</h2>
@@ -188,6 +213,7 @@ export default function Home(){
           </div>
         </section>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(applicationSchema) }} />
         <OwnerFooter />
       </main>
     </>

@@ -14,7 +14,8 @@ export default function AiVideoCheckoutPage() {
           <h1>AI Video Studio — $5</h1>
           <p>
             Get AI-powered help with video ideas, hooks, scripts, captions, scenes, promo concepts,
-            and social media content planning without purchasing a website plan.
+            and social media content planning, plus one real AI-generated video after purchase verification,
+            without purchasing a website plan.
           </p>
 
           <div className="notice">
@@ -25,6 +26,7 @@ export default function AiVideoCheckoutPage() {
               <li>Short-form video scripts</li>
               <li>Scene-by-scene video planning</li>
               <li>Caption and call-to-action help</li>
+              <li>One real AI-generated video, subject to provider processing, moderation, and availability</li>
             </ul>
           </div>
 
