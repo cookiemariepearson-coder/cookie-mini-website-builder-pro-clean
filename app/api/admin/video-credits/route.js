@@ -4,6 +4,10 @@ import { getVerifiedAdmin } from '../../../../lib/siteOwnerAuth';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+function privateResponse(body, status = 200) {
+  return NextResponse.json(body, { status, headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
+}
+
 function normalizeSlug(value) {
   let input = String(value || '').trim().toLowerCase();
   if (!input) return '';
@@ -27,23 +31,23 @@ export async function POST(request){
  try{
   const body=await request.json().catch(()=>({}));
   const admin=await getVerifiedAdmin(request);
-  if(!admin.ok) return NextResponse.json({ok:false,error:admin.error},{status:admin.status});
+  if(!admin.ok) return privateResponse({ok:false,error:admin.error},admin.status);
   const action=String(body.action||'lookup');
-  if(action==='session_check') return NextResponse.json({ok:true});
+  if(action==='session_check') return privateResponse({ok:true});
   const slug=normalizeSlug(body.slug||body.websiteSlug||'');
   const email=cleanEmail(body.email||body.customerEmail||'');
   const website=await findWebsite({slug,email});
-  if(!website) return NextResponse.json({ok:false,error:'No website found.'},{status:404});
-  if(action==='lookup') return NextResponse.json({ok:true,website});
+  if(!website) return privateResponse({ok:false,error:'No website found.'},404);
+  if(action==='lookup') return privateResponse({ok:true,website});
   if(action==='reset_month'){
     const r=await patch(`websites?id=eq.${encodeURIComponent(website.id)}`,{video_usage_month:0,video_month_key:new Date().toISOString().slice(0,7),last_video_status:'reset_by_admin'});
-    return NextResponse.json({ok:r.ok,website:r.data?.[0]||null,error:r.ok?null:'Could not reset usage.',detail:r.data});
+    return privateResponse({ok:r.ok,website:r.data?.[0]||null,error:r.ok?null:'Could not reset usage.',detail:r.data},r.ok?200:(r.status||500));
   }
   if(action==='set_bonus'){
     const credits=Math.max(0,Math.min(100,Number(body.credits||0)));
     const r=await patch(`websites?id=eq.${encodeURIComponent(website.id)}`,{video_bonus_credits:credits});
-    return NextResponse.json({ok:r.ok,website:r.data?.[0]||null,error:r.ok?null:'Could not update bonus credits.',detail:r.data});
+    return privateResponse({ok:r.ok,website:r.data?.[0]||null,error:r.ok?null:'Could not update bonus credits.',detail:r.data},r.ok?200:(r.status||500));
   }
-  return NextResponse.json({ok:false,error:'Unknown action.'},{status:400});
- }catch(error){return NextResponse.json({ok:false,error:error?.message||'Admin video credits error.'},{status:500});}
+  return privateResponse({ok:false,error:'Unknown action.'},400);
+ }catch(error){return privateResponse({ok:false,error:'Admin video credits error.'},500);}
 }
