@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ADMIN_SESSION_COOKIE, getVerifiedAdmin, isAllowedAdminEmail, ownerEmail } from '../../../../../lib/siteOwnerAuth';
+import { ADMIN_SESSION_COOKIE, adminSessionCookieOptions, getVerifiedAdmin } from '../../../../../lib/siteOwnerAuth';
 import { getSupabaseAdmin } from '../../../../../lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -14,24 +14,17 @@ export async function GET(request) {
   return privateResponse({ ok: true });
 }
 
-export async function POST(req) {
-  const { accessToken } = await req.json().catch(() => ({}));
-  if (!accessToken) return privateResponse({ ok: false, error: 'Missing secure sign-in token.' }, 400);
-  const supabase = getSupabaseAdmin();
-  const { data, error } = await supabase.auth.getUser(accessToken);
-  const email = ownerEmail(data?.user);
-  if (error || !data?.user || !isAllowedAdminEmail(email)) {
-    return privateResponse({ ok: false, error: 'This owner link is invalid, expired, or unauthorized.' }, 403);
+export async function DELETE(request) {
+  const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value || '';
+  if (token) {
+    try {
+      const supabase = getSupabaseAdmin();
+      await supabase.auth.admin.signOut(token, 'local');
+    } catch {
+      console.warn('[owner-password-auth]', { event: 'OWNER_SESSION_REVOCATION_FAILED' });
+    }
   }
-  const response = privateResponse({ ok: true, email });
-  response.cookies.set(ADMIN_SESSION_COOKIE, accessToken, {
-    httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 60 * 60
-  });
-  return response;
-}
-
-export async function DELETE() {
   const response = privateResponse({ ok: true });
-  response.cookies.set(ADMIN_SESSION_COOKIE, '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 0 });
+  response.cookies.set(ADMIN_SESSION_COOKIE, '', { ...adminSessionCookieOptions(60), maxAge: 0 });
   return response;
 }

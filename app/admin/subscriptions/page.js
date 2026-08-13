@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import OwnerSignInPanel from '../../../components/OwnerSignInPanel';
 import { lockOwnerDashboard } from '../../../lib/ownerDashboardSession.mjs';
 
 const planOptions = ['free', 'starter', 'business', 'premium'];
@@ -55,7 +56,6 @@ function compareSites(a, b, sortBy) {
 }
 
 export default function GumroadSubscriptionsAdmin() {
-  const [email, setEmail] = useState('');
   const [ready, setReady] = useState(false);
   const [websites, setWebsites] = useState([]);
   const [events, setEvents] = useState([]);
@@ -157,14 +157,6 @@ export default function GumroadSubscriptionsAdmin() {
     }
     setMsg('Gumroad webhook registration request completed. Check Gumroad resource subscriptions if needed.');
     setEvents([{ resource_name: 'setup', action_taken: JSON.stringify(data.results, null, 2), processed_at: new Date().toISOString() }, ...events]);
-  }
-
-  async function requestOwnerLink() {
-    setLoading(true);
-    const res = await fetch('/api/auth/admin/request', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ email }) });
-    const data = await res.json();
-    setLoading(false);
-    setMsg(data.message || data.error || 'Could not send owner sign-in link.');
   }
 
   async function lockDashboard() {
@@ -280,21 +272,10 @@ export default function GumroadSubscriptionsAdmin() {
         <nav className="adminQuickLinks" aria-label="Admin tools"><a href="/admin">Website Management</a><a className="active" href="/admin/subscriptions">Subscriptions &amp; Access</a><a href="/admin/video-credits">AI Video Credits</a><a href="/admin/requests">Customer Requests</a></nav>
 
         {!ready && (
-          <section className="card">
-            <h2>Secure Owner Sign-In</h2>
-            <div className="field">
-              <label>Authorized owner email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                autoComplete="email"
-              />
-            </div>
-            <button className="btn" onClick={requestOwnerLink} disabled={loading}>{loading ? 'Sending...' : 'Email Secure Sign-In Link'}</button>
+          <>
+            <OwnerSignInPanel returnPath="/admin/subscriptions" description="Enter the owner email and password to review masked subscription and Gumroad event records." />
             {msg && <div className="notice danger">{msg}</div>}
-          </section>
+          </>
         )}
 
         {ready && (

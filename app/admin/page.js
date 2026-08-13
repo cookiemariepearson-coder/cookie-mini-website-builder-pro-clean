@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import OwnerSignInPanel from '../../components/OwnerSignInPanel';
 import { lockOwnerDashboard } from '../../lib/ownerDashboardSession.mjs';
 
 const planPrices = { free: 0, starter: 19, business: 30, premium: 50 };
@@ -53,10 +54,9 @@ function pinMessage(text) {
 }
 
 export default function Admin() {
-  const [email, setEmail] = useState('');
   const [unlocked, setUnlocked] = useState(false);
   const [sites, setSites] = useState([]);
-  const [msg, setMsg] = useState('Sign in with your authorized owner email to open the admin dashboard.');
+  const [msg, setMsg] = useState('Sign in with your owner email and password to open the admin dashboard.');
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('websites');
   const [loading, setLoading] = useState(false);
@@ -93,14 +93,6 @@ export default function Admin() {
     } finally {
       setLoading(false);
     }
-  }
-
-  async function requestOwnerLink() {
-    setLoading(true);
-    const r = await fetch('/api/auth/admin/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
-    const d = await r.json();
-    setMsg(d.message || d.error || 'Unable to send the secure owner link.');
-    setLoading(false);
   }
 
   async function lockAdmin() {
@@ -205,30 +197,10 @@ export default function Admin() {
 
         {!unlocked && (
           <>
-            <section className="adminPanel adminPinPanel" style={card}>
-              <form onSubmit={(e) => { e.preventDefault(); requestOwnerLink(); }}>
-                <div className="row">
-                  <div className="field">
-                    <label>Authorized owner email</label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
-                      autoComplete="email"
-                    />
-                  </div>
-                  <div className="field">
-                    <label>&nbsp;</label>
-                    <button className="btn" type="submit">{loading ? 'Sending...' : 'Email Secure Sign-In Link'}</button>
-                  </div>
-                </div>
-              </form>
-              {msg && pinMessage(msg)}
-            </section>
+            <OwnerSignInPanel returnPath="/admin" />
             <section className="adminPanel adminLockedPanel" style={{ ...card, background: '#fff8ef' }}>
               <h2 style={{ marginTop: 0 }}>Admin dashboard is locked</h2>
-              <p>Customer records, revenue totals, plan controls, private notes, and archived sites stay hidden until an authorized owner completes secure email verification.</p>
+              <p>Customer records, revenue totals, plan controls, private notes, and archived sites stay hidden until the configured owner signs in securely.</p>
             </section>
           </>
         )}
