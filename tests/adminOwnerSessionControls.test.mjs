@@ -76,10 +76,12 @@ test('admin page lock buttons and the header use the same secure lock helper', a
 });
 
 test('admin session check and protected data routes validate the dedicated admin cookie server-side', async () => {
-  const [sessionRoute, adminAuth, subscriptionsRoute] = await Promise.all([
+  const [sessionRoute, adminAuth, subscriptionsRoute, adminListRoute, videoCreditsRoute] = await Promise.all([
     source('app/api/auth/admin/session/route.js'),
     source('lib/siteOwnerAuth.js'),
-    source('app/api/admin/subscriptions/list/route.js')
+    source('app/api/admin/subscriptions/list/route.js'),
+    source('app/api/admin/list/route.js'),
+    source('app/api/admin/video-credits/route.js')
   ]);
   assert.match(sessionRoute, /export async function GET\(request\)/);
   assert.match(sessionRoute, /getVerifiedAdmin\(request\)/);
@@ -90,4 +92,8 @@ test('admin session check and protected data routes validate the dedicated admin
   assert.doesNotMatch(adminAuth, /SITE_OWNER_SESSION_COOKIE.*ADMIN_SESSION_COOKIE|localStorage/);
   assert.match(subscriptionsRoute, /getVerifiedAdmin\(request\)/);
   assert.match(subscriptionsRoute, /maskCustomerIdentifier/);
+  for (const protectedRoute of [sessionRoute, subscriptionsRoute, adminListRoute, videoCreditsRoute]) {
+    assert.match(protectedRoute, /Cache-Control': 'private, no-store, max-age=0'/);
+    assert.match(protectedRoute, /getVerifiedAdmin/);
+  }
 });
