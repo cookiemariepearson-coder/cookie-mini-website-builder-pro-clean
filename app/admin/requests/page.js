@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import OwnerSignInPanel from '../../../components/OwnerSignInPanel';
 
 function formatDate(value) {
   try { return value ? new Date(value).toLocaleString() : '—'; } catch { return '—'; }
@@ -22,7 +23,6 @@ function configurationLabel(item) {
 }
 
 export default function CustomerRequestsAdminPage() {
-  const [email, setEmail] = useState('');
   const [authorized, setAuthorized] = useState(false);
   const [requests, setRequests] = useState([]);
   const [configuration, setConfiguration] = useState([]);
@@ -60,24 +60,6 @@ export default function CustomerRequestsAdminPage() {
     }
   }
 
-  async function requestOwnerLink(event) {
-    event.preventDefault();
-    setLoading(true);
-    try {
-      const response = await fetch('/api/auth/admin/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      });
-      const data = await response.json().catch(() => ({}));
-      setMessage(data.message || data.error || 'The secure owner link could not be sent.');
-    } catch {
-      setMessage('The secure owner link could not be sent. Try again shortly.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   const visibleRequests = useMemo(() => {
     const term = search.trim().toLowerCase();
     return requests.filter((item) => {
@@ -104,10 +86,7 @@ export default function CustomerRequestsAdminPage() {
       {!authorized ? <section className="adminPanel">
         <h2>Secure owner sign-in required</h2>
         <p>Only the authorized platform owner can view customer request details.</p>
-        <form onSubmit={requestOwnerLink}>
-          <div className="field"><label htmlFor="request-admin-email">Authorized owner email</label><input id="request-admin-email" required type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></div>
-          <button className="btn" type="submit" disabled={loading}>{loading ? 'Sending...' : 'Email Secure Sign-In Link'}</button>
-        </form>
+        <OwnerSignInPanel returnPath="/admin/requests" description="Enter the owner email and password to review protected customer requests." />
         <div className="notice" role="status" aria-live="polite">{message}</div>
       </section> : <>
         <section className="adminPanel">
