@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Nav from '../../../lib/Nav';
 
 function formatDate(value) {
   try { return value ? new Date(value).toLocaleString() : '—'; } catch { return '—'; }
@@ -90,7 +89,6 @@ export default function CustomerRequestsAdminPage() {
   }, [requests, filter, search]);
 
   return <>
-    <Nav />
     <main className="wrap dashboard adminWarmPage">
       <section className="adminWarmHero">
         <div><span className="kicker">Owner only</span><h1>Customer Requests</h1><p>Review Contact Us and Done-for-You requests even if an email provider notification is delayed.</p></div>

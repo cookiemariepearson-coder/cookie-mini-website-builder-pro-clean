@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Nav from '../../lib/Nav';
+import { lockOwnerDashboard } from '../../lib/ownerDashboardSession.mjs';
 
 const planPrices = { free: 0, starter: 19, business: 30, premium: 50 };
 const planNames = {
@@ -104,12 +104,7 @@ export default function Admin() {
   }
 
   async function lockAdmin() {
-    await fetch('/api/auth/admin/session', { method: 'DELETE' });
-    setUnlocked(false);
-    setSites([]);
-    setSearch('');
-    setTab('websites');
-    setMsg('Admin dashboard locked. Request a secure owner email link to reopen it.');
+    try { await lockOwnerDashboard(); } catch {}
   }
 
   async function update(slug, updates, quiet = false) {
@@ -190,7 +185,6 @@ export default function Admin() {
 
   return (
     <>
-      <Nav />
       <main className="wrap dashboard adminWarmPage">
         <section className="adminWarmHero">
           <div>
@@ -248,7 +242,7 @@ export default function Admin() {
                   <p style={{ marginBottom: 0 }}>Your verified owner session is active. Use the tabs below to manage customer websites.</p>
                 </div>
                 <button className="btn dark" onClick={() => loadAdmin()}>{loading ? 'Refreshing...' : 'Refresh Admin'}</button>
-                <button className="btn danger" onClick={lockAdmin}>Lock Admin</button>
+                <button className="btn danger" onClick={lockAdmin}>Lock Owner Dashboard</button>
               </div>
               {msg && pinMessage(msg)}
             </section>
