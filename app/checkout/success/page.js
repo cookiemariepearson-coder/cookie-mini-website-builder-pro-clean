@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useAccountModal } from '../../../components/AccountModalProvider';
 import SitePreview from '../../../lib/SitePreview.js';
 import { slugify, plans, normalizeSelectedPagesForPlan } from '../../../lib/siteDefaults';
 
@@ -58,6 +59,7 @@ function updateLocalDraft(site) {
 }
 
 export default function CheckoutSuccess() {
+  const { accountState, openAccountModal } = useAccountModal();
   const [site, setSite] = useState(null);
   const [message, setMessage] = useState('Completing checkout...');
   const [publishedSlug, setPublishedSlug] = useState('');
@@ -77,7 +79,7 @@ export default function CheckoutSuccess() {
 
       if (String(paidParam).toLowerCase() === 'ai-video') {
         setAiVideoPurchase(true);
-        setMessage('Checkout complete. Open AI Video Studio and verify the license key from your Gumroad receipt.');
+        setMessage('Return detected. Sign in, then securely connect the purchase from your Gumroad receipt.');
         setIsPublishing(false);
         return;
       }
@@ -165,21 +167,29 @@ export default function CheckoutSuccess() {
   if (aiVideoPurchase) {
     return (
       <main className="wrap dashboard checkoutSuccessPage">
-        <span className="kicker">Checkout Complete</span>
-        <h1>AI Video Studio is ready.</h1>
+        <span className="kicker">AI Video Studio</span>
+        <h1>Continue to AI Video Studio</h1>
         <p>{message}</p>
 
-        <div className="notice success">
-          <strong>Purchase confirmed:</strong> AI Video Studio — $5<br />
-          This standalone option is for customers who want a video workflow without purchasing a website plan.
+        <div className="notice">
+          <strong>Next step:</strong> connect the exact AI Video Studio purchase to your customer account.<br />
+          The return link itself does not prove payment or grant a video credit.
         </div>
 
-        <div className="navRow checkoutSuccessActions">
-          <a className="btn aiStudioSuccessBtn" href="/video-studio?activate=1">Open AI Video Studio &amp; Verify License</a>
+        {accountState === 'checking' && <div className="notice" aria-busy="true">Checking your account…</div>}
+        {accountState === 'signed-out' && <div className="videoStateCard">
+          <p>Create an account or sign in to purchase, create, and access your AI videos.</p>
+          <div className="videoPrimaryActions">
+            <button className="btn dark" type="button" onClick={() => openAccountModal({ mode: 'create', destination: '/video-studio?claim=1' })}>Create My Account</button>
+            <button className="btn light" type="button" onClick={() => openAccountModal({ mode: 'signin', destination: '/video-studio?claim=1' })}>Sign In</button>
+          </div>
+        </div>}
+        {accountState === 'signed-in' && <div className="navRow checkoutSuccessActions">
+          <a className="btn aiStudioSuccessBtn" href="/video-studio?claim=1">Open AI Video Studio &amp; Verify License</a>
           <a className="btn dark" href="/video-studio/results">Open Video Results</a>
           <a className="btn light" href="/pricing">View Website Plans</a>
           <a className="btn light" href="/builder">Build a Website</a>
-        </div>
+        </div>}
 
         <div className="notice supportAfterActions">
           <strong>Any issues?</strong> Click Contact Us after trying the buttons above.

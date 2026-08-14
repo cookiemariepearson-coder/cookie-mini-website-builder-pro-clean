@@ -3,11 +3,18 @@ import crypto from 'crypto';
 import { verifyVideoAccessToken } from '../../../../lib/videoAccessToken';
 import { getVerifiedAdmin, getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
-import { standaloneIdentityMatches, standaloneVideoSlugFromAccess } from '../../../../lib/videoResultAccess';
+import { standaloneVideoSlugFromAccess } from '../../../../lib/videoResultAccess';
+import { ownerHasStandalonePurchase } from '../../../../lib/videoPurchaseClaim';
 import { configuredVideoLimits, websiteVideoEntitlement } from '../../../../lib/videoEntitlement.mjs';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+function privateJson(body, init = {}) {
+  const headers = new Headers(init.headers);
+  headers.set('Cache-Control', 'private, no-store, max-age=0');
+  return NextResponse.json(body, { ...init, headers });
+}
 
 function cleanText(value, fallback = '', max = 1200) {
   return String(value || fallback).replace(/[<>]/g, '').trim().slice(0, max);
@@ -152,11 +159,16 @@ async function checkCustomerAccess(request, body) {
 
   const videoAccess = verifyVideoAccessToken(body.accessToken || '');
   if (videoAccess?.kind === 'standalone') {
+    const owner = await getVerifiedSiteOwner(request);
+    if (!owner.ok) return { ok: false, status: owner.status, error: owner.error };
     const usageKey = standaloneVideoSlugFromAccess(videoAccess);
-    const customerEmail = getEmail(body.customerEmail || '');
-    if (!usageKey || !standaloneIdentityMatches(videoAccess, customerEmail)) {
-      return { ok: false, status: 403, error: 'Use the verified Gumroad purchase email connected to this video access.' };
+    if (!usageKey || String(videoAccess.ownerId || '') !== String(owner.user.id)) {
+      return { ok: false, status: 403, error: 'This video credit does not belong to the signed-in customer.' };
     }
+    if (!await ownerHasStandalonePurchase(owner.user.id, usageKey, owner.supabase)) {
+      return { ok: false, status: 403, error: 'This video credit is not connected to the signed-in customer.' };
+    }
+    const customerEmail = owner.email;
     const requestKey = generationRequestKey(usageKey, body.requestId);
     if (!requestKey) return { ok: false, status: 400, error: 'This video request could not be validated. Refresh the page and try again.' };
     const prior = await supabaseGet(`heygen_video_jobs?website_slug=eq.${encodeURIComponent(usageKey)}&select=id,status,request_key&limit=1`);
@@ -269,7 +281,7 @@ async function updateReservedVideoJob(jobId, heygenPayload) {
 }
 
 function existingGenerationResponse(access, job) {
-  return NextResponse.json({
+  return privateJson({
     ok: true,
     status: job?.status || 'processing',
     jobId: job?.id || null,
@@ -285,13 +297,13 @@ export async function POST(request) {
     const apiKey = process.env.HEYGEN_API_KEY;
     if (!apiKey) {
       console.error('[heygen-create] provider configuration missing');
-      return NextResponse.json({ ok: false, error: 'Video generation is temporarily unavailable. Please contact hello@cookiesdigitalcreations.com.' }, { status: 503 });
+      return privateJson({ ok: false, error: 'Video generation is temporarily unavailable. Please contact hello@cookiesdigitalcreations.com.' }, { status: 503 });
     }
 
     const body = await request.json().catch(() => ({}));
     const access = await checkCustomerAccess(request, body);
     if (!access.ok) {
-      return NextResponse.json({ ok: false, ...access }, { status: access.status || 403 });
+      return privateJson({ ok: false, ...access }, { status: access.status || 403 });
     }
     if (access.existingJob) return existingGenerationResponse(access, access.existingJob);
     const existingRequest = await supabaseGet(`heygen_video_jobs?request_key=eq.${encodeURIComponent(access.requestKey)}&select=id,status&limit=1`);
@@ -309,7 +321,7 @@ export async function POST(request) {
         : `heygen_video_jobs?request_key=eq.${encodeURIComponent(access.requestKey)}&select=id,status&limit=1`);
       if (concurrent.ok && Array.isArray(concurrent.data) && concurrent.data[0]) return existingGenerationResponse(access, concurrent.data[0]);
       console.error('[heygen-create] generation reservation failed');
-      return NextResponse.json({ ok: false, error: 'The video could not be safely queued. No video credit was used; please try again shortly.' }, { status: 503 });
+      return privateJson({ ok: false, error: 'The video could not be safely queued. No video credit was used; please try again shortly.' }, { status: 503 });
     }
 
     const heygenResponse = await fetch('https://api.heygen.com/v3/video-agents', {
@@ -330,7 +342,7 @@ export async function POST(request) {
       if (!released.ok) console.error('[heygen-create] failed reservation cleanup', { status: released.status || 500 });
       const providerMessage = data?.error?.message || data?.message || '';
       const insufficientCredits = heygenResponse.status === 402 || /insufficient.*credits|credits required/i.test(providerMessage);
-      return NextResponse.json({
+      return privateJson({
         ok: false,
         error: insufficientCredits
           ? 'Video generation is temporarily unavailable because the Cookie Digital Creations HeyGen API account needs more provider credits. Your website or standalone video credit was not used. Please try again later or contact hello@cookiesdigitalcreations.com.'
@@ -346,7 +358,7 @@ export async function POST(request) {
     const nextUsed = access.ownerOverride ? 0 : (access.used + 1);
     const nextRemaining = access.ownerOverride ? 9999 : Math.max(0, access.limit - nextUsed);
 
-    return NextResponse.json({
+    return privateJson({
       ok: true,
       status: payload.status || 'generating',
       jobId: reservedJob.id,
@@ -363,6 +375,6 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error('[heygen-create] request failed', { message: error?.message || String(error) });
-    return NextResponse.json({ ok: false, error: 'The video could not be started. Your credit was not used; please try again shortly.' }, { status: 500 });
+    return privateJson({ ok: false, error: 'The video could not be started. Your credit was not used; please try again shortly.' }, { status: 500 });
   }
 }

@@ -64,7 +64,7 @@ export default function Pricing(){
           </p>
           <div className="pricingHeaderActions">
             <Link className="btn" href="/builder">Start Free</Link>
-            <Link className="btn dark" href="/checkout/ai-video">AI Video Studio — $5</Link>
+            <Link className="btn dark" href="/video-studio?intent=purchase">AI Video Studio — $5</Link>
           </div>
         </section>
 
@@ -89,7 +89,7 @@ export default function Pricing(){
               A one-time option with video planning tools plus one real AI-generated video after purchase verification, without purchasing a website plan. Provider processing, moderation, and availability apply.
             </p>
           </div>
-          <Link className="btn dark" href="/checkout/ai-video">Start AI Video Checkout</Link>
+          <Link className="btn dark" href="/video-studio?intent=purchase">Start AI Video Checkout</Link>
         </section>
 
         <section className="customerQuickPanel">

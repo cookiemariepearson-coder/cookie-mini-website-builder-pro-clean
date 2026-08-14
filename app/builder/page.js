@@ -591,7 +591,7 @@ export default function Builder() {
     if (!planAllowsAiVideo(site.plan)) {
       persistLocal('Draft saved before viewing AI Video upgrade options.');
       setMessage('AI Video Studio is available on Business and Premium. Upgrade to unlock real AI video creation.');
-      setTimeout(() => { window.location.href = '/checkout/ai-video'; }, 650);
+      setTimeout(() => { window.location.href = '/video-studio?intent=purchase'; }, 650);
       return;
     }
     const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };

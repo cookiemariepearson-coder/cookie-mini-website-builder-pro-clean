@@ -1,10 +1,22 @@
 'use client';
 
+import { useRef, useState } from 'react';
+import { useAccountModal } from '../../../components/AccountModalProvider';
 import Nav from '../../../lib/Nav';
 import { cleanCheckoutUrl } from '../../../lib/commerceConfig.mjs';
 
 export default function AiVideoCheckoutPage() {
+  const { accountState, openAccountModal } = useAccountModal();
+  const [leaving, setLeaving] = useState(false);
+  const checkoutInFlight = useRef(false);
   const checkoutUrl = cleanCheckoutUrl(process.env.NEXT_PUBLIC_AI_VIDEO_CHECKOUT_URL || '');
+
+  function startCheckout() {
+    if (!checkoutUrl || checkoutInFlight.current || accountState !== 'signed-in') return;
+    checkoutInFlight.current = true;
+    setLeaving(true);
+    window.location.assign(checkoutUrl);
+  }
   return (
     <>
       <Nav />
@@ -30,16 +42,27 @@ export default function AiVideoCheckoutPage() {
             </ul>
           </div>
 
-          <div className="navRow checkoutSuccessActions">
+          {accountState === 'checking' && <div className="notice" aria-busy="true">Checking your account…</div>}
+
+          {accountState === 'signed-out' && <div className="videoStateCard">
+            <h2>Start with your account</h2>
+            <p>Create an account or sign in to purchase, create, and access your AI videos.</p>
+            <div className="videoPrimaryActions">
+              <button className="btn dark" type="button" onClick={() => openAccountModal({ mode: 'create', destination: '/video-studio?intent=purchase' })}>Create My Account</button>
+              <button className="btn light" type="button" onClick={() => openAccountModal({ mode: 'signin', destination: '/video-studio?intent=purchase' })}>Sign In</button>
+            </div>
+          </div>}
+
+          {accountState === 'signed-in' && <div className="navRow checkoutSuccessActions">
             {checkoutUrl ? (
-              <a className="btn aiStudioSuccessBtn" href={checkoutUrl}>
-                Continue to Secure Gumroad Checkout — $5
-              </a>
+              <button className="btn aiStudioSuccessBtn" type="button" onClick={startCheckout} disabled={leaving} aria-disabled={leaving}>
+                {leaving ? 'Opening Secure Checkout…' : 'Continue to Secure Gumroad Checkout — $5'}
+              </button>
             ) : (
               <div className="notice error">Secure AI Video checkout is temporarily unavailable. Please try again shortly or contact support.</div>
             )}
 
-            <a className="btn dark" href="/video-studio?activate=1">
+            <a className="btn dark" href="/video-studio?claim=1">
               Return to AI Video Studio &amp; Verify License
             </a>
 
@@ -50,11 +73,11 @@ export default function AiVideoCheckoutPage() {
             <a className="btn light" href="/builder">
               Build a Website Instead
             </a>
-          </div>
+          </div>}
 
           <div className="notice">
             <strong>After purchase:</strong><br />
-            Gumroad provides your license key and returns you to Cookie&apos;s confirmation page. Choose Open AI Video Studio &amp; Verify License. Your non-sensitive video plan remains saved in this browser.
+            Gumroad provides your license key and returns you to your signed-in AI Video account. Your non-sensitive video plan remains saved in this browser.
           </div>
 
           <div className="notice gumroadPurchaseHelp" id="purchase-help">
