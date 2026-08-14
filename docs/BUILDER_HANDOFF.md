@@ -11,12 +11,14 @@ This document is the consolidated handoff for the completed owner-authentication
 - Completed implementation PR: `#23` — Harden launch security and recovery
 - Completed AI Video usability PR: `#25` — Simplify the AI Video customer journey
 - Completed AI Video cache-hardening PR: `#26` — Harden protected video response caching
+- Completed AI Video account-routing PR: `#28` — Require customer accounts for AI Video
 - Starting production commit: `440e72683ec6708fff7b63887379837380736681`
 - Launch-security production commit: `a23d34493fed112541b62628ea98a8299e9b9374`
 - AI Video usability production commit: `fbf592986b18c1cabd8c9c9e65d08b053102b002`
-- Current production application commit: `a842803cffc4c9937f6fc003ace5bb8e084ff89a`
+- Current production application commit: `15c21de43cdece1fc12a7915bbaf03586441d539`
 - Vercel production deployment state: `READY`
-- Verified application build fingerprint: `a842803cffc4`
+- Vercel production deployment: `dpl_Cf8FvxFL5R54EpBrc8D9bur8BY77`
+- Verified application build fingerprint: `15c21de43cde`
 - Existing GitHub repository, Vercel project, Supabase project, production domains, Gumroad products, and provider connections were preserved. No duplicate project, repository, OAuth application, or production connection was created.
 
 ## Formal phase status
@@ -40,14 +42,15 @@ Preserved controls include minimum 10-character passwords, the existing sign-in 
 
 ### Simplified AI Video usability phase: PASSED
 
-The former AI Video entry screen exposed purchase, saved-plan, website-plan, secure-sign-in, license, credit, and creation controls together. Customers had to understand internal entitlement concepts and repeatedly choose among verification paths before they could plan a video.
+The former AI Video entry screen let a signed-out visitor reach standalone purchase and recovery choices without first establishing a customer account. The top navigation, homepage product cards, Builder upsell, direct checkout, Gumroad return, and results recovery paths did not all enforce the same account-first journey. Standalone access was tied to a browser-held purchase namespace rather than an immutable authenticated owner, so a returning customer could not reliably recover an existing paid result on another browser.
 
 `/video-studio` is now the single, guided front door to the existing protected workflow. It opens with **Create Your AI Video**, a short explanation, and the five-stage **Get Started → Plan → Review → Create → Results** indicator. The server determines the next safe state and the page shows one dominant action:
 
-- a signed-out visitor sees only **I Already Have Access** and **Buy One Video — $5**;
-- account and Gumroad options appear only after **I Already Have Access** is selected;
+- a signed-out visitor sees **Create an account or sign in to purchase, create, and access your AI videos.**, **Create My Account**, and **Sign In**—never a purchase button or license form;
+- only the exact allowlisted return targets `/video-studio?intent=purchase`, `/video-studio?claim=1`, and `/video-studio/results` survive account creation or sign-in;
+- a signed-in customer without an entitlement sees **Buy One Video — $5** and proceeds through the existing protected checkout;
 - an authenticated Business/Premium customer is matched to eligible owned websites server-side; one site is selected automatically and only multiple eligible sites produce a selector;
-- a standalone buyer sees the license field only after choosing the Gumroad path and uses **Unlock My Video**;
+- an authenticated standalone buyer can use **Need Help? → I already purchased a $5 video** to verify the exact Gumroad product and atomically claim it to the immutable customer user ID;
 - an unused verified credit offers **Start My Video** or **Continue My Video** when a plan is saved;
 - a processing job routes to status and cannot encourage a second submission;
 - a completed job routes to protected results; and
@@ -55,7 +58,9 @@ The former AI Video entry screen exposed purchase, saved-plan, website-plan, sec
 
 The planning experience is now a seven-screen wizard: Business or product, Video goal, Audience, Style and tone, Important details, Review the plan, and Create the video. Progress and the exact active step are saved locally for usability only, with **Your progress is saved.** Browser state never proves purchase, ownership, entitlement, or credit. Back, refresh, return from sign-in, and return from Gumroad resume the relevant point. The review screen states that creation uses one video credit, and the final deliberate submission uses a stable request identifier plus in-flight locking to preserve idempotency and prevent duplicate clicks.
 
-Results use the signed access pass and owner-scoped server APIs, not typed email or exposed provider URLs. Processing refreshes remain read-only. Watch and download use the protected same-origin media route. A completed result can offer another video only when it is safe; a zero-credit customer is routed to the approved purchase path. No live video was generated and no real credit was purchased, reserved, or consumed during this phase.
+Every public AI Video entrance now routes through the studio: top navigation uses `/video-studio`; both homepage AI Video links, both pricing links, and the Builder upsell use `/video-studio?intent=purchase`. Direct `/checkout/ai-video` is account-gated and does not expose the external checkout while signed out. The checkout return is `/video-studio?claim=1`; this query value preserves only safe UX intent and never proves payment. `/checkout/success?paid=ai-video` likewise makes no purchase claim from its query string and routes the signed-in customer to protected claim recovery.
+
+Results reacquire an owner-scoped signed access pass from the verified HttpOnly customer session. They do not use typed email, local storage, query parameters, or exposed provider URLs as identity. Processing refreshes remain read-only. Watch and download use the protected same-origin media route. The owner's already-completed paid purchase and job retain their original namespace and can be attached once to the existing customer account without repurchase, regeneration, or credit use. No live video was generated and no real credit was purchased, reserved, or consumed during this phase.
 
 ## Security results
 
@@ -92,7 +97,8 @@ The migration was recorded once in production history. The trigger remained enab
 ### AI Video security and billing preservation
 
 - Account discovery is authenticated with the existing server session and immutable owner identity. Typed email, query parameters, local storage, and editable metadata do not establish access.
-- Existing exact-product Gumroad verification remains server-side and non-consuming. Invalid, mismatched, refunded/revoked-like, and already-used purchases fail closed with short, non-sensitive recovery guidance.
+- Existing exact-product Gumroad verification remains server-side and non-consuming. A verified purchase is atomically and idempotently bound to one authenticated customer user ID; its namespace cannot be reassigned to another account. Invalid, mismatched, refunded/revoked-like, and already-used purchases fail closed with short, non-sensitive recovery guidance.
+- Standalone passes now include the immutable authenticated owner ID and are accepted only with a valid customer session plus the matching server-side purchase claim. Website-plan passes likewise require the matching customer session.
 - The generation API, one-credit rules, atomic reservation, unique purchase/request constraints, job idempotency, ownership filtering, rate limits, provider moderation/availability terms, and callback behavior were not weakened.
 - Jobs, status, playback, and downloads require signed owner-scoped access. Provider media URLs and customer details remain absent from client-visible job lists.
 - All protected jobs JSON responses and all protected media error responses explicitly use `Cache-Control: private, no-store, max-age=0`; successful protected media responses remain private/no-store and `nosniff`.
@@ -166,7 +172,7 @@ This owner-operated schedule provides an approximate 24-hour recovery-point obje
 
 ## Data preservation
 
-Pre/post-migration aggregate counts matched for Auth users, Arcade provisioning records, websites, Gumroad events and unresolved-event status, customer requests, AI Video jobs, Cookie AI chat logs, checkout intents, guest-draft claims, and Storage inventory. The AI Video usability deployment made no schema migration or production data write, and its post-deployment Auth-user, website, and AI Video-job aggregate checks matched the pre-deployment baseline. Exact production counts are intentionally excluded from this public repository handoff.
+Pre/post-migration aggregate counts matched for Auth users, Arcade provisioning records, websites, Gumroad events and unresolved-event status, customer requests, AI Video jobs, Cookie AI chat logs, checkout intents, guest-draft claims, and Storage inventory. The account-routing release added only `video_purchase_claims`, a minimal server-only ownership table containing a one-way purchase namespace, authenticated owner ID, purchase-email hash, and timestamps. It has a unique namespace constraint, authenticated-user foreign key, validation checks, row-level security, no public/anonymous/authenticated grants, and service-role-only access. It contained no claim after deployment because verification deliberately did not use the owner's license. Post-migration and post-deployment Auth-user, website, and AI Video-job aggregates matched the pre-deployment baseline. Exact production counts are intentionally excluded from this public repository handoff.
 
 No customer account, website, purchase, subscription, Gumroad event, request, checkout, Arcade record, or AI Video record was deleted, reconciled, reassigned, or exposed. Historical unresolved events were preserved. The older preserved workspace was not operated on.
 
@@ -174,31 +180,33 @@ Approved prices and product boundaries remained unchanged: Business `$30/month`,
 
 ## Validation results
 
-- Complete automated suite: **252/252 passed**.
+- Complete automated suite: **272/272 passed**.
 - Protected AI Video baseline: **56/56 passed**.
-- Focused AI Video usability/routing matrix: **20/20 passed**.
+- Focused account-routing matrix: **20/20 passed**, covering every required signed-out, account-return, purchase, claim, result-recovery, duplicate-click, multi-entitlement, and cross-customer scenario.
 - Supabase TypeScript generation: **passed**.
 - Next.js production build and TypeScript: **passed**.
 - Production build output: **57 pages**.
-- Dependency audit: **0 vulnerabilities**.
+- Dependency graph: **unchanged**; the prior same-lockfile dependency audit reported **0 vulnerabilities**. A fresh `npm audit` request was blocked by the verification environment's network policy, so no new audit result is claimed.
 - Shell and JavaScript validation: **passed**.
 - Secret, forbidden-artifact, diff, and plaintext-backup scans: **passed**.
 - React client-quality review: no new structural, focus, rendering, state, or fetch-waterfall blocker.
-- Local visual-browser launch: blocked by the verification sandbox lacking a Chromium executable; this was treated as an environment limitation, not a product pass. Live route, response-header, deployment, runtime, responsive-CSS, focus, label, touch-target, and reduced-motion checks were completed independently. The authenticated owner-only visual check remains below.
+- Local visual-browser launch: blocked by the verification sandbox's network-interface limitation; this was treated as an environment limitation, not a product pass. Cloud-browser production checks, live route and response-header checks, deployment logs, runtime logs, responsive CSS, focus, label, touch-target, and reduced-motion reviews were completed independently. The one authenticated owner-only recovery confirmation remains below.
 
 Regression coverage preserved owner password access/lock, customer creation/sign-in/sign-out/reset, My Websites ownership and cross-customer isolation, edit/republish, paid checkout/activation, subscription lifecycle and unmatched events, approved DFY/Gumroad products, contact/support storage, protected AI Video, and prior mobile/accessibility protections.
 
 Production verification confirmed:
 
-- the updated homepage, pricing, policy, and customer-guide routes rendered;
-- corrected product prices and AI Video entitlement copy appeared;
+- the updated homepage, pricing, policy, and customer-guide routes rendered, with the top navigation and all two homepage, two pricing, and Builder AI Video purchase links using the unified studio route;
+- corrected product prices and account-required AI Video entitlement copy appeared;
 - Cookie AI opened as a modal, focused the input, trapped keyboard focus, closed with Escape, and returned focus to the launcher;
 - customer and AI Video private routes remained excluded from indexing;
 - retired launch/owner pages redirected to protected admin access;
 - signed-out `/admin/subscriptions` showed only the secure owner form and no protected records;
 - protected APIs returned private/no-store unauthorized responses while signed out;
-- `/video-studio` returned `200`, the expected five-stage progress and **Create Your AI Video** content, private/no-store HTML, and the deployed build fingerprint;
-- `/video-studio/results` returned `200` without the retired email, website-verification, or license forms;
+- signed-out `/video-studio` returned `200`, private/no-store HTML, the deployed build fingerprint, the expected five-stage progress and **Create Your AI Video** content, and only **Create My Account** and **Sign In** account actions—without a license field or external checkout link;
+- direct signed-out `/checkout/ai-video` performed the account check and exposed neither the external Gumroad URL nor a secure-checkout button;
+- `/checkout/success?paid=ai-video` used truthful non-proof wording and offered account creation/sign-in when the session was missing;
+- signed-out `/video-studio/results` returned `200` with account creation/sign-in recovery and without the retired email, website-verification, or license forms;
 - signed-out jobs and protected-media requests returned safe `401` responses with explicit private/no-store cache headers;
 - the production alias and bare-domain redirect remained correct, while the existing preview and production projects/domains were reused;
 - the deployed AI Video routes produced no grouped runtime errors and no error/fatal runtime logs during verification;
@@ -219,7 +227,7 @@ Still open or informational:
 - the performance advisor still reports one unindexed foreign key and existing unused-index notices;
 - the first encrypted production backup has not been created;
 - the first isolated restore drill has not been run;
-- the exact zero-credit customer view still needs one authenticated visual confirmation by the owner because only the owner controls that production session and purchase history; this check must not submit or buy a video;
+- the existing paid purchase-to-account claim and recovered completed-result view need one authenticated confirmation by the owner because only the owner controls that customer session and license; this must not buy, submit, regenerate, or consume a credit;
 - qualified legal review has not been completed; and
 - the documented soft-launch monitoring routine should begin after the first encrypted backup is safely stored.
 
@@ -227,11 +235,8 @@ No unrelated index, RLS, data-reconciliation, provider-configuration, OAuth, DNS
 
 ## Owner Action Required
 
-Only these owner-controlled actions remain:
+One final non-purchasing, owner-controlled account-routing confirmation remains: sign out, open AI Video once from the top navigation and once from a middle-homepage AI Video link, and confirm both show only **Create My Account** and **Sign In**. Then sign in to the existing customer account, use **Need Help? → I already purchased a $5 video** to claim the existing Gumroad license once, and confirm the existing completed video appears in **Video Results** with **Watch** and **Download**. Do not buy, submit, regenerate, or consume a credit. Report only a mismatch.
 
-1. On a trusted computer, create and protect the `age` recovery identity, choose a private encrypted off-repository destination, run the first encrypted backup, verify its checksum, and approve an isolated test project for the first restore drill.
-2. Decide whether to upgrade Supabase for managed daily backups and leaked-password protection, and whether the separate PITR add-on is justified. Reverify current pricing before approval; no purchase should occur automatically.
-3. Obtain qualified legal review before a broad public launch. The completed policy review was a technical consistency/security review, not legal advice.
-4. For the only remaining AI Video usability check, sign in normally, open `/video-studio`, and confirm the current used-credit view prominently shows **You have used your video credit.**, **Buy Another Video — $5**, and **View My Video** without simultaneously showing website email/name, website verification, secure website-plan sign-in, Gumroad license, or license-verification forms. Do not select the purchase button, submit a video, or consume a credit. Report only a visible mismatch.
+The first encrypted backup/restore drill, any Supabase upgrade decision, legal review, and soft-launch monitoring remain separate operational items recorded above; they are not reasons to repeat a completed AI Video customer journey.
 
 Do not repeat the completed owner-login, account, purchase, subscription, Gumroad, DFY, or AI Video journeys unless a verified regression is reported.
