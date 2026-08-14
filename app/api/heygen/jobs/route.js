@@ -6,6 +6,12 @@ import { authorizeVideoResultAccess, filterAuthorizedVideoJobs, normalizeVideoEm
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+function privateJson(body, init = {}) {
+  const headers = new Headers(init.headers);
+  headers.set('Cache-Control', 'private, no-store, max-age=0');
+  return NextResponse.json(body, { ...init, headers });
+}
+
 function supabaseHeaders() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   return { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
@@ -24,14 +30,14 @@ async function supabaseGet(path) {
 
 export async function GET(request) {
   const access = verifyVideoAccessToken(request.headers.get('x-video-access-token') || '');
-  if (!access) return NextResponse.json({ ok: false, error: 'Unlock AI Video Studio to view saved video results.' }, { status: 401 });
+  if (!access) return privateJson({ ok: false, error: 'Unlock AI Video Studio to view saved video results.' }, { status: 401 });
 
   const url = new URL(request.url);
   const requestedEmail = normalizeVideoEmail(url.searchParams.get('email') || '');
   let owner = null;
   if (access.kind === 'website-plan') {
     owner = await getVerifiedSiteOwner(request);
-    if (!owner.ok) return NextResponse.json({ ok: false, error: owner.error }, { status: owner.status });
+    if (!owner.ok) return privateJson({ ok: false, error: owner.error }, { status: owner.status });
   }
   const authorized = authorizeVideoResultAccess({
     access,
@@ -40,7 +46,7 @@ export async function GET(request) {
     requestedSlug: url.searchParams.get('slug') || '',
     requireIdentity: true
   });
-  if (!authorized.ok) return NextResponse.json({ ok: false, error: 'No videos found for this verified access.' }, { status: authorized.status });
+  if (!authorized.ok) return privateJson({ ok: false, error: 'No videos found for this verified access.' }, { status: authorized.status });
 
   const safeColumns = 'id,website_slug,customer_email,business_name,status,video_type,platform,plan,video_url,thumbnail_url,duration,failure_code,failure_message,created_at,checked_at,updated_at';
   const path = `heygen_video_jobs?select=${safeColumns}&website_slug=eq.${encodeURIComponent(authorized.slug)}&order=created_at.desc&limit=30`;
@@ -48,11 +54,11 @@ export async function GET(request) {
 
   if (result.missing) {
     console.error('[heygen-jobs] storage configuration missing');
-    return NextResponse.json({ ok: false, error: 'Video results are temporarily unavailable. Please try again shortly.' }, { status: 503 });
+    return privateJson({ ok: false, error: 'Video results are temporarily unavailable. Please try again shortly.' }, { status: 503 });
   }
   if (!result.ok) {
     console.error('[heygen-jobs] storage lookup failed', { status: result.status });
-    return NextResponse.json({ ok: false, error: 'Video results could not be loaded. Please try again shortly.' }, { status: result.status || 500 });
+    return privateJson({ ok: false, error: 'Video results could not be loaded. Please try again shortly.' }, { status: result.status || 500 });
   }
 
   const authorizedRows = filterAuthorizedVideoJobs(result.data, { access, authorized, requestedEmail });
@@ -61,5 +67,5 @@ export async function GET(request) {
     video_available: Boolean(video_url),
     thumbnail_available: Boolean(thumbnail_url)
   }));
-  return NextResponse.json({ ok: true, jobs });
+  return privateJson({ ok: true, jobs });
 }
