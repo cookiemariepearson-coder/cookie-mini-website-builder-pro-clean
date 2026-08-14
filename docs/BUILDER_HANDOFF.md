@@ -2,7 +2,7 @@
 
 Last updated: August 14, 2026
 
-This document is the consolidated handoff for the completed owner-authentication, launch-security, backup/recovery, Cookie AI, AI Video usability, accessibility/mobile, SEO, policy-consistency, and soft-launch technical-readiness work. It records the verified production state without storing credentials, secret values, customer details, database dumps, recovery material, provider project identifiers, or exact production record counts. Those operational values must be read only from the authorized provider dashboards and encrypted owner records.
+This document is the consolidated handoff for the completed owner-authentication, launch-security, backup/recovery, Cookie AI, AI Video usability, My Websites usability, accessibility/mobile, SEO, policy-consistency, and soft-launch technical-readiness work. It records the verified production state without storing credentials, secret values, customer details, database dumps, recovery material, provider project identifiers, or exact production record counts. Those operational values must be read only from the authorized provider dashboards and encrypted owner records.
 
 ## Authoritative production baseline
 
@@ -12,13 +12,14 @@ This document is the consolidated handoff for the completed owner-authentication
 - Completed AI Video usability PR: `#25` — Simplify the AI Video customer journey
 - Completed AI Video cache-hardening PR: `#26` — Harden protected video response caching
 - Completed AI Video account-routing PR: `#28` — Require customer accounts for AI Video
+- Completed My Websites PR: `#30` — Simplify My Websites management
 - Starting production commit: `440e72683ec6708fff7b63887379837380736681`
 - Launch-security production commit: `a23d34493fed112541b62628ea98a8299e9b9374`
 - AI Video usability production commit: `fbf592986b18c1cabd8c9c9e65d08b053102b002`
-- Current production application commit: `15c21de43cdece1fc12a7915bbaf03586441d539`
+- Current production application commit: `2a3841eeb4ded37bae37d04fcb24ec0cf6540bb2`
 - Vercel production deployment state: `READY`
-- Vercel production deployment: `dpl_Cf8FvxFL5R54EpBrc8D9bur8BY77`
-- Verified application build fingerprint: `15c21de43cde`
+- Vercel production deployment: `dpl_4NdraBTRL7kZK7vT6jxzop2NKnzv`
+- Verified application build fingerprint: `2a3841eeb4de`
 - Existing GitHub repository, Vercel project, Supabase project, production domains, Gumroad products, and provider connections were preserved. No duplicate project, repository, OAuth application, or production connection was created.
 
 ## Formal phase status
@@ -62,6 +63,16 @@ Every public AI Video entrance now routes through the studio: top navigation use
 
 Results reacquire an owner-scoped signed access pass from the verified HttpOnly customer session. They do not use typed email, local storage, query parameters, or exposed provider URLs as identity. Processing refreshes remain read-only. Watch and download use the protected same-origin media route. The owner's already-completed paid purchase and job retain their original namespace and can be attached once to the existing customer account without repurchase, regeneration, or credit use. No live video was generated and no real credit was purchased, reserved, or consumed during this phase.
 
+### Simplified My Websites phase: PASSED
+
+`/customer` is now a plain-language, mobile-friendly **My Websites** dashboard with the explanation **View, edit, publish, and manage your websites.** Customer-owned records are separated into clear **Published** and **Unpublished** sections. Each card puts **Edit Website** first, shows the website name, simple status, last-updated date, published address and **View Website** when applicable, and moves uncommon controls into a compact **Manage Website** menu. Empty, loading, search, and signed-out states are short and customer friendly. Eligible signed-in customers receive **Create a New Website** without being shown internal IDs, entitlement terminology, prices, or long plan instructions.
+
+Unpublishing requires the deliberate **Keep Website Published** / **Unpublish Website** confirmation. A successful request atomically changes only the publication status and unpublish timestamp, preserves the saved site JSON and all ownership/billing/entitlement fields, immediately moves the card to Unpublished, blocks public rendering, and allows the same verified owner to edit and publish the website again. The public site route now requires the authoritative database status to be `published` instead of treating every non-paused row as public.
+
+Deletion is separate and more serious. The customer must type the server-derived website name before **Delete Website** is enabled. The server authenticates first, verifies immutable ownership, validates the name independently, scopes the mutation by website row and owner ID, and uses a conditional timestamp/status update so repeat or concurrent requests fail safely. No website row is hard-deleted. The website moves to protected recoverable Trash, disappears from My Websites and public access, and retains its content plus required billing, purchase, subscription, security, and audit records. Accounts, other websites, AI Videos, checkout records, and Gumroad events are untouched. There is no automatic permanent purge. Support/admin recovery may return the retained row to draft, or to published only while verified access remains active.
+
+The dashboard updates successful unpublish/delete results without a page refresh and retains the search/scroll return state across editing. Dialogs trap keyboard focus, close with Escape, restore focus after cancellation, expose labelled dialog/error/status semantics, and use visible focus plus at least 44-pixel controls. The responsive card/action/dialog rules apply at 760 pixels and below without horizontal overflow.
+
 ## Security results
 
 ### Arcade Auth trigger investigation and hardening
@@ -103,6 +114,15 @@ The migration was recorded once in production history. The trigger remained enab
 - Jobs, status, playback, and downloads require signed owner-scoped access. Provider media URLs and customer details remain absent from client-visible job lists.
 - All protected jobs JSON responses and all protected media error responses explicitly use `Cache-Control: private, no-store, max-age=0`; successful protected media responses remain private/no-store and `nosniff`.
 - Existing Secure/HttpOnly customer cookies, non-enumerating authentication errors, cross-customer isolation, product prices, entitlements, and provider connections remain unchanged.
+
+### My Websites ownership and deletion protections
+
+- The verified customer session and immutable `owner_id` are authoritative. The narrowly scoped exact-email legacy fallback is available only after server authentication and only for an unowned legacy row; typed email, query parameters, local/session storage, editable site metadata, and a supplied slug never prove ownership.
+- Search and management responses remain private/no-store. The management endpoint authenticates before lookup, rate-limits by verified user, rechecks ownership before every mutation, and returns the same non-sensitive failure class for unauthorized access.
+- Unpublish and Trash updates are row-ID and owner-ID scoped. Deletion confirmation is recomputed from protected server data; client state cannot choose the expected phrase. Conditional updates provide duplicate-request and stale-state protection.
+- Customer-deleted rows are excluded from customer search, editing, draft/publish overwrite, and public rendering. They remain visible only to protected operational/admin recovery tooling.
+- Existing subscription transitions cannot silently republish a customer-deleted row. Active billing and AI Video entitlement records remain retained; payment-state transitions continue to update access without clearing Trash.
+- The change did not alter product prices, customer cookie settings, Gumroad evidence rules, custom-domain behavior, video-credit accounting, provider connections, or any unrelated RLS policy.
 
 ### Password-security availability
 
@@ -157,6 +177,10 @@ An end-to-end data restoration has not yet been executed. It must be validated o
 
 The isolated restoration checklist must verify schema/grants/policies/triggers, migration history, aggregate row counts, sequences, Storage checksums, Arcade trigger protections, customer isolation, owner-route separation, publishing, checkout/entitlements, DFY routing, support storage, AI Video protections, and the absence of any test callback or webhook path into production.
 
+The My Websites release added migration `20260814153538_customer_website_trash.sql`: two nullable timestamps and one partial Trash index on the existing protected `websites` table. It is additive, idempotent, contains no destructive statement or data rewrite, and left every pre-existing timestamp null. Production migration history, generated types, RLS state, and advisor results were verified afterward. This release did not create a backup because the owner-controlled encrypted destination and recovery identity are still unavailable; the existing first-backup and isolated-restore actions therefore remain open rather than being simulated or stored unsafely.
+
+Website Trash recovery is operationally separate from disaster recovery. A retained Trash row has no automatic purge date. A verified admin can restore it to draft by clearing the Trash timestamp through the protected admin update route; republishing also requires active verified access. A customer cannot overwrite or reclaim the protected slug while it remains in Trash. Permanent removal, if ever required, must be a separately reviewed retention/legal operation and must not be implemented as a customer dashboard request.
+
 ### Schedule and retention recommendation
 
 For active customer, website, purchase, subscription, Gumroad event, support/request, checkout, and AI Video records:
@@ -174,15 +198,18 @@ This owner-operated schedule provides an approximate 24-hour recovery-point obje
 
 Pre/post-migration aggregate counts matched for Auth users, Arcade provisioning records, websites, Gumroad events and unresolved-event status, customer requests, AI Video jobs, Cookie AI chat logs, checkout intents, guest-draft claims, and Storage inventory. The account-routing release added only `video_purchase_claims`, a minimal server-only ownership table containing a one-way purchase namespace, authenticated owner ID, purchase-email hash, and timestamps. It has a unique namespace constraint, authenticated-user foreign key, validation checks, row-level security, no public/anonymous/authenticated grants, and service-role-only access. It contained no claim after deployment because verification deliberately did not use the owner's license. Post-migration and post-deployment Auth-user, website, and AI Video-job aggregates matched the pre-deployment baseline. Exact production counts are intentionally excluded from this public repository handoff.
 
+For the My Websites migration, both new columns were verified present, the existing `websites` RLS setting remained enabled, and every pre-existing website row retained null unpublish/Trash markers. Preview and production verification used only signed-out requests, so no customer website was unpublished, deleted, recovered, republished, or otherwise changed. No customer account, plan, purchase, subscription, payment history, custom domain, other website, AI Video, entitlement, or provider connection was modified.
+
 No customer account, website, purchase, subscription, Gumroad event, request, checkout, Arcade record, or AI Video record was deleted, reconciled, reassigned, or exposed. Historical unresolved events were preserved. The older preserved workspace was not operated on.
 
 Approved prices and product boundaries remained unchanged: Business `$30/month`, Premium `$50/month`, Extra Page `$10/month`, Done-for-You Extra Page `$125 one-time`, and standalone AI Video `$5 one-time`. Existing paid activation, unmatched-event handling, protected AI Video, DFY, publishing, and checkout protections were preserved.
 
 ## Validation results
 
-- Complete automated suite: **272/272 passed**.
+- Complete automated suite: **292/292 passed**.
 - Protected AI Video baseline: **56/56 passed**.
 - Focused account-routing matrix: **20/20 passed**, covering every required signed-out, account-return, purchase, claim, result-recovery, duplicate-click, multi-entitlement, and cross-customer scenario.
+- Focused My Websites matrix: **20/20 passed**, covering no/one/multiple website states; Published/Unpublished sections; edit/view routing; unpublish, cancel, and republish; recoverable delete, cancel, incorrect confirmation, and duplicate protection; signed-out and cross-customer denial; billing/account/other-website/AI-Video preservation; and mobile, keyboard, focus, screen-reader, and accessible-error behavior.
 - Supabase TypeScript generation: **passed**.
 - Next.js production build and TypeScript: **passed**.
 - Production build output: **57 pages**.
@@ -192,10 +219,15 @@ Approved prices and product boundaries remained unchanged: Business `$30/month`,
 - React client-quality review: no new structural, focus, rendering, state, or fetch-waterfall blocker.
 - Local visual-browser launch: blocked by the verification sandbox's network-interface limitation; this was treated as an environment limitation, not a product pass. Cloud-browser production checks, live route and response-header checks, deployment logs, runtime logs, responsive CSS, focus, label, touch-target, and reduced-motion reviews were completed independently. The one authenticated owner-only recovery confirmation remains below.
 
-Regression coverage preserved owner password access/lock, customer creation/sign-in/sign-out/reset, My Websites ownership and cross-customer isolation, edit/republish, paid checkout/activation, subscription lifecycle and unmatched events, approved DFY/Gumroad products, contact/support storage, protected AI Video, and prior mobile/accessibility protections.
+Regression coverage preserved owner password access/lock, customer creation/sign-in/sign-out/reset, paid checkout/activation, subscription lifecycle and unmatched events, approved DFY/Gumroad products, contact/support storage, protected AI Video, and prior mobile/accessibility protections. JavaScript syntax, diff whitespace, secret-pattern, and forbidden client-ownership-source checks passed. React review found no new render, effect, focus, state, or request-waterfall blocker.
 
 Production verification confirmed:
 
+- `/customer` rendered the deployed fingerprint with **My Websites**, the requested short explanation, and the simple signed-out state; the verified desktop viewport had no horizontal overflow and its primary sign-in control measured 44 pixels high;
+- the preview account dialog received focus and Escape returned focus to **Sign In to My Websites**;
+- signed-out `POST /api/site/manage` returned `401` with `Cache-Control: private, no-store, max-age=0` before website lookup or mutation;
+- PR `#30` was one reviewed-scope commit, its Vercel preview was `READY`, and it had no review threads or requested changes before squash merge;
+- the production deployment was `READY`, used the existing wildcard and primary domains without alias errors, completed its 57-page build without errors, and produced no application error/fatal runtime logs during verification;
 - the updated homepage, pricing, policy, and customer-guide routes rendered, with the top navigation and all two homepage, two pricing, and Builder AI Video purchase links using the unified studio route;
 - corrected product prices and account-required AI Video entitlement copy appeared;
 - Cookie AI opened as a modal, focused the input, trapped keyboard focus, closed with Escape, and returned focus to the launcher;
@@ -225,6 +257,7 @@ Still open or informational:
 - leaked-password protection remains disabled on the Free plan;
 - informational RLS-with-no-policy notices remain on intentionally server-only tables;
 - the performance advisor still reports one unindexed foreign key and existing unused-index notices;
+- the new partial Trash index is reported as unused immediately after creation, which is expected before any customer website enters Trash;
 - the first encrypted production backup has not been created;
 - the first isolated restore drill has not been run;
 - the existing paid purchase-to-account claim and recovered completed-result view need one authenticated confirmation by the owner because only the owner controls that customer session and license; this must not buy, submit, regenerate, or consume a credit;
@@ -235,7 +268,9 @@ No unrelated index, RLS, data-reconciliation, provider-configuration, OAuth, DNS
 
 ## Owner Action Required
 
-One final non-purchasing, owner-controlled account-routing confirmation remains: sign out, open AI Video once from the top navigation and once from a middle-homepage AI Video link, and confirm both show only **Create My Account** and **Sign In**. Then sign in to the existing customer account, use **Need Help? → I already purchased a $5 video** to claim the existing Gumroad license once, and confirm the existing completed video appears in **Video Results** with **Watch** and **Download**. Do not buy, submit, regenerate, or consume a credit. Report only a mismatch.
+For My Websites, one non-destructive owner-only visual confirmation remains: sign in normally, open `/customer`, and confirm the real owned websites appear in the correct **Published** and **Unpublished** sections with **Edit Website** first. Open and cancel each Manage Website dialog to confirm the wording, typed-name requirement, focus return, and current page position. Do not confirm Unpublish or Delete on a production website for this check. Report only a mismatch.
+
+The previously recorded non-purchasing AI Video account-routing confirmation also remains owner-controlled: use the existing account and purchase only as documented above; do not buy, submit, regenerate, or consume a credit.
 
 The first encrypted backup/restore drill, any Supabase upgrade decision, legal review, and soft-launch monitoring remain separate operational items recorded above; they are not reasons to repeat a completed AI Video customer journey.
 
