@@ -91,7 +91,9 @@ test('video endpoints enforce server ownership and never disclose provider media
   assert.match(media, /X-Content-Type-Options/);
   assert.doesNotMatch(results, /Copy Video Link/);
   assert.match(results, /\/api\/heygen\/media\?jobId=/);
-  assert.match(results, /Verify Gumroad Purchase & Find Videos/);
+  assert.doesNotMatch(results, /Gumroad AI Video license key|Verify Gumroad Purchase|Verify Website Plan/);
+  assert.match(results, /Watch My Video/);
+  assert.match(results, /Download My Video/);
   assert.doesNotMatch(create, /heygenSessionUrl:/);
   assert.match(migration, /heygen_video_jobs_request_key_unique/);
   assert.match(migration, /heygen_video_jobs_standalone_purchase_unique/);

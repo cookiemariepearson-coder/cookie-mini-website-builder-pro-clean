@@ -26,13 +26,13 @@ function parseKit(raw = '') {
   try { return JSON.parse(text.slice(start, end + 1)); } catch { return null; }
 }
 
-function guidedFallbackKit({ businessName, promo, audience, platform, length, voice }) {
+function guidedFallbackKit({ businessName, promo, audience, platform, length, voice, details }) {
   const target = audience || 'customers who need this offer';
   const channel = platform || 'social media';
   const duration = length || 'a short video';
   const voiceStyle = voice || 'a warm, natural voice';
   return {
-    'Script': `Open with ${businessName} in action. Introduce the offer: ${promo}. Show the customer benefit clearly, then invite ${target} to take the next step. End with the business name and a direct call to action.`,
+    'Script': `Open with ${businessName} in action. Introduce the offer: ${promo}. Show the customer benefit clearly, then invite ${target} to take the next step.${details ? ` Include only these additional verified details: ${details}.` : ''} End with the business name and a direct call to action.`,
     'Captions': `${businessName}\n${promo}\nMade for ${target}\nContact us to get started`,
     'Shot List': `1. Strong opening visual of the business or product.\n2. Close-up showing the main offer.\n3. Customer-focused benefit or result.\n4. Business name and call to action.`,
     'Video Prompt': `Create ${duration} ${channel} promotional video for ${businessName}. Feature ${promo}. Use polished, realistic visuals, warm lighting, smooth motion, readable scenes, and no invented prices or claims.`,
@@ -57,7 +57,7 @@ export async function POST(request) {
     if (!apiKey) {
       return NextResponse.json({
         ok: true,
-        kit: guidedFallbackKit({ businessName, promo, audience: clean(body.audience), platform: clean(body.platform), length: clean(body.length), voice: clean(body.voice) }),
+        kit: guidedFallbackKit({ businessName, promo, audience: clean(body.audience), platform: clean(body.platform), length: clean(body.length), voice: clean(body.voice), details: clean(body.details) }),
         fallback: true
       });
     }
@@ -71,6 +71,7 @@ Platform: ${clean(body.platform)}
 Visual style: ${clean(body.style)}
 Length: ${clean(body.length)}
 Voice: ${clean(body.voice)}
+Important verified details: ${clean(body.details) || 'None provided'}
 
 Return only valid JSON with exactly these string keys:
 "Script", "Captions", "Shot List", "Video Prompt", "Voiceover", "Next Steps".
@@ -109,7 +110,7 @@ Make the script fit the requested duration, keep every claim grounded in the inf
       console.error('[video-kit] model returned an incomplete kit', { model });
     }
 
-    const kit = guidedFallbackKit({ businessName, promo, audience: clean(body.audience), platform: clean(body.platform), length: clean(body.length), voice: clean(body.voice) });
+    const kit = guidedFallbackKit({ businessName, promo, audience: clean(body.audience), platform: clean(body.platform), length: clean(body.length), voice: clean(body.voice), details: clean(body.details) });
     return NextResponse.json({ ok: true, kit, fallback: true });
   } catch (error) {
     console.error('[video-kit] request failed', { message: error?.message || String(error) });
