@@ -10,7 +10,8 @@ const DRAFT_KEY = 'cookieDraftSite';
 
 function safeDestination(value = '') {
   const path = String(value || '').trim();
-  if (path === '/builder' || path === '/customer' || path === '/customer/account' || path === '/video-studio') return path;
+  if (path === '/builder' || path === '/customer' || path === '/customer/account' || path === '/video-studio' || path === '/video-studio/results') return path;
+  if (/^\/video-studio\?(?:intent=purchase|claim=1)$/.test(path)) return path;
   if (/^\/customer\/edit\/[a-z0-9-]+$/.test(path)) return path;
   if (/^\/checkout\/continue\?intent=[0-9a-f-]+(?:&draft=[a-z0-9-]+)?$/i.test(path)) return path;
   if (/^\/builder\?(?:checkout|checkoutIntent)=/.test(path)) return path;

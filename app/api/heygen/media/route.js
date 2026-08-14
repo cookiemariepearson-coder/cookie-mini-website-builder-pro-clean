@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { verifyVideoAccessToken } from '../../../../lib/videoAccessToken';
 import { getVerifiedSiteOwner } from '../../../../lib/siteOwnerAuth';
 import { authorizeVideoResultAccess, videoJobBelongsToAccess } from '../../../../lib/videoResultAccess';
+import { ownerHasStandalonePurchase } from '../../../../lib/videoPurchaseClaim';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -32,13 +33,13 @@ export async function GET(request) {
     const access = verifyVideoAccessToken(request.headers.get('x-video-access-token') || '');
     if (!access) return privateJson({ ok: false, error: 'Verified video access is required.' }, { status: 401 });
 
-    let owner = null;
-    if (access.kind === 'website-plan') {
-      owner = await getVerifiedSiteOwner(request);
-      if (!owner.ok) return privateJson({ ok: false, error: owner.error }, { status: owner.status });
-    }
+    const owner = await getVerifiedSiteOwner(request);
+    if (!owner.ok) return privateJson({ ok: false, error: owner.error }, { status: owner.status });
     const authorized = authorizeVideoResultAccess({ access, owner });
     if (!authorized.ok) return privateJson({ ok: false, error: 'This video does not belong to your verified access.' }, { status: authorized.status });
+    if (access.kind === 'standalone' && !await ownerHasStandalonePurchase(owner.user.id, authorized.slug, owner.supabase)) {
+      return privateJson({ ok: false, error: 'This video does not belong to the signed-in customer.' }, { status: 403 });
+    }
 
     const url = new URL(request.url);
     const jobId = String(url.searchParams.get('jobId') || '').trim();

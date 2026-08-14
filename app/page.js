@@ -72,7 +72,7 @@ export default function Home(){
             <div className="heroButtonRow">
               <AccountAction className="btn" destination="/builder" guestAllowed mode="create">Start Building Free</AccountAction>
               <Link className="btn dark" href="/pricing">View Website Plans</Link>
-              <Link className="btn light" href="/checkout/ai-video">AI Video Studio — $5</Link>
+              <Link className="btn light" href="/video-studio?intent=purchase">AI Video Studio — $5</Link>
             </div>
             <CustomerAccountLink placement="hero" />
             <p className="aiReviewNote">Created with the assistance of AI and professionally reviewed by Cookie Digital Creations for quality and accuracy.</p>
@@ -131,7 +131,7 @@ export default function Home(){
             <h2>Cookie’s AI Video Studio is available separately.</h2>
             <p>Use the $5 one-time AI Video Studio option for planning tools plus one real AI-generated video, without buying a website plan. Provider processing, moderation, and availability apply.</p>
           </div>
-          <Link className="btn" href="/checkout/ai-video">Start AI Video Studio</Link>
+          <Link className="btn" href="/video-studio?intent=purchase">Start AI Video Studio</Link>
         </section>
 
         <section className="wrap cardGrid">

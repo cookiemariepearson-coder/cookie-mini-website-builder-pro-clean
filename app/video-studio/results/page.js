@@ -2,19 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useAccountModal } from '../../../components/AccountModalProvider';
 import Nav from '../../../lib/Nav';
 
 const VIDEO_ACCESS_TOKEN_KEY = 'cookieVideoAccessToken';
-const SITE_OWNER_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
-const VIDEO_CUSTOMER_EMAIL_KEY = 'cookieVerifiedVideoEmail';
-
-function accessPayload(token = '') {
-  try {
-    const data = String(token).split('.')[0];
-    const normalized = data.replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(window.atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='))) || {};
-  } catch { return {}; }
-}
 
 function statusLabel(job = {}) {
   if (job.video_available || job.videoAvailable) return 'completed';
@@ -40,6 +31,7 @@ function sortJobs(list) {
 }
 
 export default function VideoResultsPage() {
+  const { accountState, openAccountModal } = useAccountModal();
   const [jobs, setJobs] = useState([]);
   const [message, setMessage] = useState('Loading your protected video results…');
   const [loading, setLoading] = useState(true);
@@ -54,29 +46,23 @@ export default function VideoResultsPage() {
   const pageState = processingJob ? 'processing' : completedJobs.length ? 'completed' : loading ? 'loading' : 'empty';
 
   function ownerHeaders(token) {
-    return {
-      'X-Video-Access-Token': token,
-      Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}`
-    };
+    return { 'X-Video-Access-Token': token };
   }
 
-  async function searchVideos(token, identity = {}) {
-    const query = new URLSearchParams();
-    if (identity.email) query.set('email', identity.email);
-    if (identity.slug) query.set('slug', identity.slug);
-    if (!token || !query.toString()) {
+  async function searchVideos(token) {
+    if (!token) {
       setJobs([]);
-      setMessage('Open AI Video Studio and unlock your account or purchase again to view protected results.');
+      setMessage('Open AI Video Studio to buy or claim a video.');
       setLoading(false);
       return;
     }
     setLoading(true);
     try {
       const [jobsResponse, statusResponse] = await Promise.all([
-        fetch(`/api/heygen/jobs?${query.toString()}`, { headers: ownerHeaders(token), cache: 'no-store' }),
+        fetch('/api/heygen/jobs', { headers: ownerHeaders(token), cache: 'no-store' }),
         fetch('/api/video-access/status', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: ownerHeaders(token).Authorization },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ accessToken: token })
         })
       ]);
@@ -97,14 +83,42 @@ export default function VideoResultsPage() {
   }
 
   useEffect(() => {
-    const token = localStorage.getItem(VIDEO_ACCESS_TOKEN_KEY) || '';
-    setAccessToken(token);
-    const payload = accessPayload(token);
-    const identity = payload.kind === 'website-plan'
-      ? { slug: payload.slug || '' }
-      : { email: localStorage.getItem(VIDEO_CUSTOMER_EMAIL_KEY) || '' };
-    void searchVideos(token, identity);
-  }, []);
+    if (accountState === 'checking') return;
+    if (accountState !== 'signed-in') {
+      setJobs([]);
+      setAccessToken('');
+      setMessage('Create an account or sign in to access your AI videos.');
+      setLoading(false);
+      return;
+    }
+    void (async () => {
+      setLoading(true);
+      try {
+        const response = await fetch('/api/video-access/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode: 'account' })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Your video account could not be opened.');
+        if (data.purchaseRequired || !data.token) {
+          localStorage.removeItem(VIDEO_ACCESS_TOKEN_KEY);
+          setAccessToken('');
+          setJobs([]);
+          setMessage('No videos are connected to this account yet.');
+          setLoading(false);
+          return;
+        }
+        localStorage.setItem(VIDEO_ACCESS_TOKEN_KEY, data.token);
+        setAccessToken(data.token);
+        await searchVideos(data.token);
+      } catch (error) {
+        setJobs([]);
+        setMessage(error.message || 'Your videos could not be loaded.');
+        setLoading(false);
+      }
+    })();
+  }, [accountState]);
 
   function mediaHeaders() {
     return ownerHeaders(accessToken);
@@ -192,7 +206,11 @@ export default function VideoResultsPage() {
         <p>{pageState === 'processing' ? 'You can safely leave this page and come back later.' : pageState === 'completed' ? 'Watch or download your protected video below.' : 'Videos created with your verified access appear here.'}</p>
         {pageState === 'processing' && <button className="btn dark" type="button" onClick={() => refreshJob(processingJob)} disabled={refreshingId === processingJob.id}>{refreshingId === processingJob.id ? 'Checking Status…' : 'Check Video Status'}</button>}
         <p className={/could not|unlock|no submitted/i.test(message) ? 'videoInlineError' : 'videoInlineNote'} role="status" aria-live="polite">{message}</p>
-        {!accessToken && <Link className="btn dark" href="/video-studio">Open AI Video Studio</Link>}
+        {accountState === 'signed-out' && <div className="videoPrimaryActions">
+          <button className="btn dark" type="button" onClick={() => openAccountModal({ mode: 'create', destination: '/video-studio/results' })}>Create My Account</button>
+          <button className="btn light" type="button" onClick={() => openAccountModal({ mode: 'signin', destination: '/video-studio/results' })}>Sign In</button>
+        </div>}
+        {accountState === 'signed-in' && !accessToken && <Link className="btn dark" href="/video-studio?intent=purchase">Buy One Video — $5</Link>}
       </section>
 
       {sortedJobs.length > 0 && <section className="dashboard videoResultsList">
@@ -217,7 +235,7 @@ export default function VideoResultsPage() {
             </article>;
           })}
         </div>
-        {!processingJob && <div className="videoResultsSecondary"><Link className="videoTextButton" href={remaining === 0 ? '/checkout/ai-video' : '/video-studio'}>Create Another Video</Link></div>}
+        {!processingJob && <div className="videoResultsSecondary"><Link className="videoTextButton" href={remaining === 0 ? '/video-studio?intent=purchase' : '/video-studio'}>Create Another Video</Link></div>}
       </section>}
     </main>
   </>;

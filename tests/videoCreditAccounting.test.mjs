@@ -10,7 +10,6 @@ import {
   authorizeVideoResultAccess,
   filterAuthorizedVideoJobs,
   standaloneVideoSlug,
-  videoEmailHash,
   videoJobBelongsToAccess
 } from '../lib/videoResultAccess.js';
 
@@ -19,7 +18,7 @@ const source = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8'
 const ownerAccess = {
   kind: 'standalone',
   namespace: standaloneVideoSlug('sale-owner'),
-  emailHash: videoEmailHash('owner@example.com')
+  ownerId: 'owner-a'
 };
 const ownerJob = {
   id: 'job-owner',
@@ -75,14 +74,14 @@ test('consumed standalone entitlement cannot authorize another generation', () =
 });
 
 test('the same verified owner can retrieve the completed result', () => {
-  const authorized = authorizeVideoResultAccess({ access: ownerAccess, requestedEmail: 'owner@example.com', requireIdentity: true });
+  const authorized = authorizeVideoResultAccess({ access: ownerAccess, owner: { user: { id: 'owner-a' } } });
   assert.equal(authorized.ok, true);
-  assert.deepEqual(filterAuthorizedVideoJobs([ownerJob], { access: ownerAccess, authorized, requestedEmail: 'owner@example.com' }), [ownerJob]);
+  assert.deepEqual(filterAuthorizedVideoJobs([ownerJob], { access: ownerAccess, authorized }), [ownerJob]);
 });
 
 test('a different customer cannot retrieve the completed result', () => {
-  const authorized = authorizeVideoResultAccess({ access: ownerAccess, requestedEmail: 'different@example.com', requireIdentity: true });
-  assert.deepEqual(filterAuthorizedVideoJobs([ownerJob], { access: ownerAccess, authorized, requestedEmail: 'different@example.com' }), []);
+  const authorized = authorizeVideoResultAccess({ access: ownerAccess, owner: { user: { id: 'owner-b' } } });
+  assert.deepEqual(filterAuthorizedVideoJobs([ownerJob], { access: ownerAccess, authorized }), []);
 });
 
 test('direct unauthorized result and status access require a signed pass', async () => {
@@ -126,5 +125,5 @@ test('post-generation UI displays an explicit consumed-credit state', async () =
   assert.match(studio, /Buy Another Video — \$5/);
   assert.match(studio, /View My Video/);
   assert.match(status, /Your 1 included video credit has been used\. 0 video credits available\./);
-  assert.match(activate, /Your 1 included video credit has been used\. 0 video credits available\./);
+  assert.match(activate, /Your included video credit has been used\./);
 });

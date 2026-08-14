@@ -6,6 +6,7 @@ import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
 import { verifyVideoAccessToken } from '../../../../lib/videoAccessToken';
 import { configuredVideoLimits, standaloneVideoEntitlement, websiteVideoEntitlement } from '../../../../lib/videoEntitlement.mjs';
 import { standaloneVideoSlugFromAccess } from '../../../../lib/videoResultAccess';
+import { ownerHasStandalonePurchase } from '../../../../lib/videoPurchaseClaim';
 import { summarizeVideoJobs } from '../../../../lib/videoJourney.mjs';
 
 export const dynamic = 'force-dynamic';
@@ -62,20 +63,24 @@ export async function POST(request) {
       return privateResponse({ ok: false, verified: false, state: 'planning', generationAllowed: false, error: 'Unlock AI Video access to continue.' }, 401);
     }
 
+    const owner = await getVerifiedSiteOwner(request);
+    if (!owner.ok) return privateResponse({ ok: false, verified: false, state: 'invalid', generationAllowed: false, error: owner.error }, owner.status);
+    if (String(access.ownerId || '') !== String(owner.user.id)) {
+      return privateResponse({ ok: false, verified: false, state: 'invalid', generationAllowed: false, error: 'This video access does not belong to the signed-in customer.' }, 403);
+    }
+
     const supabase = getSupabaseAdmin();
     if (access.kind === 'standalone') {
       const namespace = standaloneVideoSlugFromAccess(access);
-      if (!namespace) return NextResponse.json({ ok: false, verified: false, state: 'invalid', generationAllowed: false, error: 'This saved video access is not valid. Verify the Gumroad license again.' }, { status: 403 });
+      if (!namespace || !await ownerHasStandalonePurchase(owner.user.id, namespace, supabase)) {
+        return privateResponse({ ok: false, verified: false, state: 'invalid', generationAllowed: false, error: 'This saved video access is not connected to the signed-in customer.' }, 403);
+      }
       const { count, error } = await supabase.from('heygen_video_jobs').select('id', { count: 'exact', head: true }).eq('website_slug', namespace);
       if (error) throw error;
       return entitlementResponse(standaloneVideoEntitlement(count || 0), 'Standalone AI Video Studio', await jobSummary(supabase, namespace));
     }
 
     if (access.kind === 'website-plan' && access.slug && access.ownerId) {
-      const owner = await getVerifiedSiteOwner(request);
-      if (!owner.ok || String(owner.user?.id || '') !== String(access.ownerId)) {
-        return privateResponse({ ok: false, verified: false, state: 'invalid', generationAllowed: false, error: 'Securely sign in to continue with this website.' }, 403);
-      }
       const { data: website, error } = await supabase.from('websites').select('*').eq('slug', access.slug).maybeSingle();
       if (error) throw error;
       if (!website || !siteBelongsToOwner(website, owner)) {

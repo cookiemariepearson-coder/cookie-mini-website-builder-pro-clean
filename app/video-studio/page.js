@@ -7,10 +7,8 @@ import Nav from '../../lib/Nav';
 import { VIDEO_ENTITLEMENT_STATE, generationIsAuthorized } from '../../lib/videoEntitlement.mjs';
 import { VIDEO_JOB_STATE, VIDEO_START_STATE, resolveVideoStartState } from '../../lib/videoJourney.mjs';
 
-const SITE_OWNER_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
 const VIDEO_ACCESS_TOKEN_KEY = 'cookieVideoAccessToken';
 const VIDEO_PLAN_KEY = 'cookiePendingVideoPlan';
-const VIDEO_CUSTOMER_EMAIL_KEY = 'cookieVerifiedVideoEmail';
 const RESUME_AFTER_SIGN_IN_KEY = 'cookieVideoResumeAfterSignIn';
 const WIZARD_ACTIVE_KEY = 'cookieVideoWizardActive';
 
@@ -76,7 +74,6 @@ export default function VideoStudioPage() {
   const [status, setStatus] = useState('');
   const [working, setWorking] = useState('');
   const [licenseKey, setLicenseKey] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
   const [websiteSlug, setWebsiteSlug] = useState('');
   const [eligibleWebsites, setEligibleWebsites] = useState([]);
   const [selectedWebsite, setSelectedWebsite] = useState('');
@@ -122,8 +119,6 @@ export default function VideoStudioPage() {
     try {
       setInitialToken(localStorage.getItem(VIDEO_ACCESS_TOKEN_KEY) || '');
       setResumeWizard(localStorage.getItem(WIZARD_ACTIVE_KEY) === '1');
-      const savedEmail = clean(localStorage.getItem(VIDEO_CUSTOMER_EMAIL_KEY) || '');
-      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(savedEmail)) setCustomerEmail(savedEmail);
       let savedPlan = null;
       try { savedPlan = JSON.parse(localStorage.getItem(VIDEO_PLAN_KEY) || 'null'); } catch {}
       if (savedPlan && typeof savedPlan === 'object') {
@@ -138,7 +133,8 @@ export default function VideoStudioPage() {
         setDetails(clean(savedPlan.details));
         setWizardStep(Math.min(7, Math.max(1, Number(savedPlan.wizardStep || 1))));
       }
-      setPurchaseReturn(new URLSearchParams(window.location.search).get('activate') === '1');
+      const params = new URLSearchParams(window.location.search);
+      setPurchaseReturn(params.get('claim') === '1' || params.get('activate') === '1');
     } catch {}
     finally { setStorageReady(true); }
   }, []);
@@ -168,10 +164,7 @@ export default function VideoStudioPage() {
     try {
       const response = await fetch('/api/video-access/status', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}`
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accessToken: token })
       });
       const data = await response.json().catch(() => ({}));
@@ -205,17 +198,14 @@ export default function VideoStudioPage() {
     }
   }
 
-  async function activateAccount(slug = '', autoContinue = false) {
+  async function activateAccount(slug = '', autoContinue = false, preferWebsite = false) {
     setChecking(true);
-    setStatus('Checking your website access…');
+    setStatus('Checking your video account…');
     try {
       const response = await fetch('/api/video-access/activate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}`
-        },
-        body: JSON.stringify({ mode: 'account', slug })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: preferWebsite ? 'website' : 'account', slug })
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) throw new Error(data.error || 'Website access could not be checked.');
@@ -226,12 +216,20 @@ export default function VideoStudioPage() {
         setStatus('');
         return true;
       }
+      if (data.purchaseRequired) {
+        localStorage.removeItem(VIDEO_ACCESS_TOKEN_KEY);
+        setAccessToken('');
+        setEntitlement(DEFAULT_ENTITLEMENT);
+        setScreen(VIDEO_START_STATE.NO_CREDIT);
+        setStatus('');
+        return true;
+      }
       localStorage.setItem(VIDEO_ACCESS_TOKEN_KEY, data.token);
       setWebsiteSlug(data.website?.slug || '');
       return await checkStoredAccess(data.token, { autoContinue });
     } catch (error) {
       setEntitlement(DEFAULT_ENTITLEMENT);
-      setScreen(VIDEO_START_STATE.ACCESS_CHOICE);
+      setScreen(VIDEO_START_STATE.NO_CREDIT);
       setStatus(error.message || 'Website access could not be checked.');
       return false;
     } finally {
@@ -243,6 +241,11 @@ export default function VideoStudioPage() {
     if (!storageReady || accountState === 'checking' || initializedRef.current) return;
     initializedRef.current = true;
     void (async () => {
+      if (accountState !== 'signed-in') {
+        setScreen('');
+        setChecking(false);
+        return;
+      }
       if (purchaseReturn) {
         setScreen(VIDEO_START_STATE.LICENSE);
         setStatus('Purchase complete. Enter the license key from your Gumroad receipt.');
@@ -250,17 +253,12 @@ export default function VideoStudioPage() {
         return;
       }
       if (initialToken && await checkStoredAccess(initialToken, { autoContinue: resumeWizard })) return;
-      if (accountState === 'signed-in') {
-        let autoContinue = false;
-        try {
-          autoContinue = sessionStorage.getItem(RESUME_AFTER_SIGN_IN_KEY) === '1';
-          sessionStorage.removeItem(RESUME_AFTER_SIGN_IN_KEY);
-        } catch {}
-        await activateAccount('', autoContinue);
-        return;
-      }
-      setScreen('');
-      setChecking(false);
+      let autoContinue = false;
+      try {
+        autoContinue = sessionStorage.getItem(RESUME_AFTER_SIGN_IN_KEY) === '1';
+        sessionStorage.removeItem(RESUME_AFTER_SIGN_IN_KEY);
+      } catch {}
+      await activateAccount('', autoContinue);
     })();
   }, [accountState, initialToken, purchaseReturn, resumeWizard, storageReady]);
 
@@ -280,10 +278,6 @@ export default function VideoStudioPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) throw new Error(data.error || 'That purchase could not be verified.');
       localStorage.setItem(VIDEO_ACCESS_TOKEN_KEY, data.token);
-      if (data.email) {
-        setCustomerEmail(data.email);
-        localStorage.setItem(VIDEO_CUSTOMER_EMAIL_KEY, data.email);
-      }
       setLicenseKey('');
       window.history.replaceState({}, '', '/video-studio');
       await checkStoredAccess(data.token, { autoContinue: true });
@@ -294,9 +288,13 @@ export default function VideoStudioPage() {
     }
   }
 
-  function signInForVideo() {
+  function accountDestination() {
+    return purchaseReturn ? '/video-studio?claim=1' : '/video-studio?intent=purchase';
+  }
+
+  function signInForVideo(mode = 'signin') {
     try { sessionStorage.setItem(RESUME_AFTER_SIGN_IN_KEY, '1'); } catch {}
-    openAccountModal({ mode: 'signin', destination: '/video-studio' });
+    openAccountModal({ mode, destination: accountDestination() });
   }
 
   function startWizard() {
@@ -389,10 +387,7 @@ export default function VideoStudioPage() {
     try {
       const response = await fetch('/api/heygen/create', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(entitlement.kind === 'website-plan' ? { Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}` } : {})
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           businessName: biz,
           promo,
@@ -403,7 +398,6 @@ export default function VideoStudioPage() {
           length,
           voice,
           details,
-          customerEmail,
           websiteSlug,
           accessToken,
           requestId: generationRequestRef.current,
@@ -443,24 +437,12 @@ export default function VideoStudioPage() {
     }
     if (startState === VIDEO_START_STATE.SIGNED_OUT) {
       return <div className="videoStateCard">
-        <h2>How would you like to begin?</h2>
+        <h2>Start with your account</h2>
+        <p>Create an account or sign in to purchase, create, and access your AI videos.</p>
         <div className="videoPrimaryActions">
-          <button className="btn dark" type="button" onClick={() => setScreen(VIDEO_START_STATE.ACCESS_CHOICE)}>I Already Have Access</button>
-          <Link className="btn light" href="/checkout/ai-video">Buy One Video — $5</Link>
+          <button className="btn dark" type="button" onClick={() => signInForVideo('create')}>Create My Account</button>
+          <button className="btn light" type="button" onClick={() => signInForVideo('signin')}>Sign In</button>
         </div>
-      </div>;
-    }
-    if (startState === VIDEO_START_STATE.ACCESS_CHOICE) {
-      return <div className="videoStateCard">
-        <h2>{accountState === 'signed-in' ? 'Choose another access option' : 'How did you get access?'}</h2>
-        {status && <p className="videoInlineError" role="alert">{status}</p>}
-        <div className="videoPrimaryActions">
-          {accountState === 'signed-in'
-            ? <button className="btn dark" type="button" onClick={() => activateAccount('', true)}>Check My Business/Premium Access</button>
-            : <button className="btn dark" type="button" onClick={signInForVideo}>Sign In to My Account</button>}
-          <button className="btn light" type="button" onClick={() => { setStatus(''); setScreen(VIDEO_START_STATE.LICENSE); }}>I Bought the $5 Video on Gumroad</button>
-        </div>
-        <button className="videoTextButton" type="button" onClick={() => { setStatus(''); setScreen(''); }}>Back</button>
       </div>;
     }
     if (startState === VIDEO_START_STATE.LICENSE) {
@@ -473,7 +455,7 @@ export default function VideoStudioPage() {
         </div>
         <div className="videoPrimaryActions">
           <button className="btn dark" type="button" onClick={activateLicense} disabled={working === 'license'}>{working === 'license' ? 'Checking Purchase…' : 'Unlock My Video'}</button>
-          <button className="btn light" type="button" onClick={() => { setStatus(''); setScreen(VIDEO_START_STATE.ACCESS_CHOICE); }}>Back</button>
+          <button className="btn light" type="button" onClick={() => { setStatus(''); setScreen(VIDEO_START_STATE.NO_CREDIT); }}>Back</button>
         </div>
       </div>;
     }
@@ -501,7 +483,7 @@ export default function VideoStudioPage() {
       return <div className="videoStateCard"><h2>Your video is being created</h2><Link className="btn dark" href="/video-studio/results">Check Video Status</Link></div>;
     }
     if (startState === VIDEO_START_STATE.COMPLETED) {
-      return <div className="videoStateCard"><h2>Your video is ready</h2><Link className="btn dark" href="/video-studio/results">Watch My Video</Link></div>;
+      return <div className="videoStateCard"><h2>Your video is ready</h2><div className="videoPrimaryActions"><Link className="btn dark" href="/video-studio/results">Watch My Video</Link><Link className="btn light" href="/video-studio/results">Download My Video</Link></div></div>;
     }
     if (startState === VIDEO_START_STATE.USED_CREDIT) {
       return <div className="videoStateCard videoUsedCreditState">
@@ -515,6 +497,7 @@ export default function VideoStudioPage() {
     }
     return <div className="videoStateCard">
       <h2>No video credits are available.</h2>
+      {status && <p className="videoInlineError" role="alert">{status}</p>}
       <div className="videoPrimaryActions"><Link className="btn dark" href="/checkout/ai-video">Buy One Video — $5</Link>{hasSavedPlan && <button className="btn light" type="button" onClick={startWizard}>View My Saved Plan</button>}</div>
     </div>;
   }
@@ -595,7 +578,7 @@ export default function VideoStudioPage() {
           {PROGRESS_STEPS.map((label, index) => <li className={index === progressIndex ? 'active' : index < progressIndex ? 'complete' : ''} aria-current={index === progressIndex ? 'step' : undefined} key={label}><span>{index + 1}</span><strong>{label}</strong></li>)}
         </ol>
       </section>
-      {startState === VIDEO_START_STATE.WIZARD ? wizardPanel() : <section className="dashboard studioWorkCard">{startPanel()}<details className="videoHelp"><summary>Need Help?</summary><p>Your saved plan stays on this device. For account or purchase help, contact <a href="mailto:hello@cookiesdigitalcreations.com">hello@cookiesdigitalcreations.com</a>.</p></details></section>}
+      {startState === VIDEO_START_STATE.WIZARD ? wizardPanel() : <section className="dashboard studioWorkCard">{startPanel()}<details className="videoHelp"><summary>Need Help?</summary><p>Your saved plan stays on this device.</p>{accountState === 'signed-in' && <div className="videoHelpActions"><button className="videoTextButton" type="button" onClick={() => { setStatus('Enter the license key from your Gumroad receipt.'); setScreen(VIDEO_START_STATE.LICENSE); }}>I already purchased a $5 video</button><button className="videoTextButton" type="button" onClick={() => activateAccount('', true, true)}>Check my Business/Premium access</button></div>}<p>For account or purchase help, contact <a href="mailto:hello@cookiesdigitalcreations.com">hello@cookiesdigitalcreations.com</a>.</p></details></section>}
     </main>
   </>;
 }

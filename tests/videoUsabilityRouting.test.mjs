@@ -8,7 +8,7 @@ import {
   resolveVideoStartState,
   summarizeVideoJobs
 } from '../lib/videoJourney.mjs';
-import { authorizeVideoResultAccess, filterAuthorizedVideoJobs, standaloneVideoSlug, videoEmailHash } from '../lib/videoResultAccess.js';
+import { authorizeVideoResultAccess, filterAuthorizedVideoJobs, standaloneVideoSlug } from '../lib/videoResultAccess.js';
 
 const source = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -55,9 +55,9 @@ test('8. multiple eligible websites return only a safe selector', async () => {
   assert.doesNotMatch(studio, /Business\/Premium customer email|Website name or subdomain/);
 });
 
-test('9. standalone Gumroad buyer sees the license field only after choosing Gumroad', async () => {
+test('9. standalone Gumroad buyer sees the license field only after choosing purchase recovery', async () => {
   const studio = await source('app/video-studio/page.js');
-  assert.ok(studio.indexOf('I Bought the $5 Video on Gumroad') < studio.indexOf('startState === VIDEO_START_STATE.LICENSE'));
+  assert.match(studio, /I already purchased a \$5 video/);
   assert.match(studio, /Enter the license key from your Gumroad receipt\./);
   assert.match(studio, /Unlock My Video/);
 });
@@ -120,11 +120,11 @@ test('17. screen-reader labels and live errors are present', async () => {
 });
 
 test('18. cross-customer result isolation remains enforced', () => {
-  const access = { kind: 'standalone', namespace: standaloneVideoSlug('sale-a'), emailHash: videoEmailHash('a@example.com') };
-  const authorized = authorizeVideoResultAccess({ access, requestedEmail: 'a@example.com', requireIdentity: true });
+  const access = { kind: 'standalone', namespace: standaloneVideoSlug('sale-a'), ownerId: 'owner-a' };
+  const authorized = authorizeVideoResultAccess({ access, owner: { user: { id: 'owner-a' } } });
   const jobs = [{ id: 'a', website_slug: access.namespace, customer_email: 'a@example.com' }];
-  assert.deepEqual(filterAuthorizedVideoJobs(jobs, { access, authorized, requestedEmail: 'a@example.com' }).map(job => job.id), ['a']);
-  assert.deepEqual(filterAuthorizedVideoJobs(jobs, { access, authorized, requestedEmail: 'b@example.com' }), []);
+  assert.deepEqual(filterAuthorizedVideoJobs(jobs, { access, authorized }).map(job => job.id), ['a']);
+  assert.deepEqual(filterAuthorizedVideoJobs(jobs, { access: { ...access, ownerId: 'owner-b' }, authorized }), []);
 });
 
 test('19. signed-out protected jobs and results still require a signed access pass', async () => {

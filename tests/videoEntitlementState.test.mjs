@@ -25,15 +25,16 @@ const now = new Date('2026-08-09T12:00:00Z');
 
 test('1. fresh guest sees only the two simple starting choices', async () => {
   const studio = await source('app/video-studio/page.js');
-  assert.match(studio, />I Already Have Access<\/button>/);
-  assert.match(studio, /href="\/checkout\/ai-video">Buy One Video — \$5/);
+  assert.match(studio, />Create My Account<\/button>/);
+  assert.match(studio, />Sign In<\/button>/);
+  assert.match(studio, /Create an account or sign in to purchase, create, and access your AI videos\./);
   assert.doesNotMatch(studio, />Verify Website Plan<|>Verify License</);
 });
 
-test('2. license entry appears only after the Gumroad access choice', async () => {
+test('2. license entry appears only after the signed-in purchase recovery choice', async () => {
   const studio = await source('app/video-studio/page.js');
   assert.match(studio, /startState === VIDEO_START_STATE\.LICENSE/);
-  assert.match(studio, /I Bought the \$5 Video on Gumroad/);
+  assert.match(studio, /I already purchased a \$5 video/);
   assert.match(studio, /id="video-license-key"/);
   assert.match(studio, /'Unlock My Video'/);
 });
