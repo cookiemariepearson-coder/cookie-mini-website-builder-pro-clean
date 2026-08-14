@@ -23,17 +23,19 @@ const activeWebsite = {
 };
 const now = new Date('2026-08-09T12:00:00Z');
 
-test('1. fresh guest sees Purchase Now', async () => {
+test('1. fresh guest sees only the two simple starting choices', async () => {
   const studio = await source('app/video-studio/page.js');
-  assert.match(studio, /data-testid="video-top-actions">[\s\S]*href="\/checkout\/ai-video">Purchase Now/);
-  assert.doesNotMatch(studio, /\{!accessToken && <Link className="btn dark" href="\/checkout\/ai-video">Purchase Now/);
+  assert.match(studio, />I Already Have Access<\/button>/);
+  assert.match(studio, /href="\/checkout\/ai-video">Buy One Video — \$5/);
+  assert.doesNotMatch(studio, />Verify Website Plan<|>Verify License</);
 });
 
-test('2. fresh guest sees secure license entry and Verify License', async () => {
+test('2. license entry appears only after the Gumroad access choice', async () => {
   const studio = await source('app/video-studio/page.js');
-  assert.match(studio, /data-testid="video-access-verification"/);
+  assert.match(studio, /startState === VIDEO_START_STATE\.LICENSE/);
+  assert.match(studio, /I Bought the \$5 Video on Gumroad/);
   assert.match(studio, /id="video-license-key"/);
-  assert.match(studio, />Verify License<\/button>/);
+  assert.match(studio, /'Unlock My Video'/);
 });
 
 test('3. restored saved plan never becomes an unlocked entitlement by itself', async () => {
@@ -43,19 +45,17 @@ test('3. restored saved plan never becomes an unlocked entitlement by itself', a
   assert.doesNotMatch(studio, /AI Video Studio unlocked/);
 });
 
-test('4. restored saved plan does not hide Purchase Now', async () => {
+test('4. restored saved plan changes the verified primary action to Continue My Video', async () => {
   const studio = await source('app/video-studio/page.js');
-  const actions = studio.slice(studio.indexOf('data-testid="video-top-actions"'), studio.indexOf('data-testid="video-access-verification"'));
-  assert.match(actions, /Purchase Now/);
-  assert.doesNotMatch(actions, /!accessToken|canGenerate &&/);
+  assert.match(studio, /hasSavedPlan \? 'Continue My Video' : 'Start My Video'/);
+  assert.match(studio, /Boolean\(clean\(biz\) \|\| clean\(promo\) \|\| clean\(details\)\)/);
 });
 
-test('5. restored saved plan does not hide license verification', async () => {
+test('5. restored saved plan never makes license verification globally visible', async () => {
   const studio = await source('app/video-studio/page.js');
-  const verification = studio.slice(studio.indexOf('data-testid="video-access-verification"'), studio.indexOf('<div className="studioSteps"'));
-  assert.match(verification, /video-license-key/);
-  assert.match(verification, /Verify License/);
-  assert.doesNotMatch(verification, /!accessToken|accessKind ===/);
+  assert.match(studio, /startState === VIDEO_START_STATE\.LICENSE/);
+  assert.equal((studio.match(/id="video-license-key"/g) || []).length, 1);
+  assert.doesNotMatch(studio, /data-testid="video-access-verification"/);
 });
 
 test('6. invalid entitlement keeps Generate disabled', () => {
@@ -64,8 +64,8 @@ test('6. invalid entitlement keeps Generate disabled', () => {
 
 test('7. missing license is rejected before verification', async () => {
   const studio = await source('app/video-studio/page.js');
-  assert.match(studio, /mode === 'license' && !clean\(licenseKey\)/);
-  assert.match(studio, /Paste the Gumroad license key from your AI Video purchase receipt first/);
+  assert.match(studio, /if \(!clean\(licenseKey\)\)/);
+  assert.match(studio, /Enter the license key from your Gumroad receipt\./);
 });
 
 test('8. client state manipulation cannot authorize Generate without server verification', () => {
@@ -113,8 +113,9 @@ test('13. inactive or ineligible website plan remains locked', () => {
 
 test('14. locked Generate is visually and programmatically disabled', async () => {
   const [studio, css] = await Promise.all([source('app/video-studio/page.js'), source('app/globals.css')]);
-  assert.equal((studio.match(/\sdisabled=\{Boolean\(working\) \|\| !canGenerate\}/g) || []).length, 2);
-  assert.equal((studio.match(/aria-disabled=\{Boolean\(working\) \|\| !canGenerate\}/g) || []).length, 2);
+  assert.match(studio, /if \(!canGenerate\)/);
+  assert.match(studio, /wizardStep === 7 && canGenerate/);
+  assert.equal((studio.match(/aria-disabled=\{working === 'video'\}/g) || []).length, 1);
   assert.match(css, /\.videoGenerateBtn:disabled,\.videoGenerateBtn\[aria-disabled="true"\]/);
   assert.match(css, /background:#d9d3dc/);
 });
