@@ -1,4 +1,6 @@
 'use client';
+
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import Nav from '../../../lib/Nav';
 
@@ -6,9 +8,6 @@ const VIDEO_ACCESS_TOKEN_KEY = 'cookieVideoAccessToken';
 const SITE_OWNER_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
 const VIDEO_CUSTOMER_EMAIL_KEY = 'cookieVerifiedVideoEmail';
 
-function normalizeInput(value) {
-  return String(value || '').trim();
-}
 function accessPayload(token = '') {
   try {
     const data = String(token).split('.')[0];
@@ -16,137 +15,103 @@ function accessPayload(token = '') {
     return JSON.parse(window.atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '='))) || {};
   } catch { return {}; }
 }
-function thumbnailUrl(job) { return job.thumbnail_url || job.thumbnailUrl || ''; }
-function videoId(job) { return job.heygen_video_id || job.videoId || ''; }
-function sessionId(job) { return job.heygen_session_id || job.sessionId || ''; }
-function statusLabel(job) {
+
+function statusLabel(job = {}) {
   if (job.video_available || job.videoAvailable) return 'completed';
   const status = String(job.status || 'processing').toLowerCase();
   if (['completed', 'ready', 'done', 'success'].includes(status)) return 'completed';
   if (['failed', 'error'].includes(status)) return 'failed';
   return 'processing';
 }
+
 function statusText(job) {
   const status = statusLabel(job);
   if (status === 'completed') return 'Video ready';
-  if (status === 'failed') return 'Video failed';
-  return 'Needs refresh / processing';
+  if (status === 'failed') return 'Video needs attention';
+  return 'Video is being created';
 }
+
 function sortJobs(list) {
   return [...list].sort((a, b) => {
     const rank = { completed: 0, processing: 1, failed: 2 };
-    const ar = rank[statusLabel(a)] ?? 1;
-    const br = rank[statusLabel(b)] ?? 1;
-    if (ar !== br) return ar - br;
-    return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    const difference = (rank[statusLabel(a)] ?? 1) - (rank[statusLabel(b)] ?? 1);
+    return difference || new Date(b.created_at || 0) - new Date(a.created_at || 0);
   });
 }
 
 export default function VideoResultsPage() {
-  const [email, setEmail] = useState('');
-  const [slug, setSlug] = useState('');
   const [jobs, setJobs] = useState([]);
-  const [message, setMessage] = useState('Enter an email or website/subdomain to find videos created through Cookie AI Video Studio.');
-  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('Loading your protected video results…');
+  const [loading, setLoading] = useState(true);
   const [refreshingId, setRefreshingId] = useState('');
   const [accessToken, setAccessToken] = useState('');
+  const [remaining, setRemaining] = useState(null);
   const [mediaUrls, setMediaUrls] = useState({});
   const [loadingMediaId, setLoadingMediaId] = useState('');
-  const [licenseKey, setLicenseKey] = useState('');
-  const [verifying, setVerifying] = useState('');
   const sortedJobs = useMemo(() => sortJobs(jobs), [jobs]);
+  const processingJob = jobs.find(job => statusLabel(job) === 'processing');
+  const completedJobs = sortedJobs.filter(job => statusLabel(job) === 'completed');
+  const pageState = processingJob ? 'processing' : completedJobs.length ? 'completed' : loading ? 'loading' : 'empty';
 
-  async function searchVideos(inputEmail = email, inputSlug = slug, token = accessToken) {
-    const q = new URLSearchParams();
-    if (normalizeInput(inputEmail)) q.set('email', normalizeInput(inputEmail));
-    if (normalizeInput(inputSlug)) q.set('slug', normalizeInput(inputSlug));
-    if (!q.toString()) { setMessage('Enter an email or website/subdomain first.'); return; }
+  function ownerHeaders(token) {
+    return {
+      'X-Video-Access-Token': token,
+      Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}`
+    };
+  }
+
+  async function searchVideos(token, identity = {}) {
+    const query = new URLSearchParams();
+    if (identity.email) query.set('email', identity.email);
+    if (identity.slug) query.set('slug', identity.slug);
+    if (!token || !query.toString()) {
+      setJobs([]);
+      setMessage('Open AI Video Studio and unlock your account or purchase again to view protected results.');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    setMessage('Loading video results...');
     try {
-      const res = await fetch(`/api/heygen/jobs?${q.toString()}`, {
-        headers: {
-          'X-Video-Access-Token': token,
-          Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}`
-        }
-      });
-      const data = await res.json().catch(() => ({ ok: false, error: 'Could not read server response.' }));
-      if (!res.ok || !data.ok) throw new Error(data.error || 'Could not load videos.');
+      const [jobsResponse, statusResponse] = await Promise.all([
+        fetch(`/api/heygen/jobs?${query.toString()}`, { headers: ownerHeaders(token), cache: 'no-store' }),
+        fetch('/api/video-access/status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: ownerHeaders(token).Authorization },
+          body: JSON.stringify({ accessToken: token })
+        })
+      ]);
+      const jobsData = await jobsResponse.json().catch(() => ({}));
+      const statusData = await statusResponse.json().catch(() => ({}));
+      if (!jobsResponse.ok || !jobsData.ok) throw new Error(jobsData.error || 'Your videos could not be loaded.');
       Object.values(mediaUrls).forEach(url => URL.revokeObjectURL(url));
       setMediaUrls({});
-      setJobs(data.jobs || []);
-      setMessage(data.jobs?.length ? `Found ${data.jobs.length} video result(s). Completed videos are shown first.` : 'No videos found for this verified access.');
+      setJobs(jobsData.jobs || []);
+      if (statusResponse.ok && statusData.ok) setRemaining(Math.max(0, Number(statusData.remaining || 0)));
+      setMessage(jobsData.jobs?.length ? 'Your protected videos are ready below.' : 'No submitted videos were found for this access.');
     } catch (error) {
       setJobs([]);
-      setMessage(error.message || 'Could not load video results.');
+      setMessage(error.message || 'Your videos could not be loaded.');
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    const savedAccessToken = localStorage.getItem(VIDEO_ACCESS_TOKEN_KEY) || '';
-    setAccessToken(savedAccessToken);
-    const q = new URLSearchParams(window.location.search);
-    const initialEmail = q.get('email') || localStorage.getItem(VIDEO_CUSTOMER_EMAIL_KEY) || accessPayload(savedAccessToken).email || '';
-    const initialSlug = q.get('slug') || '';
-    if (initialEmail) setEmail(initialEmail);
-    if (initialSlug) setSlug(initialSlug);
-    if (initialEmail || initialSlug) {
-      const token = localStorage.getItem(VIDEO_ACCESS_TOKEN_KEY) || '';
-      setAccessToken(token);
-      searchVideos(initialEmail, initialSlug, token);
-    }
+    const token = localStorage.getItem(VIDEO_ACCESS_TOKEN_KEY) || '';
+    setAccessToken(token);
+    const payload = accessPayload(token);
+    const identity = payload.kind === 'website-plan'
+      ? { slug: payload.slug || '' }
+      : { email: localStorage.getItem(VIDEO_CUSTOMER_EMAIL_KEY) || '' };
+    void searchVideos(token, identity);
   }, []);
 
-  async function activateResultsAccess(mode) {
-    if (mode === 'license' && !normalizeInput(licenseKey)) {
-      setMessage('Paste the Gumroad license key from the AI Video purchase receipt first.');
-      return;
-    }
-    if (mode === 'plan' && !normalizeInput(email) && !normalizeInput(slug)) {
-      setMessage('Enter the verified website email or subdomain first.');
-      return;
-    }
-    setVerifying(mode);
-    setMessage('Verifying your video access...');
-    try {
-      const response = await fetch('/api/video-access/activate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(mode === 'plan' ? { Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}` } : {})
-        },
-        body: JSON.stringify(mode === 'license' ? { licenseKey } : { email, slug })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.ok) throw new Error(data.error || 'Video access could not be verified.');
-      localStorage.setItem(VIDEO_ACCESS_TOKEN_KEY, data.token);
-      setAccessToken(data.token);
-      const verifiedEmail = data.email || email;
-      if (data.email) {
-        setEmail(data.email);
-        localStorage.setItem(VIDEO_CUSTOMER_EMAIL_KEY, data.email);
-      }
-      setMessage('Access verified. Loading videos that belong to this purchase or website...');
-      await searchVideos(verifiedEmail, mode === 'license' ? '' : slug, data.token);
-    } catch (error) {
-      setJobs([]);
-      setMessage(error.message || 'Video access could not be verified.');
-    } finally {
-      setVerifying('');
-    }
-  }
-
   function mediaHeaders() {
-    return {
-      'X-Video-Access-Token': accessToken,
-      Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}`
-    };
+    return ownerHeaders(accessToken);
   }
 
   async function fetchVideoBlob(job) {
-    const response = await fetch(`/api/heygen/media?jobId=${encodeURIComponent(job.id)}`, { headers: mediaHeaders() });
+    const response = await fetch(`/api/heygen/media?jobId=${encodeURIComponent(job.id)}`, { headers: mediaHeaders(), cache: 'no-store' });
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
       throw new Error(data.error || 'The video could not be loaded.');
@@ -157,7 +122,7 @@ export default function VideoResultsPage() {
   async function viewVideo(job) {
     if (!job.id || mediaUrls[job.id]) return;
     setLoadingMediaId(job.id);
-    setMessage('Loading your protected video...');
+    setMessage('Loading your protected video…');
     try {
       const blob = await fetchVideoBlob(job);
       const objectUrl = URL.createObjectURL(blob);
@@ -172,7 +137,7 @@ export default function VideoResultsPage() {
 
   async function downloadVideo(job) {
     setLoadingMediaId(job.id);
-    setMessage('Preparing your protected MP4 download...');
+    setMessage('Preparing your protected MP4 download…');
     try {
       const blob = await fetchVideoBlob(job);
       const objectUrl = URL.createObjectURL(blob);
@@ -180,7 +145,7 @@ export default function VideoResultsPage() {
       anchor.href = objectUrl;
       anchor.download = `cookie-video-${job.id}.mp4`;
       anchor.click();
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
       setMessage('Your MP4 download is ready.');
     } catch (error) {
       setMessage(error.message || 'The MP4 could not be downloaded.');
@@ -190,87 +155,70 @@ export default function VideoResultsPage() {
   }
 
   async function refreshJob(job) {
-    const key = job.id || sessionId(job) || videoId(job);
-    if (!key) return;
-    setRefreshingId(key);
-    setMessage('Checking HeyGen video status...');
+    if (!job.id) return;
+    setRefreshingId(job.id);
+    setMessage('Checking video status…');
     try {
-      const res = await fetch('/api/heygen/status', {
+      const response = await fetch('/api/heygen/status', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Video-Access-Token': accessToken,
-          Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}`
-        },
-        body: JSON.stringify({ jobId: job.id, sessionId: sessionId(job), videoId: videoId(job) })
+        headers: { 'Content-Type': 'application/json', ...mediaHeaders() },
+        body: JSON.stringify({ jobId: job.id })
       });
-      const data = await res.json().catch(() => ({ ok: false, error: 'Could not read status response.' }));
-      if (!res.ok || !data.ok) throw new Error(data.error || 'Could not refresh video status.');
-      setJobs(current => current.map(item => {
-        const itemKey = item.id || sessionId(item) || videoId(item);
-        if (itemKey !== key) return item;
-        return {
-          ...item,
-          status: data.videoAvailable ? 'completed' : (data.status || item.status || 'processing'),
-          video_available: Boolean(data.videoAvailable || item.video_available),
-          thumbnail_available: Boolean(data.thumbnailAvailable || item.thumbnail_available),
-          failure_code: data.failureCode || item.failure_code || null,
-          failure_message: data.failureMessage || item.failure_message || null,
-          checked_at: new Date().toISOString()
-        };
-      }));
-      setMessage(data.videoAvailable ? 'Video is ready and was updated on your site.' : 'Video is still processing. Check again soon.');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) throw new Error(data.error || 'Video status could not be refreshed.');
+      setJobs(current => current.map(item => item.id === job.id ? {
+        ...item,
+        status: data.videoAvailable ? 'completed' : (data.status || item.status || 'processing'),
+        video_available: Boolean(data.videoAvailable || item.video_available),
+        thumbnail_available: Boolean(data.thumbnailAvailable || item.thumbnail_available),
+        failure_code: data.failureCode || item.failure_code || null,
+        failure_message: data.failureMessage || item.failure_message || null,
+        checked_at: new Date().toISOString()
+      } : item));
+      setMessage(data.videoAvailable ? 'Your video is ready.' : 'Your video is still being created. Check again soon.');
     } catch (error) {
-      setMessage(error.message || 'Could not refresh video status.');
+      setMessage(error.message || 'Video status could not be refreshed.');
     } finally {
       setRefreshingId('');
     }
   }
 
-  return <><Nav /><main className="wrap">
-    <section className="dashboard">
-      <span className="kicker">AI Video Studio</span>
-      <h1>Video Results Dashboard</h1>
-      <p>Customers can return here to watch, download, and refresh videos created through your website.</p>
-      <div className="row">
-        <div className="field"><label>Email</label><input value={email} onChange={e => setEmail(e.target.value)} placeholder="customer@email.com" autoComplete="off" /></div>
-        <div className="field"><label>Website name or subdomain</label><input value={slug} onChange={e => setSlug(e.target.value)} placeholder="my-business-name" autoComplete="off" /></div>
-      </div>
-      <div className="field"><label>Gumroad AI Video license key</label><input value={licenseKey} onChange={event => setLicenseKey(event.target.value)} placeholder="Paste the license key from your receipt" autoComplete="off" /></div>
-      <div className="navRow">
-        <button className="btn" onClick={() => searchVideos()} disabled={loading}>{loading ? 'Searching...' : 'Find My Videos'}</button>
-        <button className="btn dark" type="button" onClick={() => activateResultsAccess('license')} disabled={Boolean(verifying)}>{verifying === 'license' ? 'Verifying Purchase...' : 'Verify Gumroad Purchase & Find Videos'}</button>
-        <button className="btn light" type="button" onClick={() => activateResultsAccess('plan')} disabled={Boolean(verifying)}>{verifying === 'plan' ? 'Verifying Website...' : 'Verify Website Plan & Find Videos'}</button>
-        <a className="btn dark" href="/video-studio">Create Another Video</a><a className="btn light" href="/customer?return=video-studio">Secure Website Sign-In</a>
-      </div>
-      <div className="notice" role="status" aria-live="polite">{message}</div>
-    </section>
+  return <>
+    <Nav />
+    <main className="wrap videoResultsRefresh">
+      <section className="dashboard videoResultsHero">
+        <span className="kicker">AI Video Studio · Results</span>
+        <h1>{pageState === 'processing' ? 'Your video is being created' : pageState === 'completed' ? 'Your video is ready' : pageState === 'loading' ? 'Loading your video…' : 'Your Video Results'}</h1>
+        <p>{pageState === 'processing' ? 'You can safely leave this page and come back later.' : pageState === 'completed' ? 'Watch or download your protected video below.' : 'Videos created with your verified access appear here.'}</p>
+        {pageState === 'processing' && <button className="btn dark" type="button" onClick={() => refreshJob(processingJob)} disabled={refreshingId === processingJob.id}>{refreshingId === processingJob.id ? 'Checking Status…' : 'Check Video Status'}</button>}
+        <p className={/could not|unlock|no submitted/i.test(message) ? 'videoInlineError' : 'videoInlineNote'} role="status" aria-live="polite">{message}</p>
+        {!accessToken && <Link className="btn dark" href="/video-studio">Open AI Video Studio</Link>}
+      </section>
 
-    <section className="dashboard" style={{ marginTop: 22 }}>
-      <h2>Saved HeyGen Videos</h2>
-      {sortedJobs.length === 0 && <p>No videos loaded yet.</p>}
-      <div className="cardGrid">
-        {sortedJobs.map(job => {
-          const key = job.id || sessionId(job) || videoId(job) || job.created_at;
-          const ready = Boolean(job.video_available || job.videoAvailable);
-          const thumb = thumbnailUrl(job);
-          return <article className="card" key={key}>
-            <span className="kicker">{statusText(job)}</span>
-            <h3>{job.business_name || 'Video'}</h3>
-            <p><strong>Website:</strong> {job.website_slug || 'Not connected'}</p>
-            <p><strong>Plan:</strong> {job.plan || '—'} · <strong>Type:</strong> {job.video_type || 'Promo'}</p>
-            {!ready && <button className="btn" onClick={() => refreshJob(job)} disabled={refreshingId === key}>{refreshingId === key ? 'Refreshing...' : 'Refresh Video Status'}</button>}
-            {thumb && <img src={thumb} alt="Video thumbnail" style={{ width: '100%', borderRadius: 16, margin: '10px 0' }} />}
-            {ready ? <div>
-              {mediaUrls[job.id] ? <video src={mediaUrls[job.id]} controls style={{ width: '100%', borderRadius: 16, margin: '10px 0' }} /> : <button className="btn" type="button" onClick={() => viewVideo(job)} disabled={loadingMediaId === job.id}>{loadingMediaId === job.id ? 'Loading Video...' : 'View Video'}</button>}
-              <div className="navRow"><button className="btn" type="button" onClick={() => downloadVideo(job)} disabled={loadingMediaId === job.id}>Download MP4</button></div>
-            </div> : <p className="notice">This video may still be processing. Click <strong>Refresh Video Status</strong>. If it was created yesterday and still says processing, refresh once to update the saved result.</p>}
-            {job.failure_message && <p className="notice danger"><strong>HeyGen message:</strong> {job.failure_message}</p>}
-            <small>Created: {job.created_at ? new Date(job.created_at).toLocaleString() : '—'}</small>
-            {job.checked_at && <small><br />Last checked: {new Date(job.checked_at).toLocaleString()}</small>}
-          </article>;
-        })}
-      </div>
-    </section>
-  </main></>;
+      {sortedJobs.length > 0 && <section className="dashboard videoResultsList">
+        <h2>My Videos</h2>
+        <div className="cardGrid">
+          {sortedJobs.map(job => {
+            const ready = statusLabel(job) === 'completed';
+            return <article className="card videoResultCard" key={job.id || job.created_at}>
+              <span className="kicker">{statusText(job)}</span>
+              <h3>{job.business_name || 'Business Video'}</h3>
+              <p>{job.video_type || 'Promo'} · {job.platform || 'Video'}</p>
+              {!ready && <button className="btn dark" type="button" onClick={() => refreshJob(job)} disabled={refreshingId === job.id}>{refreshingId === job.id ? 'Checking Status…' : 'Check Video Status'}</button>}
+              {ready && <>
+                {mediaUrls[job.id] && <video src={mediaUrls[job.id]} controls className="protectedVideoPlayer" aria-label={`${job.business_name || 'Business'} video`} />}
+                <div className="videoPrimaryActions">
+                  {!mediaUrls[job.id] && <button className="btn dark" type="button" onClick={() => viewVideo(job)} disabled={loadingMediaId === job.id}>{loadingMediaId === job.id ? 'Loading Video…' : 'Watch My Video'}</button>}
+                  <button className="btn light" type="button" onClick={() => downloadVideo(job)} disabled={loadingMediaId === job.id}>Download My Video</button>
+                </div>
+              </>}
+              {job.failure_message && <p className="videoInlineError" role="alert">The video could not be completed. Please contact support if checking again does not help.</p>}
+              <small>Created {job.created_at ? new Date(job.created_at).toLocaleString() : 'recently'}</small>
+            </article>;
+          })}
+        </div>
+        {!processingJob && <div className="videoResultsSecondary"><Link className="videoTextButton" href={remaining === 0 ? '/checkout/ai-video' : '/video-studio'}>Create Another Video</Link></div>}
+      </section>}
+    </main>
+  </>;
 }
