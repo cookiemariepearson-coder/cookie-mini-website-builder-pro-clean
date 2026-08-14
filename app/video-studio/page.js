@@ -1,80 +1,65 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAccountModal } from '../../components/AccountModalProvider';
 import Nav from '../../lib/Nav';
 import { VIDEO_ENTITLEMENT_STATE, generationIsAuthorized } from '../../lib/videoEntitlement.mjs';
+import { VIDEO_JOB_STATE, VIDEO_START_STATE, resolveVideoStartState } from '../../lib/videoJourney.mjs';
 
 const SITE_OWNER_TOKEN_KEY = 'cookieSiteOwnerAccessToken';
+const VIDEO_ACCESS_TOKEN_KEY = 'cookieVideoAccessToken';
 const VIDEO_PLAN_KEY = 'cookiePendingVideoPlan';
 const VIDEO_CUSTOMER_EMAIL_KEY = 'cookieVerifiedVideoEmail';
+const RESUME_AFTER_SIGN_IN_KEY = 'cookieVideoResumeAfterSignIn';
+const WIZARD_ACTIVE_KEY = 'cookieVideoWizardActive';
+
+const PROGRESS_STEPS = ['Get Started', 'Plan', 'Review', 'Create', 'Results'];
+const DEFAULT_ENTITLEMENT = {
+  serverVerified: false,
+  state: VIDEO_ENTITLEMENT_STATE.PLANNING,
+  generationAllowed: false,
+  remaining: 0,
+  limit: 0,
+  used: 0,
+  kind: '',
+  plan: ''
+};
 
 function clean(value = '') {
   return String(value || '').trim();
 }
 
-function makeKit({ biz, promo, audience, videoType, platform, style, length, voice }) {
+function makeKit({ biz, promo, audience, videoType, platform, style, length, voice, details }) {
   const business = clean(biz) || 'Your Business';
   const offer = clean(promo) || 'your offer';
   const target = clean(audience) || 'your customers';
-
+  const notes = clean(details) ? ` Include these accurate details: ${clean(details)}.` : '';
   return {
-    Script: `HOOK:
-Stop scrolling — ${business} has something made for you.
-
-SCENE 1:
-Show the business, product, service, or website with a bold opening shot.
-
-VOICEOVER:
-Looking for ${offer}? ${business} is here to help.
-
-SCENE 2:
-Show the main benefit for ${target}. Keep it clear, quick, and easy to understand.
-
-VOICEOVER:
-Whether you need help today or you are planning ahead, this makes it simple to get started.
-
-SCENE 3:
-Show proof, services, products, menu items, booking options, or the website.
-
-VOICEOVER:
-Choose what you need, tap the button, and connect with ${business}.
-
-CTA:
-Visit the website, book now, order now, buy now, or request a quote today.`,
-
-    Captions: `${business} is ready to help with ${offer}.
-
-Clear. Simple. Easy to start.
-
-Tap the website button to book, order, buy, or request a quote today.`,
-
-    'Shot List': `1. Opening logo or website shot
-2. Product, service, menu, or offer close-up
-3. Customer benefit text on screen
-4. Website preview or action button close-up
-5. Final call-to-action screen`,
-
-    'Video Prompt': `Create a ${length} ${videoType} for ${business}.
-Main promotion: ${offer}.
-Target audience: ${target}.
-Platform: ${platform}.
-Visual style: ${style}.
-Voice style: ${voice}.
-Use clean branding, clear captions, smooth transitions, and a strong call to action.
-Do not use copyrighted logos, celebrities, or protected brand assets.`,
-
+    Script: `HOOK:\nStop scrolling — ${business} has something made for you.\n\nSCENE 1:\nShow the business, product, service, or website with a bold opening shot.\n\nVOICEOVER:\nLooking for ${offer}? ${business} is here to help.\n\nSCENE 2:\nShow the main benefit for ${target}. Keep it clear, quick, and easy to understand.${notes}\n\nVOICEOVER:\nWhether you need help today or you are planning ahead, this makes it simple to get started.\n\nSCENE 3:\nShow proof, services, products, menu items, booking options, or the website.\n\nVOICEOVER:\nChoose what you need, tap the button, and connect with ${business}.\n\nCTA:\nVisit the website, book now, order now, buy now, or request a quote today.`,
+    Captions: `${business} is ready to help with ${offer}.\n\nClear. Simple. Easy to start.\n\nTap the website button to book, order, buy, or request a quote today.`,
+    'Shot List': '1. Opening logo or website shot\n2. Product, service, menu, or offer close-up\n3. Customer benefit text on screen\n4. Website preview or action button close-up\n5. Final call-to-action screen',
+    'Video Prompt': `Create a ${length} ${videoType} for ${business}. Main promotion: ${offer}. Target audience: ${target}. Platform: ${platform}. Visual style: ${style}. Voice style: ${voice}.${notes} Use clean branding, clear captions, smooth transitions, and a strong call to action. Do not use copyrighted logos, celebrities, or protected brand assets.`,
     Voiceover: `Looking for ${offer}? ${business} makes it easy to get started. Visit the website, choose the option that fits you, and tap Book Now, Order Now, Buy Now, or Request a Quote today.`,
+    'Next Steps': '1. Review the script.\n2. Add your real business photos, website screenshots, product images, or service clips.\n3. Check every claim and detail.\n4. Add captions.\n5. End with your website or customer action button.'
+  };
+}
 
-    'Next Steps': `1. Copy the script.
-2. Paste it into HeyGen, CapCut, Canva, TikTok, Instagram, Facebook, or YouTube Shorts.
-3. Add your real business photos, website screenshots, product images, or service clips.
-4. Add captions.
-5. End with your website or customer action button.`
+function serverEntitlement(data = {}) {
+  return {
+    serverVerified: data.verified === true,
+    state: data.state || VIDEO_ENTITLEMENT_STATE.INVALID,
+    generationAllowed: data.generationAllowed === true,
+    remaining: Math.max(0, Number(data.remaining || 0)),
+    limit: Math.max(0, Number(data.limit || 0)),
+    used: Math.max(0, Number(data.used || 0)),
+    plan: data.plan || '',
+    kind: data.kind || ''
   };
 }
 
 export default function VideoStudioPage() {
+  const { accountState, openAccountModal } = useAccountModal();
   const [biz, setBiz] = useState('');
   const [promo, setPromo] = useState('');
   const [audience, setAudience] = useState('local customers');
@@ -83,69 +68,60 @@ export default function VideoStudioPage() {
   const [style, setStyle] = useState('Professional');
   const [length, setLength] = useState('15 seconds');
   const [voice, setVoice] = useState('Warm female voice');
+  const [details, setDetails] = useState('');
+  const [wizardStep, setWizardStep] = useState(1);
   const [tab, setTab] = useState('Script');
+  const [smartKit, setSmartKit] = useState(null);
   const [copied, setCopied] = useState('');
+  const [status, setStatus] = useState('');
+  const [working, setWorking] = useState('');
+  const [licenseKey, setLicenseKey] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [websiteSlug, setWebsiteSlug] = useState('');
-  const [smartKit, setSmartKit] = useState(null);
-  const [working, setWorking] = useState('');
-  const [status, setStatus] = useState('');
+  const [eligibleWebsites, setEligibleWebsites] = useState([]);
+  const [selectedWebsite, setSelectedWebsite] = useState('');
+  const [entitlement, setEntitlement] = useState(DEFAULT_ENTITLEMENT);
   const [accessToken, setAccessToken] = useState('');
-  const [accessKind, setAccessKind] = useState('');
-  const [licenseKey, setLicenseKey] = useState('');
-  const [accessMessage, setAccessMessage] = useState('Your AI Video plan is ready. Purchase or verify access before generating a real video.');
-  const [entitlement, setEntitlement] = useState({ serverVerified: false, state: VIDEO_ENTITLEMENT_STATE.PLANNING, generationAllowed: false, remaining: 0, limit: 0, used: 0 });
-  const [generationDenied, setGenerationDenied] = useState(false);
-  const [planStorageReady, setPlanStorageReady] = useState(false);
+  const [jobState, setJobState] = useState(VIDEO_JOB_STATE.NONE);
+  const [screen, setScreen] = useState('');
+  const [checking, setChecking] = useState(true);
+  const [storageReady, setStorageReady] = useState(false);
+  const [initialToken, setInitialToken] = useState('');
+  const [purchaseReturn, setPurchaseReturn] = useState(false);
+  const [resumeWizard, setResumeWizard] = useState(false);
+  const initializedRef = useRef(false);
   const licenseInputRef = useRef(null);
+  const stepHeadingRef = useRef(null);
+  const kitRequestedRef = useRef(false);
   const generationRequestRef = useRef('');
+  const submissionInFlightRef = useRef(false);
+
   const canGenerate = Boolean(accessToken) && generationIsAuthorized(entitlement);
+  const hasSavedPlan = Boolean(clean(biz) || clean(promo) || clean(details));
+  const startState = resolveVideoStartState({
+    checking,
+    signedIn: accountState === 'signed-in',
+    verified: entitlement.serverVerified,
+    remaining: entitlement.remaining,
+    jobState,
+    screen
+  });
+  const progressIndex = startState === VIDEO_START_STATE.WIZARD
+    ? wizardStep <= 5 ? 1 : wizardStep === 6 ? 2 : 3
+    : [VIDEO_START_STATE.PROCESSING, VIDEO_START_STATE.COMPLETED, VIDEO_START_STATE.USED_CREDIT].includes(startState) ? 4 : 0;
 
-  function applyServerEntitlement(data, token) {
-    const next = {
-      serverVerified: data.verified === true,
-      state: data.state || VIDEO_ENTITLEMENT_STATE.INVALID,
-      generationAllowed: data.generationAllowed === true,
-      remaining: Number(data.remaining || 0),
-      limit: Number(data.limit || 0),
-      used: Number(data.used || 0),
-      plan: data.plan || '',
-      kind: data.kind || ''
-    };
-    setEntitlement(next);
-    setAccessToken(next.serverVerified && token ? token : '');
-    setAccessKind(next.serverVerified ? next.kind : '');
-    setGenerationDenied(!generationIsAuthorized(next));
-    setAccessMessage(data.message || data.error || 'Purchase or verify access before generating a real video.');
-  }
-
-  async function checkStoredAccess(savedToken) {
-    if (!savedToken) return;
-    setEntitlement(current => ({ ...current, state: VIDEO_ENTITLEMENT_STATE.CHECKING, generationAllowed: false }));
-    setAccessMessage('Checking saved video access securely...');
-    try {
-      const response = await fetch('/api/video-access/status', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}`
-        },
-        body: JSON.stringify({ accessToken: savedToken })
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.ok) {
-        applyServerEntitlement({ ...data, verified: false, generationAllowed: false }, '');
-        return;
-      }
-      applyServerEntitlement(data, savedToken);
-    } catch {
-      applyServerEntitlement({ verified: false, state: VIDEO_ENTITLEMENT_STATE.ERROR, generationAllowed: false, error: 'Video access could not be checked right now. Your saved plan is still available.' }, '');
-    }
-  }
+  const starterKit = useMemo(
+    () => makeKit({ biz, promo, audience, videoType, platform, style, length, voice, details }),
+    [biz, promo, audience, videoType, platform, style, length, voice, details]
+  );
+  const kit = smartKit || starterKit;
+  const tabNames = Object.keys(kit);
+  const kitText = tabNames.map(name => `${name}\n${kit[name]}`).join('\n\n---\n\n');
 
   useEffect(() => {
     try {
-      const savedToken = localStorage.getItem('cookieVideoAccessToken') || '';
+      setInitialToken(localStorage.getItem(VIDEO_ACCESS_TOKEN_KEY) || '');
+      setResumeWizard(localStorage.getItem(WIZARD_ACTIVE_KEY) === '1');
       const savedEmail = clean(localStorage.getItem(VIDEO_CUSTOMER_EMAIL_KEY) || '');
       if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(savedEmail)) setCustomerEmail(savedEmail);
       let savedPlan = null;
@@ -159,127 +135,276 @@ export default function VideoStudioPage() {
         setStyle(clean(savedPlan.style) || 'Professional');
         setLength(clean(savedPlan.length) || '15 seconds');
         setVoice(clean(savedPlan.voice) || 'Warm female voice');
+        setDetails(clean(savedPlan.details));
+        setWizardStep(Math.min(7, Math.max(1, Number(savedPlan.wizardStep || 1))));
       }
-      if (new URLSearchParams(window.location.search).get('activate') === '1') {
-        setAccessMessage('Purchase complete. Paste the Gumroad license key from your receipt, then choose Verify License. Your saved video plan is ready below.');
-        window.requestAnimationFrame(() => licenseInputRef.current?.focus());
-      }
-      void checkStoredAccess(savedToken);
+      setPurchaseReturn(new URLSearchParams(window.location.search).get('activate') === '1');
     } catch {}
-    finally { setPlanStorageReady(true); }
+    finally { setStorageReady(true); }
   }, []);
 
   useEffect(() => {
-    if (!planStorageReady) return;
+    if (!storageReady) return;
     try {
-      localStorage.setItem(VIDEO_PLAN_KEY, JSON.stringify({ biz, promo, audience, videoType, platform, style, length, voice, savedAt: Date.now() }));
+      localStorage.setItem(VIDEO_PLAN_KEY, JSON.stringify({
+        biz, promo, audience, videoType, platform, style, length, voice, details, wizardStep, savedAt: Date.now()
+      }));
     } catch {}
-  }, [planStorageReady, biz, promo, audience, videoType, platform, style, length, voice]);
+  }, [storageReady, biz, promo, audience, videoType, platform, style, length, voice, details, wizardStep]);
 
-  async function activateAccess(mode) {
-    if (mode === 'license' && !clean(licenseKey)) {
-      setAccessMessage('Paste the Gumroad license key from your AI Video purchase receipt first.');
-      return;
+  useEffect(() => {
+    if (startState !== VIDEO_START_STATE.WIZARD) return;
+    window.requestAnimationFrame(() => stepHeadingRef.current?.focus());
+  }, [startState, wizardStep]);
+
+  useEffect(() => {
+    if (startState !== VIDEO_START_STATE.LICENSE) return;
+    window.requestAnimationFrame(() => licenseInputRef.current?.focus());
+  }, [startState]);
+
+  async function checkStoredAccess(token, { autoContinue = false } = {}) {
+    if (!token) return false;
+    setChecking(true);
+    try {
+      const response = await fetch('/api/video-access/status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}`
+        },
+        body: JSON.stringify({ accessToken: token })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) {
+        localStorage.removeItem(VIDEO_ACCESS_TOKEN_KEY);
+        setAccessToken('');
+        setEntitlement(DEFAULT_ENTITLEMENT);
+        setJobState(VIDEO_JOB_STATE.NONE);
+        setStatus(data.error || 'Unlock access to continue.');
+        return false;
+      }
+      const nextEntitlement = serverEntitlement(data);
+      setEntitlement(nextEntitlement);
+      setAccessToken(token);
+      setJobState(data.jobState || VIDEO_JOB_STATE.NONE);
+      setStatus('');
+
+      if (data.jobState === VIDEO_JOB_STATE.PROCESSING || (data.jobState === VIDEO_JOB_STATE.COMPLETED && nextEntitlement.remaining > 0)) {
+        localStorage.removeItem(WIZARD_ACTIVE_KEY);
+        window.location.replace('/video-studio/results');
+        return true;
+      }
+      if (autoContinue && generationIsAuthorized(nextEntitlement)) setScreen(VIDEO_START_STATE.WIZARD);
+      else setScreen('');
+      return true;
+    } catch {
+      setStatus('Video access could not be checked right now. Your saved plan is still available.');
+      return false;
+    } finally {
+      setChecking(false);
     }
-    setAccessMessage('Verifying access...');
-    setEntitlement(current => ({ ...current, state: VIDEO_ENTITLEMENT_STATE.CHECKING, generationAllowed: false }));
+  }
+
+  async function activateAccount(slug = '', autoContinue = false) {
+    setChecking(true);
+    setStatus('Checking your website access…');
     try {
       const response = await fetch('/api/video-access/activate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(mode === 'license' ? {} : { Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}` })
+          Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}`
         },
-        body: JSON.stringify(mode === 'license' ? { licenseKey } : { email: customerEmail, slug: websiteSlug })
+        body: JSON.stringify({ mode: 'account', slug })
       });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || !data.ok) throw new Error(data.error || 'Access could not be verified.');
-      applyServerEntitlement(data, data.token);
-      if (data.email) {
-        setCustomerEmail(data.email);
-        try { localStorage.setItem(VIDEO_CUSTOMER_EMAIL_KEY, data.email); } catch {}
+      if (!response.ok || !data.ok) throw new Error(data.error || 'Website access could not be checked.');
+      if (data.selectionRequired) {
+        setEligibleWebsites(data.websites || []);
+        setSelectedWebsite(data.websites?.[0]?.slug || '');
+        setScreen(VIDEO_START_STATE.WEBSITE_SELECTION);
+        setStatus('');
+        return true;
       }
-      setLicenseKey('');
-      try { localStorage.setItem('cookieVideoAccessToken', data.token); } catch {}
+      localStorage.setItem(VIDEO_ACCESS_TOKEN_KEY, data.token);
+      setWebsiteSlug(data.website?.slug || '');
+      return await checkStoredAccess(data.token, { autoContinue });
     } catch (error) {
-      applyServerEntitlement({ verified: false, state: VIDEO_ENTITLEMENT_STATE.INVALID, generationAllowed: false, error: error.message || 'Access could not be verified. Please try again.' }, '');
+      setEntitlement(DEFAULT_ENTITLEMENT);
+      setScreen(VIDEO_START_STATE.ACCESS_CHOICE);
+      setStatus(error.message || 'Website access could not be checked.');
+      return false;
+    } finally {
+      setChecking(false);
     }
   }
 
-  const starterKit = useMemo(
-    () => makeKit({ biz, promo, audience, videoType, platform, style, length, voice }),
-    [biz, promo, audience, videoType, platform, style, length, voice]
-  );
-  const kit = smartKit || starterKit;
+  useEffect(() => {
+    if (!storageReady || accountState === 'checking' || initializedRef.current) return;
+    initializedRef.current = true;
+    void (async () => {
+      if (purchaseReturn) {
+        setScreen(VIDEO_START_STATE.LICENSE);
+        setStatus('Purchase complete. Enter the license key from your Gumroad receipt.');
+        setChecking(false);
+        return;
+      }
+      if (initialToken && await checkStoredAccess(initialToken, { autoContinue: resumeWizard })) return;
+      if (accountState === 'signed-in') {
+        let autoContinue = false;
+        try {
+          autoContinue = sessionStorage.getItem(RESUME_AFTER_SIGN_IN_KEY) === '1';
+          sessionStorage.removeItem(RESUME_AFTER_SIGN_IN_KEY);
+        } catch {}
+        await activateAccount('', autoContinue);
+        return;
+      }
+      setScreen('');
+      setChecking(false);
+    })();
+  }, [accountState, initialToken, purchaseReturn, resumeWizard, storageReady]);
 
-  const tabNames = Object.keys(kit);
-  const kitText = tabNames.map(name => `${name}\n${kit[name]}`).join('\n\n---\n\n');
-
-  function copyText(value, label) {
-    navigator.clipboard.writeText(value);
-    setCopied(`${label} copied.`);
-    setTimeout(() => setCopied(''), 1800);
-  }
-
-  function downloadKit() {
-    const blob = new Blob([kitText], { type: 'text/plain' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `${clean(biz) || 'ai-video'}-studio-kit.txt`;
-    a.click();
-  }
-
-  async function generateSmartKit() {
-    if (!clean(biz) || !clean(promo)) {
-      setStatus('Enter the business name and what you are promoting first.');
+  async function activateLicense() {
+    if (!clean(licenseKey)) {
+      setStatus('Enter the license key from your Gumroad receipt.');
       return;
     }
-    setWorking('kit');
-    setStatus('Cookie AI is writing a complete custom video kit...');
+    setWorking('license');
+    setStatus('Checking your purchase…');
     try {
-      const response = await fetch('/api/video-kit', {
+      const response = await fetch('/api/video-access/activate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessName: biz, promo, audience, videoType, platform, style, length, voice, accessToken })
+        body: JSON.stringify({ licenseKey })
       });
-      const data = await response.json();
-      if (!response.ok || !data.ok) throw new Error(data.error || 'The smart kit could not be generated.');
-      setSmartKit(data.kit);
-      setTab('Script');
-      setStatus('Your custom AI video planning kit is ready. Review each tab, then copy or download the complete kit.');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) throw new Error(data.error || 'That purchase could not be verified.');
+      localStorage.setItem(VIDEO_ACCESS_TOKEN_KEY, data.token);
+      if (data.email) {
+        setCustomerEmail(data.email);
+        localStorage.setItem(VIDEO_CUSTOMER_EMAIL_KEY, data.email);
+      }
+      setLicenseKey('');
+      window.history.replaceState({}, '', '/video-studio');
+      await checkStoredAccess(data.token, { autoContinue: true });
     } catch (error) {
-      setStatus(error.message);
+      setStatus(error.message || 'That purchase could not be verified.');
     } finally {
       setWorking('');
     }
   }
 
+  function signInForVideo() {
+    try { sessionStorage.setItem(RESUME_AFTER_SIGN_IN_KEY, '1'); } catch {}
+    openAccountModal({ mode: 'signin', destination: '/video-studio' });
+  }
+
+  function startWizard() {
+    try { localStorage.setItem(WIZARD_ACTIVE_KEY, '1'); } catch {}
+    setStatus('');
+    setScreen(VIDEO_START_STATE.WIZARD);
+    setWizardStep(hasSavedPlan ? Math.min(7, Math.max(1, wizardStep)) : 1);
+  }
+
+  function stepError() {
+    if (wizardStep === 1 && (!clean(biz) || !clean(promo))) return 'Enter the business or product name and what you want to promote.';
+    if (wizardStep === 3 && !clean(audience)) return 'Tell us who should see this video.';
+    return '';
+  }
+
+  function nextStep() {
+    const error = stepError();
+    if (error) {
+      setStatus(error);
+      return;
+    }
+    setStatus('');
+    setWizardStep(current => Math.min(7, current + 1));
+  }
+
+  function previousStep() {
+    setStatus('');
+    if (wizardStep === 1) {
+      try { localStorage.removeItem(WIZARD_ACTIVE_KEY); } catch {}
+      setScreen('');
+    }
+    else setWizardStep(current => Math.max(1, current - 1));
+  }
+
+  async function generateSmartKit() {
+    if (!clean(biz) || !clean(promo)) return;
+    setWorking('kit');
+    setStatus('Preparing your video plan…');
+    try {
+      const response = await fetch('/api/video-kit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ businessName: biz, promo, audience, videoType, platform, style, length, voice, details, accessToken })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) throw new Error(data.error || 'Your custom plan could not be prepared.');
+      setSmartKit(data.kit);
+      setTab('Script');
+      setStatus('Your video plan is ready to review.');
+    } catch (error) {
+      setStatus(`${error.message || 'Your custom plan could not be prepared.'} A saved starter plan is shown below.`);
+    } finally {
+      setWorking('');
+    }
+  }
+
+  useEffect(() => {
+    if (startState !== VIDEO_START_STATE.WIZARD || wizardStep < 6 || smartKit || kitRequestedRef.current || !clean(biz) || !clean(promo)) return;
+    kitRequestedRef.current = true;
+    void generateSmartKit();
+  }, [startState, wizardStep, smartKit, biz, promo]);
+
+  function copyText(value, label) {
+    void navigator.clipboard.writeText(value);
+    setCopied(`${label} copied.`);
+    window.setTimeout(() => setCopied(''), 1800);
+  }
+
+  function downloadKit() {
+    const blob = new Blob([kitText], { type: 'text/plain' });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    anchor.download = `${clean(biz) || 'ai-video'}-studio-kit.txt`;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  }
+
   async function generateVideo() {
-    if (!clean(biz) || !clean(promo)) {
-      setStatus('Enter the business name and what you are promoting first.');
-      return;
-    }
+    if (submissionInFlightRef.current) return;
     if (!canGenerate) {
-      setStatus('Your planning kit is saved. Verify an eligible website plan or buy the $5 standalone AI Video access before real video generation.');
+      setStatus('A verified video credit is required before creating the video.');
+      setScreen('');
       return;
     }
-    if (accessKind === 'standalone' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clean(customerEmail))) {
-      setStatus('Enter the email where you want to find your finished video results.');
-      return;
-    }
+    submissionInFlightRef.current = true;
     setWorking('video');
     if (!generationRequestRef.current) generationRequestRef.current = window.crypto.randomUUID();
-    setStatus('Sending your finished video plan to the AI video generator...');
+    setStatus('Starting your video securely…');
     try {
       const response = await fetch('/api/heygen/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(accessKind === 'website-plan' ? { Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}` } : {})
+          ...(entitlement.kind === 'website-plan' ? { Authorization: `Bearer ${localStorage.getItem(SITE_OWNER_TOKEN_KEY) || ''}` } : {})
         },
         body: JSON.stringify({
-          businessName: biz, promo, audience, videoType, platform, style, length, voice,
-          customerEmail, websiteSlug,
+          businessName: biz,
+          promo,
+          audience,
+          videoType,
+          platform,
+          style,
+          length,
+          voice,
+          details,
+          customerEmail,
+          websiteSlug,
           accessToken,
           requestId: generationRequestRef.current,
           script: kit.Script,
@@ -287,199 +412,190 @@ export default function VideoStudioPage() {
           videoPrompt: kit['Video Prompt']
         })
       });
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.ok) {
         if (data.generationNotStarted) generationRequestRef.current = '';
         if (response.status === 401 || response.status === 403) {
-          setGenerationDenied(true);
-          setEntitlement(current => ({ ...current, state: Number(data.remaining) === 0 && current.serverVerified ? VIDEO_ENTITLEMENT_STATE.NO_CREDIT : VIDEO_ENTITLEMENT_STATE.INVALID, generationAllowed: false, remaining: Math.max(0, Number(data.remaining || 0)) }));
-          setStatus(`${data.error || 'No available video entitlement was verified.'} Your planning kit remains saved. Verify another eligible website plan or use the $5 AI Video purchase option.`);
-          return;
-        }
-        if (data.providerCreditRequired) {
-          setStatus(data.error);
-          return;
+          setEntitlement(current => ({
+            ...current,
+            state: Number(data.remaining) === 0 && current.serverVerified ? VIDEO_ENTITLEMENT_STATE.NO_CREDIT : VIDEO_ENTITLEMENT_STATE.INVALID,
+            generationAllowed: false,
+            remaining: Math.max(0, Number(data.remaining || 0))
+          }));
+          setScreen('');
         }
         throw new Error(data.error || 'The video could not be started.');
       }
-      setEntitlement(current => ({ ...current, state: Number(data.videoUsage?.remaining || 0) > 0 ? current.state : VIDEO_ENTITLEMENT_STATE.NO_CREDIT, generationAllowed: Number(data.videoUsage?.remaining || 0) > 0, remaining: Number(data.videoUsage?.remaining || 0), used: Number(data.videoUsage?.used || current.used) }));
-      setStatus(`Video generation started successfully.${data.videoUsage?.remaining !== undefined ? ` Credits remaining: ${data.videoUsage.remaining}.` : ''} Opening your on-site Video Results...`);
-      const results = new URLSearchParams();
-      if (customerEmail) results.set('email', customerEmail);
-      if (!customerEmail && websiteSlug) results.set('slug', websiteSlug);
-      setTimeout(() => window.location.assign(`/video-studio/results?${results.toString()}`), 1200);
+      setStatus('Your video is being created. Opening Video Results…');
+      localStorage.removeItem(WIZARD_ACTIVE_KEY);
+      window.setTimeout(() => window.location.replace('/video-studio/results'), 700);
     } catch (error) {
-      setStatus(error.message);
+      setStatus(error.message || 'The video could not be started. Your saved plan is still here.');
     } finally {
+      submissionInFlightRef.current = false;
       setWorking('');
     }
   }
 
-  return (
-    <>
-      <Nav />
-      <main className="wrap aiKit videoStudioRefresh">
-        <section className="dashboard videoStudioHero">
-          <span className="kicker">AI Video Studio</span>
-          <h1>Create your business video, step by step.</h1>
-          <p>
-            Start with a smart script and video plan. Review it, make any changes you want,
-            then create a real video if your plan includes video credits.
-          </p>
-          <div className="notice videoAccessPanel">
-            <strong>{canGenerate
-              ? `✓ ${accessKind === 'standalone' ? 'Standalone AI Video access' : 'Eligible website plan'} verified — ${entitlement.remaining} credit${entitlement.remaining === 1 ? '' : 's'} available`
-              : entitlement.state === VIDEO_ENTITLEMENT_STATE.CHECKING
-                ? 'Checking saved video access'
-                : entitlement.state === VIDEO_ENTITLEMENT_STATE.NO_CREDIT
-                  ? '0 video credits available'
-                : 'Your AI Video plan is ready'}</strong>
-            <p>{accessMessage}</p>
-            <p><strong>$5 standalone access:</strong> A verified $5 standalone license includes the complete planning kit and one real video generated through this website.</p>
-            <div className="navRow" data-testid="video-top-actions">
-              <Link className="btn dark" href="/checkout/ai-video">Purchase Now</Link>
-              <a className="btn light" href="#video-plan-details">Resume Saved Plan</a>
-            </div>
-            <div data-testid="video-access-verification">
-              <div className="row">
-                <div className="field"><label>Business/Premium customer email</label><input value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for the website plan" /></div>
-                <div className="field"><label>Website name or subdomain</label><input value={websiteSlug} onChange={e => setWebsiteSlug(e.target.value)} placeholder="Example: my-business" /></div>
-              </div>
-              <button className="btn" type="button" onClick={() => activateAccess('plan')}>Verify Website Plan</button>
-              <Link className="btn light" href="/customer?return=video-studio">Secure Website-Plan Sign-In</Link>
-              <div className="field"><label htmlFor="video-license-key">$5 Gumroad license key</label><input ref={licenseInputRef} id="video-license-key" value={licenseKey} onChange={e => setLicenseKey(e.target.value)} placeholder="Paste the license key from your Gumroad receipt" aria-describedby="video-license-help" /><small id="video-license-help">Use the license key Gumroad provides after the standalone AI Video purchase.</small></div>
-              <button className="btn dark" type="button" onClick={() => activateAccess('license')}>Verify License</button>
-            </div>
-          </div>
-          <div className="studioSteps" aria-label="AI Video Studio steps">
-            <div><span className="studioStepNumber">1</span><strong>Describe it</strong><span>Tell us about the business and promotion.</span></div>
-            <div><span className="studioStepNumber">2</span><strong>Review your kit</strong><span>Check the script, captions, shots, and voiceover.</span></div>
-            <div><span className="studioStepNumber">3</span><strong>Make the video</strong><span>Business and Premium customers can use available credits.</span></div>
-          </div>
-        </section>
+  function startPanel() {
+    if (startState === VIDEO_START_STATE.CHECKING) {
+      return <div className="videoStateCard" aria-busy="true"><h2>Checking your video access…</h2><p>This will only take a moment.</p></div>;
+    }
+    if (startState === VIDEO_START_STATE.SIGNED_OUT) {
+      return <div className="videoStateCard">
+        <h2>How would you like to begin?</h2>
+        <div className="videoPrimaryActions">
+          <button className="btn dark" type="button" onClick={() => setScreen(VIDEO_START_STATE.ACCESS_CHOICE)}>I Already Have Access</button>
+          <Link className="btn light" href="/checkout/ai-video">Buy One Video — $5</Link>
+        </div>
+      </div>;
+    }
+    if (startState === VIDEO_START_STATE.ACCESS_CHOICE) {
+      return <div className="videoStateCard">
+        <h2>{accountState === 'signed-in' ? 'Choose another access option' : 'How did you get access?'}</h2>
+        {status && <p className="videoInlineError" role="alert">{status}</p>}
+        <div className="videoPrimaryActions">
+          {accountState === 'signed-in'
+            ? <button className="btn dark" type="button" onClick={() => activateAccount('', true)}>Check My Business/Premium Access</button>
+            : <button className="btn dark" type="button" onClick={signInForVideo}>Sign In to My Account</button>}
+          <button className="btn light" type="button" onClick={() => { setStatus(''); setScreen(VIDEO_START_STATE.LICENSE); }}>I Bought the $5 Video on Gumroad</button>
+        </div>
+        <button className="videoTextButton" type="button" onClick={() => { setStatus(''); setScreen(''); }}>Back</button>
+      </div>;
+    }
+    if (startState === VIDEO_START_STATE.LICENSE) {
+      return <div className="videoStateCard">
+        <h2>Unlock your video</h2>
+        {status && <p className={purchaseReturn && !status.toLowerCase().includes('could not') ? 'videoInlineNote' : 'videoInlineError'} role="status" aria-live="polite">{status}</p>}
+        <div className="field videoSingleField">
+          <label htmlFor="video-license-key">Enter the license key from your Gumroad receipt.</label>
+          <input ref={licenseInputRef} id="video-license-key" value={licenseKey} onChange={event => setLicenseKey(event.target.value)} autoComplete="off" />
+        </div>
+        <div className="videoPrimaryActions">
+          <button className="btn dark" type="button" onClick={activateLicense} disabled={working === 'license'}>{working === 'license' ? 'Checking Purchase…' : 'Unlock My Video'}</button>
+          <button className="btn light" type="button" onClick={() => { setStatus(''); setScreen(VIDEO_START_STATE.ACCESS_CHOICE); }}>Back</button>
+        </div>
+      </div>;
+    }
+    if (startState === VIDEO_START_STATE.WEBSITE_SELECTION) {
+      return <div className="videoStateCard">
+        <h2>Choose the website for this video</h2>
+        <div className="field videoSingleField">
+          <label htmlFor="eligible-video-website">Eligible Business or Premium website</label>
+          <select id="eligible-video-website" value={selectedWebsite} onChange={event => setSelectedWebsite(event.target.value)}>
+            {eligibleWebsites.map(site => <option value={site.slug} key={site.slug}>{site.businessName} — {site.plan} ({site.remaining} credit{site.remaining === 1 ? '' : 's'})</option>)}
+          </select>
+        </div>
+        <button className="btn dark" type="button" onClick={() => activateAccount(selectedWebsite, true)}>Continue</button>
+      </div>;
+    }
+    if (startState === VIDEO_START_STATE.AVAILABLE) {
+      return <div className="videoStateCard videoStateSuccess">
+        <span className="videoStateLabel">Access ready</span>
+        <h2>{entitlement.remaining} video credit{entitlement.remaining === 1 ? '' : 's'} available</h2>
+        <p>{hasSavedPlan ? 'Your saved plan is ready to continue.' : 'Answer a few short questions to plan your video.'}</p>
+        <button className="btn dark" type="button" onClick={startWizard}>{hasSavedPlan ? 'Continue My Video' : 'Start My Video'}</button>
+      </div>;
+    }
+    if (startState === VIDEO_START_STATE.PROCESSING) {
+      return <div className="videoStateCard"><h2>Your video is being created</h2><Link className="btn dark" href="/video-studio/results">Check Video Status</Link></div>;
+    }
+    if (startState === VIDEO_START_STATE.COMPLETED) {
+      return <div className="videoStateCard"><h2>Your video is ready</h2><Link className="btn dark" href="/video-studio/results">Watch My Video</Link></div>;
+    }
+    if (startState === VIDEO_START_STATE.USED_CREDIT) {
+      return <div className="videoStateCard videoUsedCreditState">
+        <h2>You have used your video credit.</h2>
+        <div className="videoPrimaryActions">
+          <Link className="btn dark" href="/checkout/ai-video">Buy Another Video — $5</Link>
+          <Link className="btn light" href="/video-studio/results">View My Video</Link>
+        </div>
+        {hasSavedPlan && <button className="videoTextButton" type="button" onClick={() => { setScreen(VIDEO_START_STATE.WIZARD); setWizardStep(Math.min(6, Math.max(1, wizardStep))); }}>View My Saved Plan</button>}
+      </div>;
+    }
+    return <div className="videoStateCard">
+      <h2>No video credits are available.</h2>
+      <div className="videoPrimaryActions"><Link className="btn dark" href="/checkout/ai-video">Buy One Video — $5</Link>{hasSavedPlan && <button className="btn light" type="button" onClick={startWizard}>View My Saved Plan</button>}</div>
+    </div>;
+  }
 
-        <section className="dashboard studioWorkCard" id="video-plan-details">
-          <div className="studioSectionHeading"><span className="studioStepNumber">1</span><div><h2>Describe your video</h2><p>Complete the details below. You can create and download the planning kit without signing in.</p></div></div>
-          <div className="studioFormGrid">
-            <div className="field">
-              <label>Business name</label>
-              <input value={biz} onChange={e => setBiz(e.target.value)} placeholder="Example: Cookie's Kitchen" />
-            </div>
-            <div className="field">
-              <label>What are you promoting?</label>
-              <input value={promo} onChange={e => setPromo(e.target.value)} placeholder="Example: mini websites, seafood trays, hair services" />
-            </div>
-            <div className="field">
-              <label>Target customer</label>
-              <input value={audience} onChange={e => setAudience(e.target.value)} placeholder="Example: small business owners" />
-            </div>
-            <div className="field">
-              <label>Video type</label>
-              <select value={videoType} onChange={e => setVideoType(e.target.value)}>
-                {['Business Promo','Product Ad','Restaurant Promo','Beauty Promo','Real Estate Intro','Grand Opening Promo','Sale Announcement','Website Hero Video'].map(item => <option key={item}>{item}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label>Platform</label>
-              <select value={platform} onChange={e => setPlatform(e.target.value)}>
-                {['TikTok / Reels','YouTube Short','Facebook Ad','Instagram Story','Website Hero Video'].map(item => <option key={item}>{item}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label>Style</label>
-              <select value={style} onChange={e => setStyle(e.target.value)}>
-                {['Professional','Funny','Luxury','3D Modern','Cartoon Fun','Cinematic','Warm & Friendly','Bold Sales Ad'].map(item => <option key={item}>{item}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label>Length</label>
-              <select value={length} onChange={e => setLength(e.target.value)}>
-                {['15 seconds','30 seconds','45 seconds','60 seconds'].map(item => <option key={item}>{item}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label>Voice style</label>
-              <select value={voice} onChange={e => setVoice(e.target.value)}>
-                {['Warm female voice','Sassy female voice','Professional narrator','Friendly upbeat voice','Luxury commercial voice'].map(item => <option key={item}>{item}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="navRow">
-            <button className="btn" type="button" onClick={generateSmartKit} disabled={Boolean(working)}>
-              {working === 'kit' ? 'Creating Smart Kit...' : 'Create Smart Video Kit'}
-            </button>
-          </div>
-        </section>
+  function wizardPanel() {
+    return <section className="dashboard videoWizardCard" aria-labelledby="video-wizard-heading">
+      <p className="videoSavedNote" role="status">✓ Your progress is saved.</p>
+      {wizardStep === 1 && <div>
+        <span className="kicker">Plan · 1 of 5</span>
+        <h2 id="video-wizard-heading" ref={stepHeadingRef} tabIndex="-1">What is this video about?</h2>
+        <div className="field"><label htmlFor="video-business">Business or product name</label><input id="video-business" value={biz} onChange={event => setBiz(event.target.value)} placeholder="Example: Cookie's Kitchen" /></div>
+        <div className="field"><label htmlFor="video-promotion">What do you want to promote?</label><textarea id="video-promotion" value={promo} onChange={event => setPromo(event.target.value)} placeholder="Example: catering orders for weekend events" /></div>
+      </div>}
+      {wizardStep === 2 && <div>
+        <span className="kicker">Plan · 2 of 5</span>
+        <h2 id="video-wizard-heading" ref={stepHeadingRef} tabIndex="-1">What should this video do?</h2>
+        <div className="field"><label htmlFor="video-goal">Video goal</label><select id="video-goal" value={videoType} onChange={event => setVideoType(event.target.value)}>{['Business Promo','Product Ad','Restaurant Promo','Beauty Promo','Real Estate Intro','Grand Opening Promo','Sale Announcement','Website Hero Video'].map(item => <option key={item}>{item}</option>)}</select></div>
+        <div className="field"><label htmlFor="video-platform">Where will you share it?</label><select id="video-platform" value={platform} onChange={event => setPlatform(event.target.value)}>{['TikTok / Reels','YouTube Short','Facebook Ad','Instagram Story','Website Hero Video'].map(item => <option key={item}>{item}</option>)}</select></div>
+      </div>}
+      {wizardStep === 3 && <div>
+        <span className="kicker">Plan · 3 of 5</span>
+        <h2 id="video-wizard-heading" ref={stepHeadingRef} tabIndex="-1">Who should see it?</h2>
+        <div className="field"><label htmlFor="video-audience">Audience</label><textarea id="video-audience" value={audience} onChange={event => setAudience(event.target.value)} placeholder="Example: local families planning celebrations" /></div>
+      </div>}
+      {wizardStep === 4 && <div>
+        <span className="kicker">Plan · 4 of 5</span>
+        <h2 id="video-wizard-heading" ref={stepHeadingRef} tabIndex="-1">Choose the style and tone</h2>
+        <div className="studioFormGrid">
+          <div className="field"><label htmlFor="video-style">Visual style</label><select id="video-style" value={style} onChange={event => setStyle(event.target.value)}>{['Professional','Funny','Luxury','3D Modern','Cartoon Fun','Cinematic','Warm & Friendly','Bold Sales Ad'].map(item => <option key={item}>{item}</option>)}</select></div>
+          <div className="field"><label htmlFor="video-voice">Voice</label><select id="video-voice" value={voice} onChange={event => setVoice(event.target.value)}>{['Warm female voice','Sassy female voice','Professional narrator','Friendly upbeat voice','Luxury commercial voice'].map(item => <option key={item}>{item}</option>)}</select></div>
+          <div className="field"><label htmlFor="video-length">Length</label><select id="video-length" value={length} onChange={event => setLength(event.target.value)}>{['15 seconds','30 seconds','45 seconds','60 seconds'].map(item => <option key={item}>{item}</option>)}</select></div>
+        </div>
+      </div>}
+      {wizardStep === 5 && <div>
+        <span className="kicker">Plan · 5 of 5</span>
+        <h2 id="video-wizard-heading" ref={stepHeadingRef} tabIndex="-1">Add important details</h2>
+        <p>Include only facts you want the video to use. You can leave this blank.</p>
+        <div className="field"><label htmlFor="video-details">Prices, dates, location, call to action, or must-use wording</label><textarea id="video-details" value={details} onChange={event => setDetails(event.target.value)} placeholder="Example: Order by Friday. Pickup in Baltimore. Call 555-0100." /></div>
+      </div>}
+      {wizardStep === 6 && <div>
+        <span className="kicker">Review</span>
+        <h2 id="video-wizard-heading" ref={stepHeadingRef} tabIndex="-1">Review your video plan</h2>
+        <dl className="videoPlanSummary">
+          <div><dt>Business or product</dt><dd>{biz}</dd><button type="button" onClick={() => setWizardStep(1)}>Edit</button></div>
+          <div><dt>Goal</dt><dd>{videoType} for {platform}</dd><button type="button" onClick={() => setWizardStep(2)}>Edit</button></div>
+          <div><dt>Audience</dt><dd>{audience}</dd><button type="button" onClick={() => setWizardStep(3)}>Edit</button></div>
+          <div><dt>Style and tone</dt><dd>{style}, {voice}, {length}</dd><button type="button" onClick={() => setWizardStep(4)}>Edit</button></div>
+          <div><dt>Important details</dt><dd>{details || 'None added'}</dd><button type="button" onClick={() => setWizardStep(5)}>Edit</button></div>
+        </dl>
+        <div className="pillTabs" aria-label="Video plan sections">{tabNames.map(name => <button className={tab === name ? 'active' : ''} onClick={() => setTab(name)} type="button" key={name}>{name}</button>)}</div>
+        <pre className="studioOutput">{kit[tab]}</pre>
+        <div className="videoUtilityActions"><button className="videoTextButton" type="button" onClick={() => copyText(kit[tab], tab)}>Copy {tab}</button><button className="videoTextButton" type="button" onClick={downloadKit}>Download Plan</button></div>
+      </div>}
+      {wizardStep === 7 && <div>
+        <span className="kicker">Create</span>
+        <h2 id="video-wizard-heading" ref={stepHeadingRef} tabIndex="-1">Ready to create your video?</h2>
+        <div className="videoCreditConfirmation"><strong>This will use one video credit.</strong><p>Your plan is saved. Select the button once, then you can follow progress on Video Results.</p></div>
+      </div>}
+      {(status || copied) && <p className={status && /could not|required|enter|failed/i.test(status) ? 'videoInlineError' : 'videoInlineNote'} role="status" aria-live="polite">{status || copied}</p>}
+      <div className="videoWizardActions">
+        <button className="btn light" type="button" onClick={previousStep} disabled={Boolean(working)}>Back</button>
+        {wizardStep < 6 && <button className="btn dark" type="button" onClick={nextStep}>Continue</button>}
+        {wizardStep === 6 && <button className="btn dark" type="button" onClick={nextStep} disabled={working === 'kit'}>{working === 'kit' ? 'Preparing Plan…' : 'Continue to Create'}</button>}
+        {wizardStep === 7 && canGenerate && <button className="btn dark videoGenerateBtn" type="button" onClick={generateVideo} disabled={working === 'video'} aria-disabled={working === 'video'}>{working === 'video' ? 'Starting Video…' : 'Create My Video'}</button>}
+        {wizardStep === 7 && !canGenerate && <Link className="btn dark" href="/checkout/ai-video">Buy Another Video — $5</Link>}
+      </div>
+    </section>;
+  }
 
-        <section className="dashboard studioWorkCard">
-          <div className="studioSectionHeading"><span className="studioStepNumber">2</span><div><h2>Review your video kit</h2><p>Open each tab to review the wording before making your video.</p></div></div>
-          <h3>{clean(biz) || 'Your Business'} Promo Kit</h3>
-
-          <div className="pillTabs">
-            {tabNames.map(name => (
-              <button className={tab === name ? 'active' : ''} onClick={() => setTab(name)} key={name}>
-                {name}
-              </button>
-            ))}
-          </div>
-
-          <pre className="studioOutput">
-            {kit[tab]}
-          </pre>
-
-          {copied && <div className="notice success" role="status" aria-live="polite">{copied}</div>}
-          {status && <div className="notice success studioStatus" role="status" aria-live="polite">{status}</div>}
-
-          <div className="navRow">
-            <button className="btn" onClick={() => copyText(kit[tab], tab)}>Copy {tab}</button>
-            <button className="btn dark" onClick={() => copyText(kitText, 'Full kit')}>Copy Full Kit</button>
-            <button className="btn light" onClick={downloadKit}>Download Kit</button>
-            <a className="btn light" href="/builder">Build a Website</a>
-          </div>
-
-          {accessKind === 'standalone' ? (
-            <div className="realVideoBoxFriendly standaloneVideoNotice">
-              <div className="studioSectionHeading"><span className="studioStepNumber">3</span><div><h2>Generate your real video</h2><p>A verified $5 standalone license includes one real video.</p></div></div>
-              <p>Review the planning kit above, then click Generate My Video. Your video will be created in the background and saved to the on-site Video Results page—no HeyGen visit is required.</p>
-              <div className="field">
-                <label>Email for your saved video results</label>
-                <input type="email" name="standalone-video-email" autoComplete="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for your Gumroad purchase" />
-              </div>
-              <div className="navRow videoGenerationActions" data-testid="video-generation-actions">
-                <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working) || !canGenerate} aria-disabled={Boolean(working) || !canGenerate}>
-                  {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
-                </button>
-                <Link className="btn light" href="/video-studio/results">View Video Results</Link>
-              </div>
-              {!canGenerate && <p className="generationLockedHelp" role="status">Purchase or verify access above before generating a real video.</p>}
-            </div>
-          ) : <div className="realVideoBoxFriendly">
-            <div className="studioSectionHeading"><span className="studioStepNumber">3</span><div><h2>Generate the real video</h2><p>This step uses a video credit. The planning kit above does not.</p></div></div>
-            <div className="videoAccessExplainer">
-              <div><strong>Business or Premium customer?</strong><span>Verify with the secure email sign-in connected to your active website plan.</span></div>
-              <div><strong>No included video credits?</strong><span>You can still copy or download the complete kit and use it in your preferred video editor.</span></div>
-            </div>
-            <div className="row">
-              <div className="field">
-                <label>Email used for your website plan</label>
-                <input type="email" name="video-plan-email" autoComplete="off" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="Email used for the website plan" />
-              </div>
-              <div className="field">
-                <label>Website name, if you know it</label>
-                <input name="video-website-name" autoComplete="off" value={websiteSlug} onChange={e => setWebsiteSlug(e.target.value)} placeholder="Example: my-business" />
-              </div>
-            </div>
-            <div className="navRow videoGenerationActions" data-testid="video-generation-actions">
-              <button className="btn videoGenerateBtn" type="button" onClick={generateVideo} disabled={Boolean(working) || !canGenerate} aria-disabled={Boolean(working) || !canGenerate}>
-                {working === 'video' ? 'Starting Video...' : 'Generate My Video'}
-              </button>
-              <Link className="btn light" href="/video-studio/results">View Video Results</Link>
-            </div>
-            {!canGenerate && <p className="generationLockedHelp" role="status">Purchase or verify access above before generating a real video.</p>}
-            {(!canGenerate || generationDenied) && <div className="navRow"><Link className="btn dark" href="/checkout/ai-video">Purchase Now</Link><Link className="btn light" href="/customer?return=video-studio">Verify Eligible Website Plan</Link></div>}
-          </div>}
-        </section>
-      </main>
-    </>
-  );
+  return <>
+    <Nav />
+    <main className="wrap aiKit videoStudioRefresh">
+      <section className="dashboard videoStudioHero">
+        <span className="kicker">AI Video Studio</span>
+        <h1>Create Your AI Video</h1>
+        <p>We’ll guide you from a few simple questions to a finished business video.</p>
+        <ol className="studioSteps" aria-label="AI Video progress">
+          {PROGRESS_STEPS.map((label, index) => <li className={index === progressIndex ? 'active' : index < progressIndex ? 'complete' : ''} aria-current={index === progressIndex ? 'step' : undefined} key={label}><span>{index + 1}</span><strong>{label}</strong></li>)}
+        </ol>
+      </section>
+      {startState === VIDEO_START_STATE.WIZARD ? wizardPanel() : <section className="dashboard studioWorkCard">{startPanel()}<details className="videoHelp"><summary>Need Help?</summary><p>Your saved plan stays on this device. For account or purchase help, contact <a href="mailto:hello@cookiesdigitalcreations.com">hello@cookiesdigitalcreations.com</a>.</p></details></section>}
+    </main>
+  </>;
 }
