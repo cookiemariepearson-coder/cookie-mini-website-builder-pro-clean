@@ -5,13 +5,29 @@ import Nav from '../../lib/Nav';
 import { PENDING_CHECKOUT_STORAGE_KEY, createPendingCheckoutIntent, customerReturnPath, pendingCheckoutReturnPath, safeCustomerReturnPath } from '../../lib/commerceConfig.mjs';
 import { useAccountModal } from '../../components/AccountModalProvider';
 import WebsiteManagementDialog from '../../components/WebsiteManagementDialog';
+import BrowserDraftDialog from '../../components/BrowserDraftDialog';
 import { customerWebsiteStatus, websiteDisplayName } from '../../lib/customerWebsiteManagement.mjs';
+import { templateLibrary } from '../../lib/siteDefaults';
+import {
+  BROWSER_DRAFT_DISPLAY_NAME_FIELD,
+  BROWSER_DRAFT_PAGE_SIZE,
+  browserDraftDisplayName,
+  currentBrowserDraftMatches,
+  deleteBrowserDraftsFromIndex,
+  parseBrowserDraftIndex,
+  prepareBrowserDraftForContinue,
+  renameBrowserDraftInIndex,
+  sortBrowserDrafts
+} from '../../lib/browserDraftBackups.mjs';
 
 const ROOT = 'cookiesdigitalcreations.com';
 const DRAFT_KEY = 'cookieDraftSite';
 const DRAFTS_INDEX_KEY = 'cookieDraftSitesIndex';
+const CURRENT_DRAFT_STORAGE_KEY = 'cookieBuilderCurrentSlug';
+const LAST_DRAFT_STEP_KEY = 'cookieBuilderStep';
 const GUEST_CLAIM_KEY = 'cookieGuestDraftClaimV1';
 const DASHBOARD_STATE_KEY = 'cookieMyWebsitesPageStateV1';
+const BROWSER_DRAFT_SORT_KEY = 'cookieBrowserDraftSortV1';
 
 function normalizeSubdomain(input = '') {
   let value = String(input || '').trim().toLowerCase();
@@ -34,8 +50,16 @@ export default function Customer() {
   const [msg, setMsg] = useState('');
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [browserDraft, setBrowserDraft] = useState(null);
   const [browserDrafts, setBrowserDrafts] = useState([]);
+  const [browserDraftReadError, setBrowserDraftReadError] = useState('');
+  const [browserDraftSort, setBrowserDraftSort] = useState('newest');
+  const [browserDraftVisibleCount, setBrowserDraftVisibleCount] = useState(BROWSER_DRAFT_PAGE_SIZE);
+  const [browserDraftSelectionMode, setBrowserDraftSelectionMode] = useState(false);
+  const [selectedBrowserDrafts, setSelectedBrowserDrafts] = useState([]);
+  const [browserDraftDialog, setBrowserDraftDialog] = useState(null);
+  const [browserDraftBusy, setBrowserDraftBusy] = useState(false);
+  const [browserDraftError, setBrowserDraftError] = useState('');
+  const [browserDraftMessage, setBrowserDraftMessage] = useState('');
   const [verifiedEmail, setVerifiedEmail] = useState('');
   const [authLoading, setAuthLoading] = useState(true);
   const [pendingPurchase, setPendingPurchase] = useState(null);
@@ -45,6 +69,8 @@ export default function Customer() {
   const [managementError, setManagementError] = useState('');
   const autoLoadedOwnerRef = useRef('');
   const statusRef = useRef(null);
+  const browserDraftStatusRef = useRef(null);
+  const browserDraftActionLockRef = useRef(false);
   const restoredSiteRef = useRef('');
 
   useEffect(() => {
@@ -135,12 +161,14 @@ export default function Customer() {
     restoreSecureSession();
 
     try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) setBrowserDraft(JSON.parse(raw));
-      const index = JSON.parse(localStorage.getItem(DRAFTS_INDEX_KEY) || '{}');
-      const list = Object.entries(index).map(([slug, draft]) => ({ slug, draft })).sort((a, b) => String(b.draft?.updatedAt || '').localeCompare(String(a.draft?.updatedAt || '')));
-      setBrowserDrafts(list);
-    } catch {}
+      const parsed = parseBrowserDraftIndex(localStorage.getItem(DRAFTS_INDEX_KEY) || '');
+      setBrowserDrafts(parsed.items);
+      setBrowserDraftReadError(parsed.error);
+      const savedSort = sessionStorage.getItem(BROWSER_DRAFT_SORT_KEY);
+      if (['newest', 'oldest', 'name'].includes(savedSort)) setBrowserDraftSort(savedSort);
+    } catch {
+      setBrowserDraftReadError('Browser draft backups are unavailable in this browser. No backups were changed.');
+    }
   }, [accountState, accountEmail, openAccountModal]);
 
   useEffect(() => {
@@ -268,13 +296,144 @@ export default function Customer() {
     }
   }
 
-  function continueBrowserDraft(draft) {
+  function continueBrowserDraft(item) {
+    const draft = prepareBrowserDraftForContinue(item);
+    if (!draft) {
+      setBrowserDraftMessage('This browser draft is damaged or outdated and cannot be opened. No backups were changed.');
+      window.setTimeout(() => browserDraftStatusRef.current?.focus(), 0);
+      return;
+    }
     try {
-      if (draft) {
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-      }
-    } catch {}
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+      localStorage.setItem(CURRENT_DRAFT_STORAGE_KEY, item.storageKey);
+      sessionStorage.setItem(DASHBOARD_STATE_KEY, JSON.stringify({ query, slug: '', browserDraftSort }));
+    } catch {
+      setBrowserDraftMessage('This browser draft could not be opened because browser storage is unavailable. No backups were changed.');
+      window.setTimeout(() => browserDraftStatusRef.current?.focus(), 0);
+      return;
+    }
     window.location.href = '/builder?restore=1';
+  }
+
+  function refreshBrowserDrafts(serialized) {
+    const parsed = parseBrowserDraftIndex(serialized);
+    setBrowserDrafts(parsed.items);
+    setBrowserDraftReadError(parsed.error);
+    setBrowserDraftVisibleCount(current => Math.max(BROWSER_DRAFT_PAGE_SIZE, Math.min(current, Math.max(parsed.items.length, BROWSER_DRAFT_PAGE_SIZE))));
+    return parsed;
+  }
+
+  function browserDraftReturnFocus(element) {
+    return element?.closest?.('details')?.querySelector?.('summary') || element;
+  }
+
+  function openBrowserDraftDialog(item, action, returnFocus) {
+    setBrowserDraftError('');
+    setBrowserDraftDialog({ item, action, returnFocus: browserDraftReturnFocus(returnFocus) });
+  }
+
+  function closeBrowserDraftDialog() {
+    if (browserDraftBusy) return;
+    setBrowserDraftError('');
+    setBrowserDraftDialog(null);
+  }
+
+  function readCurrentBrowserDraft() {
+    try {
+      return {
+        draft: JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'),
+        storageKey: localStorage.getItem(CURRENT_DRAFT_STORAGE_KEY) || ''
+      };
+    } catch {
+      return { draft: null, storageKey: '' };
+    }
+  }
+
+  function syncRenamedCurrentDraft(storageKey, name) {
+    const current = readCurrentBrowserDraft();
+    if (!currentBrowserDraftMatches(current.draft, current.storageKey, [storageKey]) || !current.draft) return;
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        ...current.draft,
+        [BROWSER_DRAFT_DISPLAY_NAME_FIELD]: name
+      }));
+    } catch {}
+  }
+
+  function removeDeletedCurrentDraft(storageKeys) {
+    const current = readCurrentBrowserDraft();
+    if (!currentBrowserDraftMatches(current.draft, current.storageKey, storageKeys)) return;
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+      localStorage.removeItem(CURRENT_DRAFT_STORAGE_KEY);
+      localStorage.removeItem(LAST_DRAFT_STEP_KEY);
+    } catch {}
+  }
+
+  function finishBrowserDraftAction(message) {
+    setBrowserDraftMessage(message);
+    setBrowserDraftDialog(null);
+    setBrowserDraftError('');
+    window.setTimeout(() => browserDraftStatusRef.current?.focus(), 0);
+  }
+
+  function confirmBrowserDraftAction(name = '') {
+    if (!browserDraftDialog || browserDraftActionLockRef.current) return;
+    browserDraftActionLockRef.current = true;
+    setBrowserDraftBusy(true);
+    setBrowserDraftError('');
+    try {
+      const raw = localStorage.getItem(DRAFTS_INDEX_KEY) || '';
+      if (browserDraftDialog.action === 'rename') {
+        const storageKey = browserDraftDialog.item.storageKey;
+        const result = renameBrowserDraftInIndex(raw, storageKey, name);
+        localStorage.setItem(DRAFTS_INDEX_KEY, result.serialized);
+        refreshBrowserDrafts(result.serialized);
+        syncRenamedCurrentDraft(storageKey, result.name);
+        finishBrowserDraftAction(`Browser draft renamed to ${result.name}. Its saved website content is unchanged.`);
+        return;
+      }
+
+      const storageKeys = browserDraftDialog.action === 'delete'
+        ? [browserDraftDialog.item.storageKey]
+        : browserDraftDialog.action === 'delete-selected'
+          ? [...selectedBrowserDrafts]
+          : browserDrafts.map(item => item.storageKey);
+      if (!storageKeys.length) throw new Error('Choose at least one browser draft to delete.');
+      const result = deleteBrowserDraftsFromIndex(raw, storageKeys);
+      if (!result.removedKeys.length) throw new Error('Those browser draft backups were already removed. No other backups were changed.');
+      localStorage.setItem(DRAFTS_INDEX_KEY, result.serialized);
+      refreshBrowserDrafts(result.serialized);
+      removeDeletedCurrentDraft(result.removedKeys);
+      setSelectedBrowserDrafts([]);
+      setBrowserDraftSelectionMode(false);
+      const message = result.removedKeys.length === 1
+        ? 'Browser draft backup deleted. Your published and server-saved websites are unchanged.'
+        : `${result.removedKeys.length} browser draft backups deleted. Your published and server-saved websites are unchanged.`;
+      finishBrowserDraftAction(message);
+    } catch (error) {
+      setBrowserDraftError(error.message || 'Browser draft backups could not be changed. No backups were removed.');
+    } finally {
+      setBrowserDraftBusy(false);
+      window.setTimeout(() => { browserDraftActionLockRef.current = false; }, 0);
+    }
+  }
+
+  function toggleBrowserDraftSelection(storageKey) {
+    setSelectedBrowserDrafts(current => current.includes(storageKey)
+      ? current.filter(key => key !== storageKey)
+      : [...current, storageKey]);
+  }
+
+  function cancelBrowserDraftSelection() {
+    setSelectedBrowserDrafts([]);
+    setBrowserDraftSelectionMode(false);
+  }
+
+  function changeBrowserDraftSort(value) {
+    const next = ['newest', 'oldest', 'name'].includes(value) ? value : 'newest';
+    setBrowserDraftSort(next);
+    try { sessionStorage.setItem(BROWSER_DRAFT_SORT_KEY, next); } catch {}
   }
 
   function rememberDashboardState(slug) {
@@ -330,12 +489,23 @@ export default function Customer() {
   const searchTerm = normalizeSubdomain(query);
   const matchesWords = (value = '') => !searchTerm || normalizeSubdomain(value).includes(searchTerm);
   const visibleSites = sites.filter(site => matchesWords(site.slug) || matchesWords(site.business_name) || matchesWords(site.site?.businessName));
-  const shownBrowserDrafts = browserDrafts.filter(item => {
-    if (sites.some(site => site.slug === item.slug)) return false;
-    return matchesWords(item.slug) || matchesWords(item.draft?.businessName) || matchesWords(item.draft?.draftName);
-  });
+  const sortedBrowserDrafts = sortBrowserDrafts(browserDrafts, browserDraftSort);
+  const visibleBrowserDrafts = sortedBrowserDrafts.slice(0, browserDraftVisibleCount);
   const publishedSites = visibleSites.filter(site => customerWebsiteStatus(site) === 'published');
   const unpublishedSites = visibleSites.filter(site => customerWebsiteStatus(site) === 'unpublished');
+
+  function browserDraftSavedLabel(item) {
+    if (item.savedTime === null) return item.usable ? 'Saved time unavailable' : 'Unreadable backup';
+    return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(item.savedTime);
+  }
+
+  function browserDraftTemplateLabel(item) {
+    if (!item.usable) return '';
+    const type = templateLibrary.find(entry => entry.key === item.draft?.typeKey);
+    if (!type) return '';
+    const style = type.styles?.find(entry => entry.key === item.draft?.styleKey);
+    return style ? `${type.type} · ${style.name}` : type.type;
+  }
 
   function renderSiteCard(row) {
     const status = customerWebsiteStatus(row);
@@ -369,6 +539,54 @@ export default function Customer() {
             </div>
           </details>
           {isUnavailable && <span className="srOnly" id={`website-${row.slug}-unavailable`}>Contact support to restore this website before editing.</span>}
+        </div>
+      </article>
+    );
+  }
+
+  function renderBrowserDraftCard(item) {
+    const name = browserDraftDisplayName(item);
+    const template = browserDraftTemplateLabel(item);
+    const selected = selectedBrowserDrafts.includes(item.storageKey);
+    return (
+      <article className={`websiteDashboardCard browserDraftCard ${selected ? 'browserDraftCardSelected' : ''}`} key={`browser-${item.storageKey}`}>
+        {browserDraftSelectionMode && (
+          <label className="browserDraftCheckbox">
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={() => toggleBrowserDraftSelection(item.storageKey)}
+            />
+            <span>Select {name}</span>
+          </label>
+        )}
+        <div className="websiteCardDetails browserDraftCardDetails">
+          <div className="websiteCardHeading">
+            <h3>{name}</h3>
+            <span className="browserDraftBadge">Browser backup</span>
+          </div>
+          <p className="browserDraftSaved"><strong>Last saved</strong><span>{browserDraftSavedLabel(item)}</span></p>
+          {template && <p className="browserDraftTemplate"><strong>Template</strong><span>{template}</span></p>}
+          {!item.usable && <p className="websiteUnavailableNote" role="status">This backup is damaged or outdated. It cannot be continued or renamed, but you can safely remove this one browser backup.</p>}
+        </div>
+        <div className="websiteCardActions browserDraftCardActions">
+          <button className="btn dark" type="button" onClick={() => continueBrowserDraft(item)} disabled={!item.usable}>Continue Draft</button>
+          <details className="websiteManageMenu browserDraftManageMenu">
+            <summary aria-label={`Manage ${name} browser draft`}>Manage Draft</summary>
+            <div className="websiteManagePanel">
+              <button
+                className="websiteManageAction"
+                type="button"
+                disabled={!item.usable}
+                onClick={event => openBrowserDraftDialog(item, 'rename', event.currentTarget)}
+              >Rename Draft</button>
+              <button
+                className="websiteManageAction dangerText"
+                type="button"
+                onClick={event => openBrowserDraftDialog(item, 'delete', event.currentTarget)}
+              >Delete Draft</button>
+            </div>
+          </details>
         </div>
       </article>
     );
@@ -454,24 +672,92 @@ export default function Customer() {
 
             <div className="websiteDashboardFooterActions">
               <button className="btn light" type="button" onClick={() => findSites()} disabled={loading}>Refresh Websites</button>
-              {browserDraft && <button className="btn light" type="button" onClick={() => continueBrowserDraft(browserDraft)}>Continue Browser Draft</button>}
             </div>
           </section>
         )}
 
-        {verifiedEmail && shownBrowserDrafts.length > 0 && (
-          <details className="dashboard browserDraftsCompact">
-            <summary>Browser draft backups ({shownBrowserDrafts.length})</summary>
-            <p>These drafts are saved only in this browser until you continue and save them to your account.</p>
-            <div className="websiteDashboardList">
-              {shownBrowserDrafts.map(({ slug, draft }) => (
-                <article className="websiteDashboardCard" key={`browser-${slug}`}>
-                  <div className="websiteCardDetails"><h3>{draft.businessName || draft.draftName || slug}</h3><p>Saved on this device{draft.updatedAt ? ` · ${new Date(draft.updatedAt).toLocaleDateString()}` : ''}</p></div>
-                  <div className="websiteCardActions"><button className="btn dark" type="button" onClick={() => continueBrowserDraft(draft)}>Continue Draft</button></div>
-                </article>
-              ))}
+        {verifiedEmail && (
+          <section className="dashboard browserDraftSection" aria-labelledby="browser-drafts-heading">
+            <div className="browserDraftHeader">
+              <div>
+                <div className="websiteSectionHeading browserDraftHeadingLine">
+                  <h2 id="browser-drafts-heading">Browser Draft Backups</h2>
+                  <span role="status" aria-live="polite" aria-label={`${browserDrafts.length} browser draft backups`}>{browserDrafts.length}</span>
+                </div>
+                <p>These backups are saved in this browser. They help you continue website drafts you started on this device.</p>
+                <p className="browserDraftDeviceNote">Browser draft backups may not appear on your other devices. They can also be removed if this browser’s site data is cleared.</p>
+              </div>
+              {browserDrafts.length > 0 && (
+                <div className="browserDraftToolbar">
+                  <label htmlFor="browser-draft-sort">Sort drafts</label>
+                  <select id="browser-draft-sort" value={browserDraftSort} onChange={event => changeBrowserDraftSort(event.target.value)}>
+                    <option value="newest">Newest</option>
+                    <option value="oldest">Oldest</option>
+                    <option value="name">Name</option>
+                  </select>
+                  {!browserDraftSelectionMode && <button className="btn light" type="button" onClick={() => setBrowserDraftSelectionMode(true)}>Select Drafts</button>}
+                </div>
+              )}
             </div>
-          </details>
+
+            {(browserDraftMessage || browserDraftReadError) && <div
+              ref={browserDraftStatusRef}
+              tabIndex="-1"
+              role={browserDraftReadError ? 'alert' : 'status'}
+              aria-live={browserDraftReadError ? 'assertive' : 'polite'}
+              className={`notice dashboardMessage ${browserDraftReadError ? 'error' : 'success'}`}
+            >{browserDraftReadError || browserDraftMessage}</div>}
+
+            {browserDraftSelectionMode && (
+              <div className="browserDraftBulkBar" role="group" aria-label="Selected browser draft actions">
+                <strong>{selectedBrowserDrafts.length} selected</strong>
+                <div>
+                  <button className="btn light" type="button" onClick={cancelBrowserDraftSelection}>Cancel Selection</button>
+                  <button
+                    className="btn danger"
+                    type="button"
+                    disabled={!selectedBrowserDrafts.length}
+                    onClick={event => setBrowserDraftDialog({
+                      action: 'delete-selected',
+                      count: selectedBrowserDrafts.length,
+                      returnFocus: event.currentTarget
+                    })}
+                  >Delete Selected</button>
+                </div>
+              </div>
+            )}
+
+            {browserDrafts.length === 0 ? (
+              !browserDraftReadError && <div className="emptyState customerEmptyState browserDraftEmptyState">
+                <h3>No browser draft backups</h3>
+                <p>No browser draft backups remain. Your published and server-saved websites are unchanged.</p>
+              </div>
+            ) : (
+              <>
+                <div className="websiteDashboardList browserDraftList">{visibleBrowserDrafts.map(renderBrowserDraftCard)}</div>
+                {visibleBrowserDrafts.length < sortedBrowserDrafts.length && (
+                  <button className="btn light browserDraftShowMore" type="button" onClick={() => setBrowserDraftVisibleCount(count => count + BROWSER_DRAFT_PAGE_SIZE)}>
+                    Show More ({sortedBrowserDrafts.length - visibleBrowserDrafts.length} remaining)
+                  </button>
+                )}
+                <details className="browserDraftMoreOptions">
+                  <summary>More draft options</summary>
+                  <div>
+                    <p>Use this only if you want to remove every browser backup shown above.</p>
+                    <button
+                      className="websiteManageAction dangerText"
+                      type="button"
+                      onClick={event => setBrowserDraftDialog({
+                        action: 'delete-all',
+                        count: browserDrafts.length,
+                        returnFocus: event.currentTarget.closest('details')?.querySelector('summary') || event.currentTarget
+                      })}
+                    >Delete All Browser Drafts</button>
+                  </div>
+                </details>
+              </>
+            )}
+          </section>
         )}
       </main>
       <WebsiteManagementDialog
@@ -481,6 +767,14 @@ export default function Customer() {
         onCancel={closeManagementDialog}
         onConfirm={confirmWebsiteAction}
         fallbackFocusRef={statusRef}
+      />
+      <BrowserDraftDialog
+        dialog={browserDraftDialog}
+        busy={browserDraftBusy}
+        error={browserDraftError}
+        onCancel={closeBrowserDraftDialog}
+        onConfirm={confirmBrowserDraftAction}
+        fallbackFocusRef={browserDraftStatusRef}
       />
     </>
   );

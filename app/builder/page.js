@@ -55,14 +55,25 @@ function draftSlugFor(draft = {}) {
   return slugify(draft.draftName || draft.businessName || 'my-website');
 }
 
+function draftStorageKeyFor(draft = {}) {
+  const savedStorageKey = String(draft.browserDraftStorageKey || '').trim();
+  return savedStorageKey && savedStorageKey.length <= 200 ? savedStorageKey : draftSlugFor(draft);
+}
 
 function saveLocalDraftIndex(draft) {
   try {
-    const slug = draftSlugFor(draft);
-    const raw = safeParse(localStorage.getItem(DRAFTS_INDEX_KEY)) || {};
-    const lightDraft = stripHeavyLocalData({ ...draft, slug, updatedAt: new Date().toISOString() });
-    raw[slug] = lightDraft;
-    localStorage.setItem(DRAFTS_INDEX_KEY, JSON.stringify(raw));
+    const storageKey = draftStorageKeyFor(draft);
+    const rawText = localStorage.getItem(DRAFTS_INDEX_KEY);
+    const raw = safeParse(rawText);
+    if (rawText && (!raw || typeof raw !== 'object' || Array.isArray(raw))) return;
+    const existing = raw || {};
+    const lightDraft = stripHeavyLocalData({
+      ...draft,
+      slug: draftSlugFor(draft),
+      browserDraftStorageKey: storageKey,
+      updatedAt: new Date().toISOString()
+    });
+    localStorage.setItem(DRAFTS_INDEX_KEY, JSON.stringify({ ...existing, [storageKey]: lightDraft }));
   } catch {}
 }
 
@@ -231,7 +242,7 @@ export default function Builder() {
       const savedStep = Number(localStorage.getItem(LAST_STEP_KEY || 0));
       if (saved) {
         setSite(mergeDefaults({ ...saved, ...(requestedPlan ? { plan: requestedPlan } : {}) }));
-        localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftSlugFor(saved));
+        localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftStorageKeyFor(saved));
         if (!Number.isNaN(savedStep)) setStep(Math.min(4, Math.max(0, savedStep)));
         setSaveMessage('Draft restored from this browser.');
       } else if (requestedPlan) {
@@ -500,7 +511,7 @@ export default function Builder() {
       const lightDraft = stripHeavyLocalData({ ...site, localDraftVersion: 1, updatedAt: new Date().toISOString() });
       localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft));
       localStorage.setItem(LAST_STEP_KEY, String(step));
-      localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftSlugFor(lightDraft));
+      localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftStorageKeyFor(lightDraft));
       saveLocalDraftIndex(lightDraft);
       if (!silent) setSaveMessage(`${note} ${nowStamp()}`);
       return lightDraft;

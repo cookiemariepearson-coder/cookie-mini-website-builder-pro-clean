@@ -51,10 +51,16 @@ function normalizePaidPlan(value, fallback = 'starter') {
 function updateLocalDraft(site) {
   try {
     localStorage.setItem(DRAFT_KEY, JSON.stringify(site));
-    localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, site.slug);
-    const index = safeParse(localStorage.getItem(DRAFTS_INDEX_KEY)) || {};
-    index[site.slug] = { ...site, updatedAt: new Date().toISOString() };
-    localStorage.setItem(DRAFTS_INDEX_KEY, JSON.stringify(index));
+    const storageKey = String(site.browserDraftStorageKey || site.slug || '').trim() || site.slug;
+    localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, storageKey);
+    const rawIndex = localStorage.getItem(DRAFTS_INDEX_KEY);
+    const parsedIndex = safeParse(rawIndex);
+    if (rawIndex && (!parsedIndex || typeof parsedIndex !== 'object' || Array.isArray(parsedIndex))) return;
+    const index = parsedIndex || {};
+    localStorage.setItem(DRAFTS_INDEX_KEY, JSON.stringify({
+      ...index,
+      [storageKey]: { ...site, browserDraftStorageKey: storageKey, updatedAt: new Date().toISOString() }
+    }));
   } catch {}
 }
 
