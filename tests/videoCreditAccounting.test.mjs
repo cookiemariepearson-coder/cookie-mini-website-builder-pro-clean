@@ -122,7 +122,9 @@ test('post-generation UI displays an explicit consumed-credit state', async () =
     source('app/api/video-access/status/route.js'),
     source('app/api/video-access/activate/route.js')
   ]);
-  assert.match(studio, /entitlement\.state === VIDEO_ENTITLEMENT_STATE\.NO_CREDIT[\s\S]*'0 video credits available'/);
+  assert.match(studio, /You have used your video credit\./);
+  assert.match(studio, /Buy Another Video — \$5/);
+  assert.match(studio, /View My Video/);
   assert.match(status, /Your 1 included video credit has been used\. 0 video credits available\./);
   assert.match(activate, /Your 1 included video credit has been used\. 0 video credits available\./);
 });
