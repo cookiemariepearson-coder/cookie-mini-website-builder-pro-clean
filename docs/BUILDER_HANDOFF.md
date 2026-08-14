@@ -2,7 +2,7 @@
 
 Last updated: August 14, 2026
 
-This document is the consolidated handoff for the completed owner-authentication, launch-security, backup/recovery, Cookie AI, AI Video usability, My Websites usability, accessibility/mobile, SEO, policy-consistency, and soft-launch technical-readiness work. It records the verified production state without storing credentials, secret values, customer details, database dumps, recovery material, provider project identifiers, or exact production record counts. Those operational values must be read only from the authorized provider dashboards and encrypted owner records.
+This document is the consolidated handoff for the completed owner-authentication, launch-security, backup/recovery, Cookie AI, AI Video usability, My Websites usability, browser-draft backup management, accessibility/mobile, SEO, policy-consistency, and soft-launch technical-readiness work. It records the verified production state without storing credentials, secret values, customer details, database dumps, recovery material, provider project identifiers, or exact production record counts. Those operational values must be read only from the authorized provider dashboards and encrypted owner records.
 
 ## Authoritative production baseline
 
@@ -13,13 +13,14 @@ This document is the consolidated handoff for the completed owner-authentication
 - Completed AI Video cache-hardening PR: `#26` — Harden protected video response caching
 - Completed AI Video account-routing PR: `#28` — Require customer accounts for AI Video
 - Completed My Websites PR: `#30` — Simplify My Websites management
+- Completed browser-draft management PR: `#32` — Simplify browser draft backup management
 - Starting production commit: `440e72683ec6708fff7b63887379837380736681`
 - Launch-security production commit: `a23d34493fed112541b62628ea98a8299e9b9374`
 - AI Video usability production commit: `fbf592986b18c1cabd8c9c9e65d08b053102b002`
-- Current production application commit: `2a3841eeb4ded37bae37d04fcb24ec0cf6540bb2`
+- Current production application commit: `cf8d347f04a6ceb3478722322c7283272dce4a1e`
 - Vercel production deployment state: `READY`
-- Vercel production deployment: `dpl_4NdraBTRL7kZK7vT6jxzop2NKnzv`
-- Verified application build fingerprint: `2a3841eeb4de`
+- Vercel production deployment: `dpl_8ffbrj2YG931w43AsJwLM9rmBWxr`
+- Verified application build fingerprint: `cf8d347f04a6`
 - Existing GitHub repository, Vercel project, Supabase project, production domains, Gumroad products, and provider connections were preserved. No duplicate project, repository, OAuth application, or production connection was created.
 
 ## Formal phase status
@@ -63,6 +64,8 @@ Every public AI Video entrance now routes through the studio: top navigation use
 
 Results reacquire an owner-scoped signed access pass from the verified HttpOnly customer session. They do not use typed email, local storage, query parameters, or exposed provider URLs as identity. Processing refreshes remain read-only. Watch and download use the protected same-origin media route. The owner's already-completed paid purchase and job retain their original namespace and can be attached once to the existing customer account without repurchase, regeneration, or credit use. No live video was generated and no real credit was purchased, reserved, or consumed during this phase.
 
+The owner subsequently completed the one required non-destructive production confirmation. The existing customer account signed in, **Need Help? → I already purchased a $5 video** accepted the existing Gumroad key, and the previously completed video appeared. The owner did not repurchase, regenerate, submit, reserve, or consume another credit. This confirmation is **PASSED** and must not be repeated unless a verified regression is reported.
+
 ### Simplified My Websites phase: PASSED
 
 `/customer` is now a plain-language, mobile-friendly **My Websites** dashboard with the explanation **View, edit, publish, and manage your websites.** Customer-owned records are separated into clear **Published** and **Unpublished** sections. Each card puts **Edit Website** first, shows the website name, simple status, last-updated date, published address and **View Website** when applicable, and moves uncommon controls into a compact **Manage Website** menu. Empty, loading, search, and signed-out states are short and customer friendly. Eligible signed-in customers receive **Create a New Website** without being shown internal IDs, entitlement terminology, prices, or long plan instructions.
@@ -72,6 +75,30 @@ Unpublishing requires the deliberate **Keep Website Published** / **Unpublish We
 Deletion is separate and more serious. The customer must type the server-derived website name before **Delete Website** is enabled. The server authenticates first, verifies immutable ownership, validates the name independently, scopes the mutation by website row and owner ID, and uses a conditional timestamp/status update so repeat or concurrent requests fail safely. No website row is hard-deleted. The website moves to protected recoverable Trash, disappears from My Websites and public access, and retains its content plus required billing, purchase, subscription, security, and audit records. Accounts, other websites, AI Videos, checkout records, and Gumroad events are untouched. There is no automatic permanent purge. Support/admin recovery may return the retained row to draft, or to published only while verified access remains active.
 
 The dashboard updates successful unpublish/delete results without a page refresh and retains the search/scroll return state across editing. Dialogs trap keyboard focus, close with Escape, restore focus after cancellation, expose labelled dialog/error/status semantics, and use visible focus plus at least 44-pixel controls. The responsive card/action/dialog rules apply at 760 pixels and below without horizontal overflow.
+
+The owner subsequently completed the one required non-destructive production confirmation. The real customer dashboard displayed the **Published** and **Unpublished** sections; the owner opened and canceled the website-management confirmation controls without unpublishing or deleting a production website. This confirmation is **PASSED** and must not be repeated unless a verified regression is reported.
+
+### Browser Draft Backup management phase: PASSED
+
+The former browser-backup area was a compact list that exposed only **Continue Draft**, hid backups whose slug matched an online website, showed only a date without the saved time, offered no safe organization or cleanup controls, and could silently omit all backup UI when the index was empty or unreadable. A large device-local collection was therefore difficult to identify and manage.
+
+**Browser Draft Backups** is now a visibly separate dashboard section, independent from Published, Unpublished, recoverable Website Trash, and other server-saved records. It explains that these backups exist only in the current browser profile, may not appear on other devices, and may be evicted if the browser's site data is cleared. The accurate total always represents the complete readable backup index, while only six cards appear initially. **Show More** progressively reveals the rest without changing the total. Sorting supports **Newest**, **Oldest**, and **Name**, defaults to Newest, and persists for the browser session.
+
+Each card shows a customer-friendly draft name, an exact localized saved date and time when present, the template category and style when both can be resolved reliably, a **Browser backup** label, one primary **Continue Draft** action, and a compact, draft-specific **Manage Draft** menu. Long names wrap, action and selection controls meet the 44-pixel target, and the selection toolbar reflows to a single mobile column.
+
+**Rename Draft** writes only `browserDraftDisplayName` on the selected local object. It preserves the storage key, content, template, saved `updatedAt` history, and every other field. Empty, punctuation-only, control-character, and overlong names fail with announced guidance. Duplicate display names are permitted and remain distinguishable by their saved date and time. The active working copy is synchronized only when it has the same stable local identity.
+
+**Delete Draft**, **Delete Selected**, and the less-prominent **Delete All Browser Drafts** are separate, deliberate actions. Individual, selected-count, and all-count dialogs state that server-saved websites are not deleted; individual deletion also names the account, subscription, purchase, and AI Video protections. The first click only opens a dialog. Confirmation writes the browser index once, removes only the selected keys, updates cards/counts without a reload, announces success, clears the active working copy only when its stable identity was deleted, and blocks repeated clicks. Cancel and Escape make no storage change and return focus to the initiating control.
+
+Continue prepares only the selected draft as the active builder copy and carries its exact index key in `browserDraftStorageKey`. Builder autosave and checkout-success updates honor that stable key so a continued legacy draft cannot overwrite a different backup merely because its display fields change. Opening does not rewrite the backup index. The selected content and template are spread intact into the active copy.
+
+The current storage design is one JSON object at `localStorage['cookieDraftSitesIndex']`; each object property is the unique browser-local backup identity and each value is the light draft JSON. `localStorage['cookieDraftSite']` is the separate active working copy, `cookieBuilderCurrentSlug` tracks its local identity, and `cookieBuilderStep` tracks its builder position. These values are origin- and browser-profile-scoped, not Supabase records and not bound to an authenticated customer ID. Anyone using the same browser profile can access that origin's local data; clearing site data, private-browsing disposal, storage pressure, or browser eviction can remove it. The dashboard does not imply online or cross-device storage.
+
+Legacy slug-keyed objects without `browserDraftStorageKey` remain readable; Continue adds the identity only to the active copy, and the next normal builder save retains that same key. Invalid JSON or an unsupported top-level format produces an announced, non-destructive error and is never rewritten by the dashboard, builder index save, or checkout index update. An individual non-object entry appears as unreadable, cannot Continue or Rename, and can still be deliberately deleted without touching other entries.
+
+Preview was intentionally omitted because the existing builder restore path starts autosave and cannot guarantee a strictly read-only view. Duplicate was intentionally omitted because legacy identity is the slug-like object key and the current builder does not yet provide a collision-proof independent-copy lifecycle. No misleading control was shipped.
+
+Implementation changed `app/customer/page.js`, `components/BrowserDraftDialog.js`, `lib/browserDraftBackups.mjs`, `app/builder/page.js`, `app/checkout/success/page.js`, and `app/globals.css`; `tests/browserDraftBackups.test.mjs` supplies the 38-case isolated matrix. No dependency, lockfile, environment, migration, RLS, API route, provider setting, price, domain, or secret file changed.
 
 ## Security results
 
@@ -123,6 +150,14 @@ The migration was recorded once in production history. The trigger remained enab
 - Customer-deleted rows are excluded from customer search, editing, draft/publish overwrite, and public rendering. They remain visible only to protected operational/admin recovery tooling.
 - Existing subscription transitions cannot silently republish a customer-deleted row. Active billing and AI Video entitlement records remain retained; payment-state transitions continue to update access without clearing Trash.
 - The change did not alter product prices, customer cookie settings, Gumroad evidence rules, custom-domain behavior, video-credit accounting, provider connections, or any unrelated RLS policy.
+
+### Browser-draft data separation
+
+- Rename and delete operations use only the existing `cookieDraftSitesIndex` local-storage object. They do not call a server endpoint, send draft content to Supabase, or treat local metadata as account or website ownership proof.
+- A backup is addressed by an exact object-property identity. Storage changes rebuild the index while retaining every unselected property and value; a stable active-draft marker prevents a later autosave from colliding with another entry.
+- A synchronous action lock, disabled confirmation controls, exact selected-key calculation, and missing-key failure provide duplicate-click and stale-state protection. A failed quota/security write leaves the React list unchanged and reports that no backup was removed.
+- Individual, selected, and all-backup cleanup remove the active working copy only when its stable local identity is among the confirmed deleted keys. Unrelated local-storage keys are not enumerated or cleared.
+- The feature does not read or write website rows, Trash timestamps, Auth users, sessions, subscriptions, entitlements, payments, Gumroad events, domains, AI Video records, owner records, or provider configuration. Existing server authentication, ownership isolation, rate limits, private/no-store API behavior, and RLS were not changed.
 
 ### Password-security availability
 
@@ -179,6 +214,8 @@ The isolated restoration checklist must verify schema/grants/policies/triggers, 
 
 The My Websites release added migration `20260814153538_customer_website_trash.sql`: two nullable timestamps and one partial Trash index on the existing protected `websites` table. It is additive, idempotent, contains no destructive statement or data rewrite, and left every pre-existing timestamp null. Production migration history, generated types, RLS state, and advisor results were verified afterward. This release did not create a backup because the owner-controlled encrypted destination and recovery identity are still unavailable; the existing first-backup and isolated-restore actions therefore remain open rather than being simulated or stored unsafely.
 
+The browser-draft management release contains no database migration, schema change, Storage operation, or server-data mutation. Browser backups are outside the Supabase recovery package and cannot be restored from its database or Storage archives; recovery depends on the same browser profile retaining its origin-local site data. This phase therefore neither required nor created a production data backup, and it did not change the existing encrypted backup or isolated-restore procedures. The still-open owner-controlled backup and restore drill remains necessary for server-held production data but cannot recover a locally cleared browser draft.
+
 Website Trash recovery is operationally separate from disaster recovery. A retained Trash row has no automatic purge date. A verified admin can restore it to draft by clearing the Trash timestamp through the protected admin update route; republishing also requires active verified access. A customer cannot overwrite or reclaim the protected slug while it remains in Trash. Permanent removal, if ever required, must be a separately reviewed retention/legal operation and must not be implemented as a customer dashboard request.
 
 ### Schedule and retention recommendation
@@ -200,24 +237,27 @@ Pre/post-migration aggregate counts matched for Auth users, Arcade provisioning 
 
 For the My Websites migration, both new columns were verified present, the existing `websites` RLS setting remained enabled, and every pre-existing website row retained null unpublish/Trash markers. Preview and production verification used only signed-out requests, so no customer website was unpublished, deleted, recovered, republished, or otherwise changed. No customer account, plan, purchase, subscription, payment history, custom domain, other website, AI Video, entitlement, or provider connection was modified.
 
+Browser-draft development and destructive test coverage used isolated in-memory JSON fixtures only. Preview and production verification did not inject, rename, delete, duplicate, preview, Continue, or otherwise change a real browser backup. The owner's existing browser collection was not read by the cloud verification browser. No server request was added for browser-backup management, and no Supabase aggregate or row required a change. Published and unpublished websites, recoverable Trash, customer and owner accounts, sessions, subscriptions, entitlements, purchases, payment history, Gumroad data, domains, AI Video plans/jobs/credits/results/media, other local-storage namespaces, and all completed production work were preserved.
+
 No customer account, website, purchase, subscription, Gumroad event, request, checkout, Arcade record, or AI Video record was deleted, reconciled, reassigned, or exposed. Historical unresolved events were preserved. The older preserved workspace was not operated on.
 
 Approved prices and product boundaries remained unchanged: Business `$30/month`, Premium `$50/month`, Extra Page `$10/month`, Done-for-You Extra Page `$125 one-time`, and standalone AI Video `$5 one-time`. Existing paid activation, unmatched-event handling, protected AI Video, DFY, publishing, and checkout protections were preserved.
 
 ## Validation results
 
-- Complete automated suite: **292/292 passed**.
+- Complete automated suite: **330/330 passed**.
 - Protected AI Video baseline: **56/56 passed**.
 - Focused account-routing matrix: **20/20 passed**, covering every required signed-out, account-return, purchase, claim, result-recovery, duplicate-click, multi-entitlement, and cross-customer scenario.
 - Focused My Websites matrix: **20/20 passed**, covering no/one/multiple website states; Published/Unpublished sections; edit/view routing; unpublish, cancel, and republish; recoverable delete, cancel, incorrect confirmation, and duplicate protection; signed-out and cross-customer denial; billing/account/other-website/AI-Video preservation; and mobile, keyboard, focus, screen-reader, and accessible-error behavior.
-- Supabase TypeScript generation: **passed**.
+- Focused browser-draft management matrix: **38/38 passed**, covering zero/one/large collections, exact counts and selection, correct Continue identity, rename validation and duplicate display names, individual/selected/all delete confirmation and cancellation, isolated deletion, immediate count/empty states, duplicate-click protection, all three sort orders, six-card progressive display, corrupt and legacy formats, deliberate Preview/Duplicate omission, server-data preservation, keyboard/screen-reader/focus behavior, and mobile/touch/reduced-motion behavior.
+- Supabase TypeScript generation: **not applicable to this browser-only phase**; the previously generated database types remain unchanged and passed their existing coverage.
 - Next.js production build and TypeScript: **passed**.
 - Production build output: **57 pages**.
-- Dependency graph: **unchanged**; the prior same-lockfile dependency audit reported **0 vulnerabilities**. A fresh `npm audit` request was blocked by the verification environment's network policy, so no new audit result is claimed.
+- Dependency graph and lockfile: **unchanged**; the prior same-lockfile dependency audit reported **0 vulnerabilities**. Fresh registry-backed audit attempts were blocked by the verification environment's network policy, so no new online audit result is claimed.
 - Shell and JavaScript validation: **passed**.
 - Secret, forbidden-artifact, diff, and plaintext-backup scans: **passed**.
 - React client-quality review: no new structural, focus, rendering, state, or fetch-waterfall blocker.
-- Local visual-browser launch: blocked by the verification sandbox's network-interface limitation; this was treated as an environment limitation, not a product pass. Cloud-browser production checks, live route and response-header checks, deployment logs, runtime logs, responsive CSS, focus, label, touch-target, and reduced-motion reviews were completed independently. The one authenticated owner-only recovery confirmation remains below.
+- Vercel preview and production browser checks: **passed** for the non-destructive signed-out surface, headers, existing domains, responsive width, 44-pixel primary control, and application-origin console state. Authenticated browser-backup cards were not opened because the cloud browser does not hold the owner's session or local-storage collection; the bounded cancel-only visual confirmation remains below.
 
 Regression coverage preserved owner password access/lock, customer creation/sign-in/sign-out/reset, paid checkout/activation, subscription lifecycle and unmatched events, approved DFY/Gumroad products, contact/support storage, protected AI Video, and prior mobile/accessibility protections. JavaScript syntax, diff whitespace, secret-pattern, and forbidden client-ownership-source checks passed. React review found no new render, effect, focus, state, or request-waterfall blocker.
 
@@ -227,6 +267,12 @@ Production verification confirmed:
 - the preview account dialog received focus and Escape returned focus to **Sign In to My Websites**;
 - signed-out `POST /api/site/manage` returned `401` with `Cache-Control: private, no-store, max-age=0` before website lookup or mutation;
 - PR `#30` was one reviewed-scope commit, its Vercel preview was `READY`, and it had no review threads or requested changes before squash merge;
+- PR `#32` was one reviewed-scope commit affecting seven expected application/test files; it had a successful Vercel check, a `READY` preview, no review threads or requested changes, and was squash-merged after the 330-test/build/security review;
+- the browser-draft production deployment `dpl_8ffbrj2YG931w43AsJwLM9rmBWxr` reached `READY` at commit `cf8d347f04a6ceb3478722322c7283272dce4a1e`, served fingerprint `cf8d347f04a6`, retained the wildcard, apex, `www`, and existing Vercel aliases without error, and completed the 57-route build;
+- production `/customer` served `200` with the deployed fingerprint, retained `noindex`, rendered the correct signed-out **My Websites** shell, had no horizontal overflow at the verified desktop viewport, and exposed a 44-pixel **Sign In to My Websites** control;
+- the preview and production browser sessions recorded no application-origin console errors; the only console entry came from the cloud-browser extension and was excluded from the application result;
+- grouped `/customer` runtime errors and deployment-scoped error/fatal logs were empty after verification;
+- no authenticated or destructive browser-draft action was performed against production, so no owner backup or server record changed during verification;
 - the production deployment was `READY`, used the existing wildcard and primary domains without alias errors, completed its 57-page build without errors, and produced no application error/fatal runtime logs during verification;
 - the updated homepage, pricing, policy, and customer-guide routes rendered, with the top navigation and all two homepage, two pricing, and Builder AI Video purchase links using the unified studio route;
 - corrected product prices and account-required AI Video entitlement copy appeared;
@@ -260,7 +306,9 @@ Still open or informational:
 - the new partial Trash index is reported as unused immediately after creation, which is expected before any customer website enters Trash;
 - the first encrypted production backup has not been created;
 - the first isolated restore drill has not been run;
-- the existing paid purchase-to-account claim and recovered completed-result view need one authenticated confirmation by the owner because only the owner controls that customer session and license; this must not buy, submit, regenerate, or consume a credit;
+- browser-only backups remain vulnerable to local site-data clearing, private-session disposal, storage pressure, and browser eviction and are not recoverable from Supabase backups;
+- read-only Preview and collision-proof Duplicate remain intentionally unavailable until a future versioned storage design can guarantee those properties without migrating or risking legacy backups;
+- a fresh online dependency audit could not reach the package registry in the verification environment; the lockfile/dependency graph did not change and the prior same-lockfile audit remains zero vulnerabilities;
 - qualified legal review has not been completed; and
 - the documented soft-launch monitoring routine should begin after the first encrypted backup is safely stored.
 
@@ -268,10 +316,12 @@ No unrelated index, RLS, data-reconciliation, provider-configuration, OAuth, DNS
 
 ## Owner Action Required
 
-For My Websites, one non-destructive owner-only visual confirmation remains: sign in normally, open `/customer`, and confirm the real owned websites appear in the correct **Published** and **Unpublished** sections with **Edit Website** first. Open and cancel each Manage Website dialog to confirm the wording, typed-name requirement, focus return, and current page position. Do not confirm Unpublish or Delete on a production website for this check. Report only a mismatch.
+Only one release-specific visual confirmation remains. In the owner's normal browser—the browser profile that already holds the backups—sign in to `/customer` and confirm that **Browser Draft Backups** shows the expected total, the first six cards, saved date/time, and available template labels. Open one **Manage Draft** menu; open and cancel **Rename Draft** and **Delete Draft**. Enter **Select Drafts**, select test candidates only if desired, open and cancel **Delete Selected**, then cancel selection. Open **More draft options**, open and cancel **Delete All Browser Drafts**. Confirm Escape/cancel returns focus and no card, count, name, or saved time changes.
 
-The previously recorded non-purchasing AI Video account-routing confirmation also remains owner-controlled: use the existing account and purchase only as documented above; do not buy, submit, regenerate, or consume a credit.
+Do not confirm Rename, Delete Draft, Delete Selected Drafts, or Delete All Drafts on a real backup unless the owner later explicitly authorizes that exact destructive change. Do not use **Continue Draft** merely for this check because opening the Builder is unnecessary to verify the management surface. Report only a mismatch.
+
+The AI Video purchase-recovery/result confirmation and the My Websites Published/Unpublished plus Manage Website cancel confirmation are both **PASSED**. Remove them from future Owner Action Required lists and do not repeat either journey unless a verified regression is reported.
 
 The first encrypted backup/restore drill, any Supabase upgrade decision, legal review, and soft-launch monitoring remain separate operational items recorded above; they are not reasons to repeat a completed AI Video customer journey.
 
-Do not repeat the completed owner-login, account, purchase, subscription, Gumroad, DFY, or AI Video journeys unless a verified regression is reported.
+Do not repeat the completed owner-login, account, purchase, subscription, Gumroad, DFY, AI Video, My Websites section, or Website management journeys unless a verified regression is reported.
