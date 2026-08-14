@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { slugify } from '../../../../lib/siteDefaults';
 import { getVerifiedSiteOwner } from '../../../../lib/siteOwnerAuth';
 import { customerSubscriptionSummary } from '../../../../lib/subscriptionLifecycle.mjs';
+import { isCustomerDeletedWebsite } from '../../../../lib/customerWebsiteManagement.mjs';
 
 function privateResponse(body, status = 200) {
   return NextResponse.json(body, {
@@ -43,7 +44,7 @@ export async function POST(req) {
     const rawQuery = String(body.query || body.slug || '').trim();
     const slug = rawQuery ? normalizeSlug(rawQuery) : '';
     if (!email && !slug) {
-      return privateResponse({ ok: false, error: 'Enter an email address or website name/subdomain.' }, 400);
+      return privateResponse({ ok: false, error: 'Enter a website name.' }, 400);
     }
     const supabase = getSupabaseAdmin();
     const found = new Map();
@@ -81,10 +82,12 @@ export async function POST(req) {
         );
       }
     }
-    const sites = Array.from(found.values()).sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || ''))).map(row => ({
+    const sites = Array.from(found.values())
+      .filter(row => !isCustomerDeletedWebsite(row))
+      .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))
+      .map(row => ({
       slug: row.slug,
       business_name: row.business_name || siteFromRow(row).businessName || row.slug,
-      customer_email: row.customer_email || siteFromRow(row).customerEmail || '',
       plan: row.plan || siteFromRow(row).plan || 'free',
       status: row.status || siteFromRow(row).status || 'draft',
       access_status: row.access_status || 'active',

@@ -4,11 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 import Nav from '../../lib/Nav';
 import { PENDING_CHECKOUT_STORAGE_KEY, createPendingCheckoutIntent, customerReturnPath, pendingCheckoutReturnPath, safeCustomerReturnPath } from '../../lib/commerceConfig.mjs';
 import { useAccountModal } from '../../components/AccountModalProvider';
+import WebsiteManagementDialog from '../../components/WebsiteManagementDialog';
+import { customerWebsiteStatus, websiteDisplayName } from '../../lib/customerWebsiteManagement.mjs';
 
 const ROOT = 'cookiesdigitalcreations.com';
 const DRAFT_KEY = 'cookieDraftSite';
 const DRAFTS_INDEX_KEY = 'cookieDraftSitesIndex';
 const GUEST_CLAIM_KEY = 'cookieGuestDraftClaimV1';
+const DASHBOARD_STATE_KEY = 'cookieMyWebsitesPageStateV1';
 
 function normalizeSubdomain(input = '') {
   let value = String(input || '').trim().toLowerCase();
@@ -19,20 +22,10 @@ function normalizeSubdomain(input = '') {
   return value.replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
 }
 
-function statusLabel(status = '') {
-  const s = String(status || 'draft').toLowerCase();
-  if (s === 'published') return 'Published';
-  if (s === 'paused') return 'Paused';
-  if (s === 'archived') return 'Archived';
-  return 'Draft';
-}
-
-function effectiveStatus(site = {}) {
+function isWebsiteUnavailable(site = {}) {
+  const status = String(site.status || '').toLowerCase();
   const access = String(site.access_status || '').toLowerCase();
-  if (access === 'archived') return 'archived';
-  if (access === 'paused') return 'paused';
-  if (site.subscription && site.subscription.active === false && ['starter', 'business', 'premium'].includes(String(site.plan || '').toLowerCase())) return 'paused';
-  return String(site.status || 'draft').toLowerCase();
+  return ['paused', 'archived', 'inactive'].includes(status) || ['paused', 'archived', 'inactive'].includes(access);
 }
 
 export default function Customer() {
@@ -43,13 +36,16 @@ export default function Customer() {
   const [loading, setLoading] = useState(false);
   const [browserDraft, setBrowserDraft] = useState(null);
   const [browserDrafts, setBrowserDrafts] = useState([]);
-  const [savedOpen, setSavedOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('all');
   const [verifiedEmail, setVerifiedEmail] = useState('');
   const [authLoading, setAuthLoading] = useState(true);
   const [pendingPurchase, setPendingPurchase] = useState(null);
   const [authMode, setAuthMode] = useState('signin');
+  const [managementDialog, setManagementDialog] = useState(null);
+  const [managementBusy, setManagementBusy] = useState(false);
+  const [managementError, setManagementError] = useState('');
   const autoLoadedOwnerRef = useRef('');
+  const statusRef = useRef(null);
+  const restoredSiteRef = useRef('');
 
   useEffect(() => {
     async function restoreSecureSession() {
@@ -148,6 +144,25 @@ export default function Customer() {
   }, [accountState, accountEmail, openAccountModal]);
 
   useEffect(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(DASHBOARD_STATE_KEY) || 'null');
+      if (!saved) return;
+      setQuery(String(saved.query || ''));
+      restoredSiteRef.current = String(saved.slug || '');
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    const slug = restoredSiteRef.current;
+    if (!slug || !sites.length) return;
+    restoredSiteRef.current = '';
+    sessionStorage.removeItem(DASHBOARD_STATE_KEY);
+    window.requestAnimationFrame(() => {
+      document.getElementById(`website-${slug}`)?.scrollIntoView({ block: 'center' });
+    });
+  }, [sites]);
+
+  useEffect(() => {
     if (!verifiedEmail) return;
     const shortSearch = normalizeSubdomain(query);
     if (shortSearch.length < 2) return;
@@ -227,13 +242,12 @@ export default function Customer() {
     }
     const cleanSlug = normalizeSubdomain(query);
     setLoading(true);
-    setSavedOpen(true);
     setMsg(liveSearch && query ? 'Filtering saved websites as you type...' : 'Loading your websites and drafts...');
     try {
       const res = await fetch('/api/site/search', {
         method: 'POST',
         headers: secureHeaders(),
-        body: JSON.stringify({ query: cleanSlug, status: statusFilter })
+        body: JSON.stringify({ query: cleanSlug })
       });
       const data = await res.json();
       if (!data.ok) {
@@ -244,8 +258,7 @@ export default function Customer() {
         setSites([]);
       } else {
         setSites(data.sites);
-        setSavedOpen(true);
-        setMsg(`${data.sites.length} saved website/draft record(s) found.`);
+        setMsg(data.sites.length === 1 ? 'Your website is ready.' : `${data.sites.length} websites are ready.`);
       }
     } catch (e) {
       setMsg(`Search failed: ${e.message}`);
@@ -264,179 +277,211 @@ export default function Customer() {
     window.location.href = '/builder?restore=1';
   }
 
-  async function manageSite(slug, action) {
-    const label = action === 'delete' ? 'permanently delete this unpublished free draft' : 'archive this website';
-    if (!window.confirm(`Are you sure you want to ${label}?`)) return;
-    setMsg(action === 'delete' ? 'Deleting the confirmed draft…' : 'Archiving the confirmed website…');
+  function rememberDashboardState(slug) {
+    try {
+      sessionStorage.setItem(DASHBOARD_STATE_KEY, JSON.stringify({ query, slug }));
+    } catch {}
+  }
+
+  function openManagementDialog(site, action, returnFocus) {
+    setManagementError('');
+    setManagementDialog({ site, action, returnFocus });
+  }
+
+  function closeManagementDialog() {
+    if (managementBusy) return;
+    setManagementError('');
+    setManagementDialog(null);
+  }
+
+  async function confirmWebsiteAction(confirmation = '') {
+    if (!managementDialog || managementBusy) return;
+    const { site, action } = managementDialog;
+    setManagementBusy(true);
+    setManagementError('');
     try {
       const response = await fetch('/api/site/manage', {
         method: 'POST',
         headers: secureHeaders(),
-        body: JSON.stringify({ slug, action })
+        body: JSON.stringify({ slug: site.slug, action, confirmation })
       });
-      const result = await response.json();
-      setMsg(result.ok ? result.message : (result.error || 'The website was not changed.'));
-      if (result.ok) await findSites(true);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) {
+        setManagementError(result.error || 'The website was not changed.');
+        return;
+      }
+      if (action === 'unpublish') {
+        setSites(current => current.map(item => item.slug === site.slug
+          ? { ...item, status: 'draft', updated_at: result.updatedAt || new Date().toISOString(), site: { ...(item.site || {}), status: 'draft' } }
+          : item));
+      } else {
+        setSites(current => current.filter(item => item.slug !== site.slug));
+      }
+      setMsg(result.message);
+      setManagementDialog(null);
+      window.setTimeout(() => statusRef.current?.focus(), 0);
     } catch {
-      setMsg('The website action could not be completed. Your website remains unchanged.');
+      setManagementError('The website action could not be completed. Your website remains unchanged.');
+    } finally {
+      setManagementBusy(false);
     }
   }
 
   const searchTerm = normalizeSubdomain(query);
   const matchesWords = (value = '') => !searchTerm || normalizeSubdomain(value).includes(searchTerm);
-  const visibleSites = sites.filter(site => {
-    const status = effectiveStatus(site);
-    const matchesStatus = statusFilter === 'all' || statusFilter === status || (statusFilter === 'published' && status === 'live');
-    return matchesStatus && (matchesWords(site.slug) || matchesWords(site.business_name) || matchesWords(site.site?.businessName) || matchesWords(site.plan) || matchesWords(status));
-  });
+  const visibleSites = sites.filter(site => matchesWords(site.slug) || matchesWords(site.business_name) || matchesWords(site.site?.businessName));
   const shownBrowserDrafts = browserDrafts.filter(item => {
     if (sites.some(site => site.slug === item.slug)) return false;
-    if (!['all', 'draft', 'browser'].includes(statusFilter)) return false;
     return matchesWords(item.slug) || matchesWords(item.draft?.businessName) || matchesWords(item.draft?.draftName);
   });
-  const websiteGroups = [
-    { key: 'drafts', title: 'Drafts', rows: visibleSites.filter(site => effectiveStatus(site) === 'draft') },
-    { key: 'published', title: 'Published Websites', rows: visibleSites.filter(site => effectiveStatus(site) === 'published') },
-    { key: 'plans', title: 'Purchases or Plans', rows: visibleSites.filter(site => ['starter', 'business', 'premium'].includes(String(site.plan || '').toLowerCase()) || Number(site.monthly_price) > 0) },
-    { key: 'archived', title: 'Archived Websites', rows: visibleSites.filter(site => ['archived', 'paused'].includes(effectiveStatus(site))) }
-  ].filter(group => group.rows.length > 0);
+  const publishedSites = visibleSites.filter(site => customerWebsiteStatus(site) === 'published');
+  const unpublishedSites = visibleSites.filter(site => customerWebsiteStatus(site) === 'unpublished');
 
-  function renderSiteCard(row, groupKey) {
-    const currentStatus = effectiveStatus(row);
-    const status = statusLabel(currentStatus);
-    const isPublished = currentStatus === 'published';
-    const isUnavailable = currentStatus === 'paused' || currentStatus === 'archived';
+  function renderSiteCard(row) {
+    const status = customerWebsiteStatus(row);
+    const isPublished = status === 'published';
+    const isUnavailable = isWebsiteUnavailable(row);
     const liveUrl = `https://${row.slug}.${ROOT}`;
+    const name = websiteDisplayName(row);
     return (
-      <article className="savedSiteCard" key={`${groupKey}-${row.slug}`}>
-        <div>
-          <span className={`statusPill ${currentStatus}`}>{status}</span>
-          <h3>{row.business_name || row.site?.businessName || row.slug}</h3>
-          <p><strong>Website:</strong> {row.slug}.{ROOT}</p>
-          <p><strong>Plan:</strong> {row.plan || 'free'} {row.monthly_price ? `• $${row.monthly_price}/mo` : ''}</p>
-          {row.subscription && <div className="notice">
-            <strong>Subscription:</strong> {row.subscription.label}<br />
-            {row.subscription.startedAt && <span>Started: {new Date(row.subscription.startedAt).toLocaleDateString()}<br /></span>}
-            {row.subscription.renewalAt && <span>Next renewal: {new Date(row.subscription.renewalAt).toLocaleDateString()}<br /></span>}
-            {row.subscription.endAt && <span>Paid-through / end: {new Date(row.subscription.endAt).toLocaleDateString()}<br /></span>}
-            <span>Verified extra pages: {row.subscription.extraPages || 0}</span><br />
-            <span>{row.subscription.nextStep}</span><br />
-            <small>{row.subscription.management}</small>
-          </div>}
-          {row.updated_at && <p className="mutedText">Last updated: {new Date(row.updated_at).toLocaleString()}</p>}
+      <article className="websiteDashboardCard" id={`website-${row.slug}`} key={row.slug}>
+        <div className="websiteCardDetails">
+          <div className="websiteCardHeading">
+            <h3>{name}</h3>
+            <span className={`statusPill ${status}`}>{isPublished ? 'Published' : 'Unpublished'}</span>
+          </div>
+          {isPublished && <p className="websiteAddress"><strong>Website address</strong><a href={liveUrl} target="_blank" rel="noreferrer">{row.slug}.{ROOT}</a></p>}
+          <p className="websiteUpdated"><strong>Last updated</strong><span>{row.updated_at ? new Date(row.updated_at).toLocaleDateString() : 'Not available'}</span></p>
+          {isUnavailable && <p className="websiteUnavailableNote">This website is safely stored but currently unavailable. Contact support if it should be restored.</p>}
         </div>
-        <div className="savedActions">
-          {isPublished && <a className="btn" href={liveUrl} target="_blank" rel="noreferrer">View Live Website</a>}
-          {isPublished && <a className="btn dark" href={`/customer/edit/${row.slug}`}>Edit Website</a>}
-          {!isUnavailable && <a className="btn dark" href={`/builder?draft=${encodeURIComponent(row.slug)}`}>{isPublished ? 'Preview / Republish' : 'Edit Website'}</a>}
-          {!isUnavailable && <button className="btn light" type="button" onClick={() => manageSite(row.slug, 'archive')}>Archive</button>}
-          {!isPublished && String(row.plan || 'free') === 'free' && <button className="btn light" type="button" onClick={() => manageSite(row.slug, 'delete')}>Delete Draft</button>}
-          {isUnavailable && <div className="notice">This website is {currentStatus}. Contact Cookie Digital Creations if access should be restored.</div>}
+        <div className="websiteCardActions">
+          {isUnavailable ? (
+            <button className="btn dark" type="button" disabled aria-describedby={`website-${row.slug}-unavailable`}>Edit Website</button>
+          ) : (
+            <a className="btn dark" href={`/customer/edit/${row.slug}`} onClick={() => rememberDashboardState(row.slug)}>Edit Website</a>
+          )}
+          {isPublished && <a className="btn light" href={liveUrl} target="_blank" rel="noreferrer">View Website</a>}
+          <details className="websiteManageMenu">
+            <summary>Manage Website</summary>
+            <div className="websiteManagePanel">
+              {isPublished && <button className="websiteManageAction" type="button" onClick={event => openManagementDialog(row, 'unpublish', event.currentTarget)}>Unpublish Website</button>}
+              <button className="websiteManageAction dangerText" type="button" onClick={event => openManagementDialog(row, 'delete', event.currentTarget)}>Delete Website</button>
+            </div>
+          </details>
+          {isUnavailable && <span className="srOnly" id={`website-${row.slug}-unavailable`}>Contact support to restore this website before editing.</span>}
         </div>
       </article>
     );
   }
 
+  const messageIsError = /failed|could not|expired|not changed|do not have access/i.test(msg);
+
   return (
     <>
       <Nav />
       <main className="wrap customerHub customerHubWarm">
-        <section className="dashboard customerWelcome">
-          <span className="kicker">Cookie Mini Website Builder Pro</span>
-          <h1>My Websites</h1>
-          <p>Open your customer-owned drafts, published websites, purchases, and publishing controls in one secure place.</p>
-          <div className="customerSearchTips">
-            <div><strong>Your account only</strong><span>Your secure session automatically limits results to websites you own.</span></div>
-            <div><strong>A few words</strong><span>Type any part of your website name, plan, status, or address.</span></div>
-            <div><strong>Full link</strong><span>Paste the whole subdomain if you have it.</span></div>
+        <section className="dashboard customerDashboardHero">
+          <div>
+            <span className="kicker">Cookie Mini Website Builder Pro</span>
+            <h1>My Websites</h1>
+            <p>View, edit, publish, and manage your websites.</p>
           </div>
-          <div className="notice success">
-            <strong>{verifiedEmail ? 'Secure customer access' : 'Sign in to open My Websites'}</strong><br />
-            {authLoading ? (
-              <span>Checking your secure session...</span>
-            ) : verifiedEmail ? (
-              <span>Signed in as {verifiedEmail}. Only websites owned by this account can be managed.</span>
-            ) : (
-              <>
-                <span>Use the shared account window to sign in with your password or create a free account.</span>
-                <div className="navRow"><button className="btn" type="button" onClick={() => openAccountModal({ mode: authMode, destination: '/customer' })}>Open Customer Sign In</button></div>
-              </>
-            )}
-          </div>
-          {pendingPurchase && (
-            <div className="notice" data-testid="continue-purchase">
-              <strong>Complete your saved purchase</strong><br />
-              Your {pendingPurchase.plan === 'starter' ? 'Starter Pro' : pendingPurchase.plan === 'business' ? 'Business' : pendingPurchase.plan === 'premium' ? 'Premium' : 'Extra Page Add-On'} checkout is still waiting for {pendingPurchase.draftSlug || 'your saved website'}.
-              <div className="navRow"><a className="btn" href={pendingPurchase.builderPath}>Continue Purchase</a></div>
-            </div>
-          )}
-          {verifiedEmail && <div className="row">
-            <div className="field">
-              <label htmlFor="my-websites-search">Search my websites</label>
-              <input id="my-websites-search" placeholder="Website name, plan, status, or address" value={query} onChange={e => setQuery(e.target.value)} autoComplete="off" />
-            </div>
-          </div>}
-          {query && <div className="notice smallNotice">We will search for: <strong>{normalizeSubdomain(query) || 'enter a website name'}</strong></div>}
-          {msg && <div role="status" aria-live="polite" className={`notice ${msg.includes('failed') || msg.includes('No websites') || msg.includes('Enter') ? 'error' : ''}`}>{msg}</div>}
-          <div className="navRow">
-            <button className="btn" onClick={findSites} disabled={loading || !verifiedEmail}>{loading ? 'Loading My Websites...' : 'Refresh My Websites'}</button>
-            <a className="btn dark" href="/builder">Start New Website</a>
-            {browserDraft && <button className="btn dark" onClick={() => continueBrowserDraft(browserDraft)}>Continue Last Browser Draft</button>}
-          </div>
+          {verifiedEmail && <a className="btn" href="/builder">Create a New Website</a>}
         </section>
 
-        <details className="savedDropdown" open={savedOpen} onToggle={event => setSavedOpen(event.currentTarget.open)}>
-          <summary>My Websites</summary>
-          <div className="savedDropdownContent">
-          <p className="savedDropdownIntro">Published sites and saved drafts show here. Use Continue Draft to keep building, Open Website to view a live site, or Edit Published Site to update one that is already published.</p>
-          <div className="savedWebsitePicker field">
-            <label>Filter websites by status</label>
-            <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)}>
-              <option value="all">All websites and drafts</option>
-              <option value="draft">Drafts</option>
-              <option value="published">Live / Published websites</option>
-              <option value="paused">Paused websites</option>
-              <option value="archived">Archived websites</option>
-              <option value="browser">Browser draft backups</option>
-            </select>
-          </div>
-          {visibleSites.length === 0 ? (
-            <div className="emptyState"><strong>You do not have any saved websites matching this view.</strong><br/>Start building your first website, try fewer search words, or check the browser draft backups below.</div>
-          ) : (
-            <div className="myWebsiteGroups">
-              {websiteGroups.map(group => (
-                <section className="websiteGroup" aria-labelledby={`website-group-${group.key}`} key={group.key}>
-                  <h3 id={`website-group-${group.key}`}>{group.title}</h3>
-                  <div className="savedSiteList">{group.rows.map(row => renderSiteCard(row, group.key))}</div>
+        {!verifiedEmail && (
+          <section className="dashboard customerSignInCard">
+            <h2>{authLoading ? 'Checking your account…' : 'Sign in to see your websites'}</h2>
+            <p>{authLoading ? 'This will only take a moment.' : 'Only websites saved to your account will appear here.'}</p>
+            {!authLoading && <button className="btn" type="button" onClick={() => openAccountModal({ mode: authMode, destination: '/customer' })}>Sign In to My Websites</button>}
+          </section>
+        )}
+
+        {verifiedEmail && pendingPurchase && (
+          <section className="dashboard customerPurchaseReminder" data-testid="continue-purchase">
+            <div><strong>Finish your saved purchase</strong><p>Your checkout is still waiting for the website you selected.</p></div>
+            <a className="btn" href={pendingPurchase.builderPath}>Continue Purchase</a>
+          </section>
+        )}
+
+        {verifiedEmail && (
+          <section className="dashboard customerWebsiteDashboard" aria-labelledby="website-list-heading">
+            <div className="websiteDashboardToolbar">
+              <div><h2 id="website-list-heading">Your websites</h2><p>Choose a website to continue.</p></div>
+              {sites.length > 1 && <div className="field websiteSearchField">
+                <label htmlFor="my-websites-search">Search websites</label>
+                <input id="my-websites-search" placeholder="Website name" value={query} onChange={event => setQuery(event.target.value)} autoComplete="off" />
+              </div>}
+            </div>
+            {msg && <div
+              ref={statusRef}
+              tabIndex="-1"
+              role={messageIsError ? 'alert' : 'status'}
+              aria-live={messageIsError ? 'assertive' : 'polite'}
+              className={`notice dashboardMessage ${messageIsError ? 'error' : 'success'}`}
+            >{msg}</div>}
+
+            {loading ? (
+              <div className="emptyState" role="status">Loading your websites…</div>
+            ) : sites.length === 0 ? (
+              <div className="emptyState customerEmptyState">
+                <h2>No websites yet</h2>
+                <p>Create your first website now. You can save it, publish it, and return here whenever you need it.</p>
+                <a className="btn" href="/builder">Create a New Website</a>
+              </div>
+            ) : visibleSites.length === 0 ? (
+              <div className="emptyState customerEmptyState">
+                <h2>No matching websites</h2>
+                <p>Try a shorter website name.</p>
+                <button className="btn light" type="button" onClick={() => setQuery('')}>Clear Search</button>
+              </div>
+            ) : (
+              <div className="websiteStatusSections">
+                <section className="websiteStatusSection" aria-labelledby="published-websites-heading">
+                  <div className="websiteSectionHeading"><div><h2 id="published-websites-heading">Published</h2><p>Visitors can open these websites.</p></div><span>{publishedSites.length}</span></div>
+                  {publishedSites.length
+                    ? <div className="websiteDashboardList">{publishedSites.map(renderSiteCard)}</div>
+                    : <div className="emptyState">No published websites yet.</div>}
                 </section>
+                <section className="websiteStatusSection" aria-labelledby="unpublished-websites-heading">
+                  <div className="websiteSectionHeading"><div><h2 id="unpublished-websites-heading">Unpublished</h2><p>These websites are saved but not open to visitors.</p></div><span>{unpublishedSites.length}</span></div>
+                  {unpublishedSites.length
+                    ? <div className="websiteDashboardList">{unpublishedSites.map(renderSiteCard)}</div>
+                    : <div className="emptyState">No unpublished websites.</div>}
+                </section>
+              </div>
+            )}
+
+            <div className="websiteDashboardFooterActions">
+              <button className="btn light" type="button" onClick={() => findSites()} disabled={loading}>Refresh Websites</button>
+              {browserDraft && <button className="btn light" type="button" onClick={() => continueBrowserDraft(browserDraft)}>Continue Browser Draft</button>}
+            </div>
+          </section>
+        )}
+
+        {verifiedEmail && shownBrowserDrafts.length > 0 && (
+          <details className="dashboard browserDraftsCompact">
+            <summary>Browser draft backups ({shownBrowserDrafts.length})</summary>
+            <p>These drafts are saved only in this browser until you continue and save them to your account.</p>
+            <div className="websiteDashboardList">
+              {shownBrowserDrafts.map(({ slug, draft }) => (
+                <article className="websiteDashboardCard" key={`browser-${slug}`}>
+                  <div className="websiteCardDetails"><h3>{draft.businessName || draft.draftName || slug}</h3><p>Saved on this device{draft.updatedAt ? ` · ${new Date(draft.updatedAt).toLocaleDateString()}` : ''}</p></div>
+                  <div className="websiteCardActions"><button className="btn dark" type="button" onClick={() => continueBrowserDraft(draft)}>Continue Draft</button></div>
+                </article>
               ))}
             </div>
-          )}
-          {shownBrowserDrafts.length > 0 && (
-            <div className="browserDraftBox">
-              <h3>Browser Draft Backups</h3>
-              <p className="mutedText">These are drafts saved in this browser. Use them if an online draft has not appeared yet.</p>
-              <div className="savedSiteList">
-                {shownBrowserDrafts.map(({ slug, draft }) => (
-                  <article className="savedSiteCard" key={`browser-${slug}`}>
-                    <div>
-                      <span className="statusPill draft">Browser Draft</span>
-                      <h3>{draft.businessName || draft.draftName || slug}</h3>
-                      <p><strong>Draft address:</strong> {slug}.{ROOT}</p>
-                      <p><strong>Email:</strong> {draft.customerEmail || 'Not saved'}</p>
-                      {draft.updatedAt && <p className="mutedText">Saved in this browser: {new Date(draft.updatedAt).toLocaleString()}</p>}
-                    </div>
-                    <div className="savedActions">
-                      <button className="btn dark" onClick={() => continueBrowserDraft(draft)}>Continue Browser Draft</button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-          )}
-          </div>
-        </details>
+          </details>
+        )}
       </main>
+      <WebsiteManagementDialog
+        dialog={managementDialog}
+        busy={managementBusy}
+        error={managementError}
+        onCancel={closeManagementDialog}
+        onConfirm={confirmWebsiteAction}
+        fallbackFocusRef={statusRef}
+      />
     </>
   );
 }

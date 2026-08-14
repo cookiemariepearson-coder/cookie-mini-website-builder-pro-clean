@@ -98,8 +98,11 @@ test('11. used standalone credit cannot generate again', () => {
 
 test('12. active eligible website plan is recognized server-side', () => {
   const entitlement = websiteVideoEntitlement(activeWebsite, { now, limits: { free: 0, starter: 0, business: 1, premium: 3 } });
+  const deletedWebsiteEntitlement = websiteVideoEntitlement({ ...activeWebsite, status: 'deleted', customer_deleted_at: '2026-08-14T15:00:00Z' }, { now, limits: { free: 0, starter: 0, business: 1, premium: 3 } });
   assert.equal(entitlement.state, VIDEO_ENTITLEMENT_STATE.VERIFIED_WEBSITE);
   assert.equal(generationIsAuthorized(entitlement), true);
+  assert.equal(deletedWebsiteEntitlement.state, VIDEO_ENTITLEMENT_STATE.VERIFIED_WEBSITE);
+  assert.equal(generationIsAuthorized(deletedWebsiteEntitlement), true);
 });
 
 test('13. inactive or ineligible website plan remains locked', () => {

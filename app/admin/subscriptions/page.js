@@ -38,7 +38,7 @@ function siteEmail(w) {
 }
 
 function isArchived(w) {
-  return w.access_status === 'archived' || w.status === 'archived';
+  return w.access_status === 'archived' || ['archived', 'deleted'].includes(w.status);
 }
 
 function compareSites(a, b, sortBy) {

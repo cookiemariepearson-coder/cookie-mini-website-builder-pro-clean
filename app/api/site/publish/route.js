@@ -43,6 +43,9 @@ export async function POST(req) {
     if (existing && !siteBelongsToOwner(existing, owner)) {
       return privateResponse({ ok: false, error: 'That website address already belongs to a different verified email. Choose another business or website name.' }, 403);
     }
+    if (existing && (String(existing.status || '').toLowerCase() === 'deleted' || existing.customer_deleted_at)) {
+      return privateResponse({ ok: false, error: 'This website is in recoverable Trash. Contact support to recover it before publishing again.' }, 409);
+    }
 
     if (paidPlans.has(requestedPlan)) {
       const paidAccess = existing

@@ -72,7 +72,7 @@ test('signed-out My Websites opens the Builder-owned password account modal', as
     source('app/api/auth/site-owner/password/route.js'),
     source('components/AccountModalProvider.js')
   ]);
-  assert.match(customer, /Open Customer Sign In/);
+  assert.match(customer, /Sign In to My Websites/);
   assert.match(customer, /openAccountModal/);
   assert.match(password, /signInWithPassword/);
   assert.match(password, /type: 'signup'/);

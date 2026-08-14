@@ -50,6 +50,9 @@ export async function GET(req) {
       if (!siteBelongsToOwner(data, owner)) {
         return privateResponse({ ok: false, error: 'You do not have access to manage this website.' }, 403);
       }
+      if (String(data.status || '').toLowerCase() === 'deleted' || data.customer_deleted_at) {
+        return privateResponse({ ok: false, error: 'This website is in recoverable Trash and is no longer available in My Websites.' }, 410);
+      }
     }
 
     return NextResponse.json({ ok:true, row:data, site: fallbackSite(data) }, {

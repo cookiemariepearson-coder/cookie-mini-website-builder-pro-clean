@@ -21,7 +21,7 @@ export async function POST(req) {
       return privateResponse({ ok: false, error: 'Plan, ownership, subscription, and access fields can only change through their verified workflows.' }, 400);
     }
     const supabase = getSupabaseAdmin();
-    const { data: existing, error: lookupError } = await supabase.from('websites').select('id,status,access_status').eq('slug', slug).maybeSingle();
+    const { data: existing, error: lookupError } = await supabase.from('websites').select('id,status,access_status,customer_deleted_at').eq('slug', slug).maybeSingle();
     if (lookupError) throw lookupError;
     if (!existing) return privateResponse({ ok: false, error: 'Website not found.' }, 404);
     const safe = {};
@@ -33,6 +33,10 @@ export async function POST(req) {
     }
     if (safe.status === 'published' && String(existing.access_status || '').toLowerCase() !== 'active') {
       return privateResponse({ ok: false, error: 'Verified subscription access is required before this website can be reactivated.' }, 409);
+    }
+    if (existing.customer_deleted_at && ['draft', 'published'].includes(safe.status)) {
+      safe.customer_deleted_at = null;
+      safe.customer_unpublished_at = safe.status === 'draft' ? new Date().toISOString() : null;
     }
     if (typeof safe.business_name === 'string') safe.business_name = safe.business_name.slice(0, 200);
     if (typeof safe.admin_notes === 'string') safe.admin_notes = safe.admin_notes.slice(0, 2000);

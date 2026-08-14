@@ -31,6 +31,12 @@ export async function POST(req) {
       return privateResponse({ ok: false, error: 'This website belongs to a different verified email.' }, 403);
     }
 
+    const currentStatus = String(existing.status || 'draft').toLowerCase();
+    const currentAccess = String(existing.access_status || 'active').toLowerCase();
+    if (existing.customer_deleted_at || ['deleted', 'archived', 'paused', 'inactive'].includes(currentStatus) || ['archived', 'deleted', 'paused', 'inactive'].includes(currentAccess)) {
+      return privateResponse({ ok: false, error: 'This website is not available for editing. Contact support if it should be recovered.' }, 409);
+    }
+
     if (websitePlanAccess(existing).paid && !websitePlanAccess(existing).active) {
       return privateResponse({ ok: false, error: 'This paid plan is not currently active. Your edits remain on this screen; check the membership from your Gumroad receipt or Library.' }, 402);
     }
@@ -51,6 +57,8 @@ export async function POST(req) {
       owner_id: owner.user.id,
       business_name: protectedSite.businessName || null,
       site: protectedSite,
+      status: 'published',
+      customer_unpublished_at: null,
       updated_at: new Date().toISOString()
     }).eq('id', existing.id);
     updateQuery = existing.owner_id

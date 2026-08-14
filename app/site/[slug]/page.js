@@ -44,7 +44,7 @@ function isBlocked(row = {}) {
   const access = String(row.access_status || '').toLowerCase();
   const plan = String(row.plan || row.site?.plan || '').toLowerCase();
 
-  if (['paused','archived','deleted','inactive'].includes(status)) return true;
+  if (row.customer_deleted_at || status !== 'published') return true;
   if (['paused','archived','deleted','inactive'].includes(access)) return true;
   if (plan !== 'free' && !websitePlanAccess(row).active) return true;
   return false;

@@ -123,9 +123,12 @@ export default function Edit() {
         setMsg('Your secure session expired. Sign in again; your changes remain on this screen.');
         return;
       }
-      setMsg(response.ok && result.ok
-        ? 'Saved and republished. The live website now has your updates.'
-        : (response.status === 403 ? 'You do not have access to republish this website.' : (result.error || 'The website could not be saved. Please try again.')));
+      if (response.ok && result.ok) {
+        setSite(current => ({ ...current, status: 'published' }));
+        setMsg('Saved and published. Your website is open to visitors.');
+      } else {
+        setMsg(response.status === 403 ? 'You do not have access to republish this website.' : (result.error || 'The website could not be saved. Please try again.'));
+      }
     } catch {
       setMsg('The website could not be saved. Your changes remain on this screen; please check your connection and try again.');
     } finally {
@@ -133,12 +136,17 @@ export default function Edit() {
     }
   }
 
+  const isPublished = String(site.status || '').toLowerCase() === 'published';
+  const saveLabel = isPublished ? 'Save Website' : 'Save & Publish';
+
   return <main className="builderShell">
     <aside className="builderSide">
       <h1>Edit Website</h1>
       <p>{slug}.cookiesdigitalcreations.com</p>
-      <a className="btn light" target="_blank" rel="noopener noreferrer" href={`https://${slug}.cookiesdigitalcreations.com`}>Open Live Site</a>
-      <button className="stepBtn active" type="button" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save & Republish'}</button>
+      <p><strong>Status:</strong> {isPublished ? 'Published' : 'Unpublished'}</p>
+      {isPublished && <a className="btn light" target="_blank" rel="noopener noreferrer" href={`https://${slug}.cookiesdigitalcreations.com`}>View Website</a>}
+      <button className="stepBtn active" type="button" onClick={save} disabled={saving}>{saving ? 'Saving…' : saveLabel}</button>
+      <a className="btn light" href="/customer">Back to My Websites</a>
       {msg && <div className="notice" role="status" aria-live="polite">{msg}</div>}
     </aside>
     <section className="builderMain">
@@ -176,7 +184,7 @@ export default function Edit() {
           {site.pages.filter(page => page !== 'Home').map(page => <div className="field" key={page}><label htmlFor={`section-${page}`}>{page} wording</label><textarea id={`section-${page}`} value={site.sections?.[page] || ''} onChange={event => update({ sections: { ...site.sections, [page]: event.target.value } })} /></div>)}
           <h3>Media</h3>
           <Media site={site} update={update} />
-          <button className="btn" type="button" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save & Republish'}</button>
+          <button className="btn" type="button" onClick={save} disabled={saving}>{saving ? 'Saving…' : saveLabel}</button>
         </div>
         <div className="previewSticky" aria-label="Updated website preview"><SitePreview site={site} /></div>
       </div>
