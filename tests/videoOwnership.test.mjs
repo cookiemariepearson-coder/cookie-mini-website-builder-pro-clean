@@ -85,10 +85,12 @@ test('video endpoints enforce server ownership and never disclose provider media
   assert.match(jobs, /filterAuthorizedVideoJobs/);
   assert.match(jobs, /customer_email/);
   assert.match(jobs, /video_available: Boolean\(video_url\)/);
+  assert.match(jobs, /private, no-store, max-age=0/);
   assert.match(status, /select=id,website_slug,heygen_session_id,heygen_video_id/);
   assert.doesNotMatch(status, /String\(body\.videoId/);
   assert.match(media, /videoJobBelongsToAccess/);
   assert.match(media, /X-Content-Type-Options/);
+  assert.match(media, /private, no-store, max-age=0/);
   assert.doesNotMatch(results, /Copy Video Link/);
   assert.match(results, /\/api\/heygen\/media\?jobId=/);
   assert.doesNotMatch(results, /Gumroad AI Video license key|Verify Gumroad Purchase|Verify Website Plan/);
