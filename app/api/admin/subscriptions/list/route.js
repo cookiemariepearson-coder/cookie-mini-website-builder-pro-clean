@@ -29,6 +29,7 @@ function websiteSummary(row = {}) {
     gumroad_product_name: row.gumroad_product_name || null,
     gumroad_last_event: row.gumroad_last_event || null,
     gumroad_last_event_at: row.gumroad_last_event_at || null,
+    customer_deleted_at: row.customer_deleted_at || null,
     admin_notes: row.admin_notes || '',
     updated_at: row.updated_at
   };
@@ -39,7 +40,7 @@ export async function POST(request) {
     const admin = await getVerifiedAdmin(request);
     if (!admin.ok) return privateResponse({ ok: false, error: admin.error }, admin.status);
     const supabase = getSupabaseAdmin();
-    const websiteFields = 'id,slug,business_name,customer_email,plan,status,access_status,subscription_status,subscription_started_at,subscription_next_renewal_at,subscription_end_at,extra_page_subscription_status,extra_page_subscription_end_at,extra_pages,monthly_price,gumroad_product_name,gumroad_last_event,gumroad_last_event_at,admin_notes,updated_at';
+    const websiteFields = 'id,slug,business_name,customer_email,plan,status,access_status,subscription_status,subscription_started_at,subscription_next_renewal_at,subscription_end_at,extra_page_subscription_status,extra_page_subscription_end_at,extra_pages,monthly_price,gumroad_product_name,gumroad_last_event,gumroad_last_event_at,customer_deleted_at,admin_notes,updated_at';
     const eventFields = 'id,event_key,provider_event_id,resource_name,event_category,email,sale_id,subscription_id,product_name,matched_slug,matched_plan,action_taken,provider_event_at,received_at,processed_at,processing_status,review_status,review_reason,safe_action,internal_note,last_reconciled_at,reconciliation_source';
     const [{ data: websites, error: websiteError }, { data: events, error: eventError }] = await Promise.all([
       supabase.from('websites').select(websiteFields).order('updated_at', { ascending: false }).limit(200),

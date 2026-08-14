@@ -183,6 +183,16 @@ test('an archived site is never silently republished by a provider transition', 
   }, { product, payload, receivedAt: '2026-08-20T00:00:01Z' });
   assert.equal(updates.status, 'archived');
   assert.equal(updates.access_status, 'archived');
+  const deleted = transitionWebsiteUpdates({ ...baseWebsite, status: 'deleted', customer_deleted_at: '2026-08-14T15:00:00Z' }, {
+    apply: true,
+    state: SUBSCRIPTION_STATES.RESTARTED,
+    active: true,
+    review: false,
+    eventAt: '2026-08-20T00:00:00Z'
+  }, { product, payload, receivedAt: '2026-08-20T00:00:01Z' });
+  assert.equal(deleted.status, 'deleted');
+  assert.equal(deleted.access_status, 'active');
+  assert.equal(websitePlanAccess({ ...baseWebsite, status: 'deleted' }).active, true);
 });
 
 test('extra-page access requires exact add-on identity plus active eligible base access', () => {

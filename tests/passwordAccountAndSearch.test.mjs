@@ -92,11 +92,12 @@ test('customer website search derives identity from the verified server session 
   assert.match(session, /private, no-store, max-age=0/g);
 });
 
-test('My Websites searches owned names, slugs, plans and statuses without an email field', async () => {
+test('My Websites searches owned website names and slugs without identity or entitlement fields', async () => {
   const page = await source('app/customer/page.js');
-  assert.match(page, /Search my websites/);
-  assert.match(page, /matchesWords\(site\.plan\)/);
-  assert.match(page, /matchesWords\(status\)/);
+  assert.match(page, /Search websites/);
+  assert.match(page, /matchesWords\(site\.slug\)/);
+  assert.match(page, /matchesWords\(site\.business_name\)/);
+  assert.doesNotMatch(page, /matchesWords\(site\.plan\)/);
   assert.doesNotMatch(page, /id="customer-auth-email"/);
 });
 

@@ -110,23 +110,26 @@ test('a safely verified legacy owner can receive owner_id during guest transfer'
   assert.doesNotMatch(claim, /eq\('id', existing\.id\)\.eq\('owner_id', owner\.user\.id\)/);
 });
 
-test('My Websites is owner-scoped and grouped by customer task', async () => {
+test('My Websites is owner-scoped and grouped into simple publication states', async () => {
   const [customer, search] = await Promise.all([
     source('app/customer/page.js'),
     source('app/api/site/search/route.js')
   ]);
   assert.match(customer, /<h1>My Websites<\/h1>/);
-  for (const heading of ['Drafts', 'Published Websites', 'Purchases or Plans', 'Archived Websites']) assert.match(customer, new RegExp(heading));
+  for (const heading of ['Published', 'Unpublished']) assert.match(customer, new RegExp(`>${heading}<`));
+  assert.doesNotMatch(customer, /Purchases or Plans|Archived Websites/);
   assert.match(search, /\.eq\('owner_id', owner\.user\.id\)/);
   assert.match(search, /\.is\('owner_id', null\)\.eq\('customer_email', email\)/);
 });
 
-test('archive and delete controls recheck owner and protect purchased or published sites', async () => {
+test('unpublish and recoverable delete recheck ownership and preserve protected records', async () => {
   const manage = await source('app/api/site/manage/route.js');
   assert.match(manage, /getVerifiedSiteOwner/);
   assert.match(manage, /siteBelongsToOwner/);
-  assert.match(manage, /Only an unpublished free draft can be deleted here/);
-  assert.match(manage, /website_checkout_intents/);
+  assert.match(manage, /websiteDeletionConfirmationMatches/);
+  assert.match(manage, /deletedWebsiteUpdate/);
+  assert.match(manage, /unpublishedWebsiteUpdate/);
+  assert.doesNotMatch(manage, /from\('websites'\)\.delete\(/);
 });
 
 test('Account provides export, local clearing, privacy, support, and confirmed deletion request', async () => {

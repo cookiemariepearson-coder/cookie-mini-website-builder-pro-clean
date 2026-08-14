@@ -150,7 +150,7 @@ export default function Admin() {
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
-    const base = tab === 'archived' ? sites.filter((s) => s.status === 'archived') : sites.filter((s) => s.status !== 'archived');
+    const base = tab === 'archived' ? sites.filter((s) => ['archived', 'deleted'].includes(s.status)) : sites.filter((s) => !['archived', 'deleted'].includes(s.status));
     if (!q) return base;
     return base.filter((s) =>
       [s.slug, s.business_name, s.customer_email, s.plan, s.status, s.admin_notes]
@@ -161,11 +161,11 @@ export default function Admin() {
   }, [sites, search, tab]);
 
   const stats = useMemo(() => {
-    const activeSites = sites.filter((s) => s.status !== 'archived');
+    const activeSites = sites.filter((s) => !['archived', 'deleted'].includes(s.status));
     const published = activeSites.filter((s) => (s.status || 'published') === 'published');
     const paused = activeSites.filter((s) => s.status === 'paused');
     const free = activeSites.filter((s) => (s.plan || 'free') === 'free');
-    const archived = sites.filter((s) => s.status === 'archived');
+    const archived = sites.filter((s) => ['archived', 'deleted'].includes(s.status));
     const mrr = published.reduce((sum, s) => {
       const plan = s.plan || 'free';
       const base = Number(s.monthly_price ?? planPrices[plan] ?? 0);
