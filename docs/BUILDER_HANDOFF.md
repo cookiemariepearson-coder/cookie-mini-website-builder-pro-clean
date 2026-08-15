@@ -101,7 +101,7 @@ Preview was intentionally omitted because the existing builder restore path star
 
 Implementation changed `app/customer/page.js`, `components/BrowserDraftDialog.js`, `lib/browserDraftBackups.mjs`, `app/builder/page.js`, `app/checkout/success/page.js`, and `app/globals.css`; `tests/browserDraftBackups.test.mjs` supplies the 38-case isolated matrix. No dependency, lockfile, environment, migration, RLS, API route, provider setting, price, domain, or secret file changed.
 
-The owner subsequently completed the required non-destructive production confirmation in the normal browser profile containing the real backups. The Browser Draft Backups total and first six cards appeared; saved date/time and available template labels were visible; the Rename Draft, Delete Draft, Delete Selected, and Delete All Browser Drafts confirmation surfaces were opened and canceled; and no real draft was renamed, continued, overwritten, or deleted. This confirmation is **PASSED** and must not be repeated unless a verified regression is reported.
+The owner subsequently completed the required production confirmation in the normal browser profile containing the real backups. The Browser Draft Backups total and first six cards appeared; saved date/time and available template labels were visible; and the Rename Draft, Delete Draft, Delete Selected, and Delete All Browser Drafts management surfaces worked. The owner intentionally deleted exactly one browser-only backup, and the displayed total immediately changed from 29 to 28. Server-saved and published websites were unchanged. No further browser-draft verification remains. This confirmation is **PASSED** and must not be repeated unless a verified regression is reported.
 
 ## Final production-readiness decision
 
