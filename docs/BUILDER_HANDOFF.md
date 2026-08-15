@@ -14,14 +14,15 @@ This document is the consolidated handoff for the completed owner-authentication
 - Completed AI Video account-routing PR: `#28` — Require customer accounts for AI Video
 - Completed My Websites PR: `#30` — Simplify My Websites management
 - Completed browser-draft management PR: `#32` — Simplify browser draft backup management
+- Completed final production-readiness PR: `#34` — Finalize production readiness handoff
 - Starting production commit: `440e72683ec6708fff7b63887379837380736681`
 - Launch-security production commit: `a23d34493fed112541b62628ea98a8299e9b9374`
 - AI Video usability production commit: `fbf592986b18c1cabd8c9c9e65d08b053102b002`
-- Current production application commit: `cf8d347f04a6ceb3478722322c7283272dce4a1e`
-- Current production source-of-truth commit before this final documentation handoff: `3ce027d3644528a3d73e0d2ef5f672a595fe1aa4`
+- Browser-draft implementation commit: `cf8d347f04a6ceb3478722322c7283272dce4a1e`
+- Current production source-of-truth commit: `fb9dbc7a45841166aba687189260aaf88825d37f`
 - Vercel production deployment state: `READY`
-- Vercel production deployment: `dpl_9BYYauV9jTFgntZVZVtSdLrwZ4Wd`
-- Verified live build fingerprint: `3ce027d36445`
+- Vercel production deployment: `dpl_AdyFgjAiypycLHVcM7dPWhYMgqPh`
+- Verified live build fingerprint: `fb9dbc7a4584`
 - Existing GitHub repository, Vercel project, Supabase project, production domains, Gumroad products, and provider connections were preserved. No duplicate project, repository, OAuth application, or production connection was created.
 
 ## Formal phase status
@@ -101,13 +102,13 @@ Preview was intentionally omitted because the existing builder restore path star
 
 Implementation changed `app/customer/page.js`, `components/BrowserDraftDialog.js`, `lib/browserDraftBackups.mjs`, `app/builder/page.js`, `app/checkout/success/page.js`, and `app/globals.css`; `tests/browserDraftBackups.test.mjs` supplies the 38-case isolated matrix. No dependency, lockfile, environment, migration, RLS, API route, provider setting, price, domain, or secret file changed.
 
-The owner subsequently completed the required production confirmation in the normal browser profile containing the real backups. The Browser Draft Backups total and first six cards appeared; saved date/time and available template labels were visible; and the Rename Draft, Delete Draft, Delete Selected, and Delete All Browser Drafts management surfaces worked. The owner intentionally deleted exactly one browser-only backup, and the displayed total immediately changed from 29 to 28. Server-saved and published websites were unchanged. No further browser-draft verification remains. This confirmation is **PASSED** and must not be repeated unless a verified regression is reported.
+The owner subsequently completed production verification in the normal browser profile containing the real backups. The Browser Draft Backups total and first six cards appeared with the expected saved information and management controls. The owner deliberately deleted exactly one selected browser backup; the displayed total changed from 29 to 28, no duplicate delete occurred, and no website, account, subscription, purchase, entitlement, Gumroad record, domain, or AI Video was affected. This confirmation is **PASSED** and must not be repeated unless a verified regression is reported.
 
 ## Final production-readiness decision
 
 - **Builder-owned implementation and technical launch readiness: PASSED.** The protected account, checkout, subscription, website, AI Video, browser-draft, security, accessibility/mobile, SEO, backup-tooling, and recovery-documentation scopes are implemented and regression-tested.
 - **Current production deployment health: PASSED.** The existing production project is `READY`, its aliases have no error, the public homepage and protected customer/owner/AI Video surfaces respond from the expected live fingerprint, signed-out protected video access fails with `401` and `private, no-store`, and no runtime-error group or error/fatal production log appeared in the final one-hour verification window.
-- **Customer-data preservation: PASSED.** Final verification was read-only. No customer, website, browser draft, purchase, subscription, Gumroad event, domain, AI Video, entitlement, provider connection, or production secret was created, changed, reconciled, consumed, exposed, or deleted.
+- **Customer-data preservation: PASSED.** Builder-owned final verification was read-only. The only owner-initiated change was the one explicitly selected browser-local backup deletion described above; it did not affect server-held customer data or any other browser backup. No customer, website, purchase, subscription, Gumroad event, domain, AI Video, entitlement, provider connection, or production secret was created, changed, reconciled, consumed, exposed, or deleted by the Builder readiness work.
 - **Recovery implementation: PASSED; first operational recovery proof: BLOCKED BY OWNER-CONTROLLED INPUTS.** The encrypted backup and guarded isolated-restore tooling is complete, but the first real backup cannot be created without a private off-repository destination and owner-held `age` recovery identity, and the first restore drill cannot be run without an approved isolated Supabase test project.
 - **Safe launch decision:** the application is technically ready for a controlled soft launch. Do not treat disaster recovery as operationally proven until the two owner-controlled recovery actions below are completed.
 
@@ -142,6 +143,7 @@ The migration was recorded once in production history. The trigger remained enab
 - Redirected retired public owner/test checklist pages to protected `/admin` access.
 - Clarified privacy, support, AI Video, and subscription language. Paid entitlement corrections continue to require exact authoritative provider evidence and protected reconciliation.
 - Updated the vulnerable transitive `nanoid` override to patched `3.3.18`; the final dependency audit reports zero vulnerabilities.
+- Removed two unused root-level upload artifacts whose extensions did not match their contents: `CookieAiAssistant.js` contained obsolete CSS, while `cookie-ai-assistant.css` contained an obsolete layout component. Neither had imports or runtime callers; the active `components/CookieAiAssistant.js`, `app/layout.js`, and `app/cookie-ai-assistant.css` remain unchanged.
 
 ### AI Video security and billing preservation
 
@@ -248,7 +250,7 @@ Pre/post-migration aggregate counts matched for Auth users, Arcade provisioning 
 
 For the My Websites migration, both new columns were verified present, the existing `websites` RLS setting remained enabled, and every pre-existing website row retained null unpublish/Trash markers. Preview and production verification used only signed-out requests, so no customer website was unpublished, deleted, recovered, republished, or otherwise changed. No customer account, plan, purchase, subscription, payment history, custom domain, other website, AI Video, entitlement, or provider connection was modified.
 
-Browser-draft development and destructive test coverage used isolated in-memory JSON fixtures only. Preview and production verification did not inject, rename, delete, duplicate, preview, Continue, or otherwise change a real browser backup. The owner's existing browser collection was not read by the cloud verification browser. No server request was added for browser-backup management, and no Supabase aggregate or row required a change. Published and unpublished websites, recoverable Trash, customer and owner accounts, sessions, subscriptions, entitlements, purchases, payment history, Gumroad data, domains, AI Video plans/jobs/credits/results/media, other local-storage namespaces, and all completed production work were preserved.
+Browser-draft development and destructive automated coverage used isolated in-memory JSON fixtures only. Preview and Builder-operated production verification did not inject, rename, delete, duplicate, preview, Continue, or otherwise change a real browser backup, and the cloud verification browser never read the owner's collection. Separately, the owner deliberately deleted one selected browser backup during the completed owner check; only that local entry changed and the total moved from 29 to 28. No server request was added for browser-backup management, and no Supabase aggregate or row required a change. Published and unpublished websites, recoverable Trash, customer and owner accounts, sessions, subscriptions, entitlements, purchases, payment history, Gumroad data, domains, AI Video plans/jobs/credits/results/media, every other browser backup, other local-storage namespaces, and all completed production work were preserved.
 
 No customer account, website, purchase, subscription, Gumroad event, request, checkout, Arcade record, or AI Video record was deleted, reconciled, reassigned, or exposed. Historical unresolved events were preserved. The older preserved workspace was not operated on.
 
@@ -264,12 +266,13 @@ Approved prices and product boundaries remained unchanged: Business `$30/month`,
 - Supabase TypeScript generation: **passed** against the current production schema during the final readiness pass.
 - Next.js production build and TypeScript: **passed**.
 - Production build output: **57 pages**.
-- Dependency graph and lockfile: **unchanged**; the prior same-lockfile dependency audit reported **0 vulnerabilities**. The final registry-backed audit attempt was blocked by the verification environment's network policy, so no unsupported fresh audit result is claimed.
+- Dependency graph and lockfile: **unchanged**; a fresh registry-backed production dependency audit passed with **0 vulnerabilities**.
 - Shell and JavaScript validation: **passed**.
 - Secret, forbidden-artifact, diff, and plaintext-backup scans: **passed**.
 - React client-quality review: no new structural, focus, rendering, state, or fetch-waterfall blocker.
 - Vercel preview and production browser checks: **passed** for the non-destructive signed-out surface, headers, existing domains, responsive width, 44-pixel primary control, and application-origin console state. The separate owner-controlled browser-backup confirmation is now also **PASSED**.
 - Final readiness recheck: **passed** for the public homepage, `/customer`, `/video-studio`, `/admin/subscriptions`, protected AI Video jobs denial, live fingerprint, production alias state, build-error review, current one-hour runtime-error review, and error/fatal production logs.
+- Repository hygiene: **passed** after removing the two unreferenced root upload artifacts with mismatched file types; the active Cookie AI implementation and layout were not changed.
 
 Regression coverage preserved owner password access/lock, customer creation/sign-in/sign-out/reset, paid checkout/activation, subscription lifecycle and unmatched events, approved DFY/Gumroad products, contact/support storage, protected AI Video, and prior mobile/accessibility protections. JavaScript syntax, diff whitespace, secret-pattern, and forbidden client-ownership-source checks passed. React review found no new render, effect, focus, state, or request-waterfall blocker.
 
@@ -284,7 +287,7 @@ Production verification confirmed:
 - production `/customer` served `200` with the deployed fingerprint, retained `noindex`, rendered the correct signed-out **My Websites** shell, had no horizontal overflow at the verified desktop viewport, and exposed a 44-pixel **Sign In to My Websites** control;
 - the preview and production browser sessions recorded no application-origin console errors; the only console entry came from the cloud-browser extension and was excluded from the application result;
 - grouped `/customer` runtime errors and deployment-scoped error/fatal logs were empty after verification;
-- no authenticated or destructive browser-draft action was performed against production, so no owner backup or server record changed during verification;
+- Builder-operated browser-draft verification remained signed out and non-destructive, while the separate completed owner check deliberately removed exactly one selected local backup and left every other backup and all server records unchanged;
 - the production deployment was `READY`, used the existing wildcard and primary domains without alias errors, completed its 57-page build without errors, and produced no application error/fatal runtime logs during verification;
 - the updated homepage, pricing, policy, and customer-guide routes rendered, with the top navigation and all two homepage, two pricing, and Builder AI Video purchase links using the unified studio route;
 - corrected product prices and account-required AI Video entitlement copy appeared;
@@ -301,7 +304,10 @@ Production verification confirmed:
 - the production alias and bare-domain redirect remained correct, while the existing preview and production projects/domains were reused;
 - the deployed AI Video routes produced no grouped runtime errors and no error/fatal runtime logs during verification;
 - the existing public domains remained assigned without alias errors; and
-- the final deployment had no build errors, application runtime error/fatal logs, or application-origin browser-console errors.
+- the browser-draft implementation deployment had no build errors, application runtime error/fatal logs, or application-origin browser-console errors;
+- final readiness PR `#34` was merged after its successful Vercel preview check; production deployment `dpl_AdyFgjAiypycLHVcM7dPWhYMgqPh` reached `READY` at commit `fb9dbc7a45841166aba687189260aaf88825d37f`, retained all existing aliases without error, and served fingerprint `fb9dbc7a4584`;
+- the final live route pass returned `200` for the homepage, My Websites, AI Video Studio, and the signed-out owner surface, while signed-out AI Video jobs returned `401` with `Cache-Control: private, no-store, max-age=0`; and
+- the final one-hour Vercel error-group query and deployment-scoped error/fatal log query were empty, and the final cloud-browser passes found no application-origin console error or horizontal overflow.
 
 ## Supabase advisor comparison and unresolved technical items
 
@@ -314,13 +320,12 @@ Still open or informational:
 
 - leaked-password protection remains disabled on the Free plan;
 - informational RLS-with-no-policy notices remain on intentionally server-only tables;
-- the performance advisor still reports one unindexed foreign key and existing unused-index notices;
+- the performance advisor still reports one unindexed foreign key, existing unused-index notices, and one duplicate website-owner index notice; these are not customer-isolation or data-loss failures and were not changed without the first recovery proof;
 - the new partial Trash index is reported as unused immediately after creation, which is expected before any customer website enters Trash;
 - the first encrypted production backup has not been created;
 - the first isolated restore drill has not been run;
 - browser-only backups remain vulnerable to local site-data clearing, private-session disposal, storage pressure, and browser eviction and are not recoverable from Supabase backups;
 - read-only Preview and collision-proof Duplicate remain intentionally unavailable until a future versioned storage design can guarantee those properties without migrating or risking legacy backups;
-- a fresh online dependency audit could not reach the package registry in the verification environment; the lockfile/dependency graph did not change and the prior same-lockfile audit remains zero vulnerabilities;
 - qualified legal review remains outside the Builder-owned technical verification; and
 - the first post-launch monitoring pass was completed during this final readiness review, while the recurring monitoring schedule should begin after the first encrypted backup is safely stored.
 
