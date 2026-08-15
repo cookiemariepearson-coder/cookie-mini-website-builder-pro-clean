@@ -15,14 +15,16 @@ This document is the consolidated handoff for the completed owner-authentication
 - Completed My Websites PR: `#30` — Simplify My Websites management
 - Completed browser-draft management PR: `#32` — Simplify browser draft backup management
 - Completed final production-readiness PR: `#34` — Finalize production readiness handoff
+- Completed browser-draft owner-result correction PR: `#35` — Correct browser draft owner verification
+- Completed final production-readiness cleanup PR: `#36` — Complete final production readiness cleanup
 - Starting production commit: `440e72683ec6708fff7b63887379837380736681`
 - Launch-security production commit: `a23d34493fed112541b62628ea98a8299e9b9374`
 - AI Video usability production commit: `fbf592986b18c1cabd8c9c9e65d08b053102b002`
 - Browser-draft implementation commit: `cf8d347f04a6ceb3478722322c7283272dce4a1e`
-- Current production source-of-truth commit: `fb9dbc7a45841166aba687189260aaf88825d37f`
+- Final verified application/cleanup commit: `7ed3ea944cd190be65bef0761d8106bdbbbeb5e2`
 - Vercel production deployment state: `READY`
-- Vercel production deployment: `dpl_AdyFgjAiypycLHVcM7dPWhYMgqPh`
-- Verified live build fingerprint: `fb9dbc7a4584`
+- Verified application deployment: `dpl_7o2FcgNDwRs8cvQYimfYiyrTde7c`
+- Verified live application fingerprint: `7ed3ea944cd1`
 - Existing GitHub repository, Vercel project, Supabase project, production domains, Gumroad products, and provider connections were preserved. No duplicate project, repository, OAuth application, or production connection was created.
 
 ## Formal phase status
@@ -307,7 +309,11 @@ Production verification confirmed:
 - the browser-draft implementation deployment had no build errors, application runtime error/fatal logs, or application-origin browser-console errors;
 - final readiness PR `#34` was merged after its successful Vercel preview check; production deployment `dpl_AdyFgjAiypycLHVcM7dPWhYMgqPh` reached `READY` at commit `fb9dbc7a45841166aba687189260aaf88825d37f`, retained all existing aliases without error, and served fingerprint `fb9dbc7a4584`;
 - the final live route pass returned `200` for the homepage, My Websites, AI Video Studio, and the signed-out owner surface, while signed-out AI Video jobs returned `401` with `Cache-Control: private, no-store, max-age=0`; and
-- the final one-hour Vercel error-group query and deployment-scoped error/fatal log query were empty, and the final cloud-browser passes found no application-origin console error or horizontal overflow.
+- the final one-hour Vercel error-group query and deployment-scoped error/fatal log query were empty, and the final cloud-browser passes found no application-origin console error or horizontal overflow;
+- final cleanup PR `#36` was rebased over the owner-result correction, had exactly four expected changed files, a successful Vercel check, a `READY` preview, no review threads or requested changes, and was squash-merged;
+- application deployment `dpl_7o2FcgNDwRs8cvQYimfYiyrTde7c` reached `READY` at commit `7ed3ea944cd190be65bef0761d8106bdbbbeb5e2`, retained the wildcard, apex, `www`, and existing Vercel aliases without error, and served fingerprint `7ed3ea944cd1`;
+- the post-merge live route pass returned `200` for the homepage, My Websites, AI Video Studio, and the signed-out owner surface; protected AI Video jobs returned `401` with `Cache-Control: private, no-store, max-age=0`; and
+- the post-merge error-only build log was clean, the one-hour grouped runtime-error query was empty, and the deployment-scoped error/fatal log query returned no entries.
 
 ## Supabase advisor comparison and unresolved technical items
 
