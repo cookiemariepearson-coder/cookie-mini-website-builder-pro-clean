@@ -1,6 +1,6 @@
 # Cookie Mini Website Builder Pro — Launch Completion Checklist
 
-Last updated: August 13, 2026
+Last updated: August 14, 2026
 
 This checklist distinguishes automated verification from real owner production testing. A phase is marked complete only when its required customer journey has the appropriate production evidence.
 
@@ -75,8 +75,14 @@ Do not substitute the Business or Premium monthly website subscriptions, the mon
 - [x] Cookie AI Assistant accuracy, prompt-boundary, privacy-copy, and safe-response validation completed.
 - [x] Final automated mobile/accessibility sweep completed, including Cookie AI keyboard, focus, dialog, touch-target, and dynamic-viewport protections. Production route checks are recorded in the deployment report.
 - [x] SEO/discoverability metadata, structured data, sitemap, policy consistency, launch-security documentation, and soft-launch technical review completed.
+- [x] Browser Draft Backups owner production confirmation completed without renaming, continuing, overwriting, or deleting a real backup.
+- [x] Final Builder-owned readiness pass completed: 330/330 tests, 56/56 protected AI Video tests, production schema type generation, 57-route build, syntax/security scans, live route/header/fingerprint checks, deployment/build review, and current runtime-error review passed.
+- [x] Builder-owned technical readiness approved for a controlled soft launch; final verification was read-only and preserved customer and provider data.
 - [ ] Obtain qualified legal review before a broad public launch; the completed repository review is technical and is not legal advice.
-- [ ] Begin the documented soft-launch monitoring routine after the owner stores the first encrypted backup off-repository.
+- [x] Initial production monitoring pass completed during final readiness review.
+- [ ] Owner-controlled recovery proof: create the first encrypted off-repository backup and verify its checksum using the privately held recovery identity.
+- [ ] Owner-controlled recovery proof: approve an isolated non-production Supabase project and complete the guarded restore drill.
+- [ ] Begin the recurring documented soft-launch monitoring routine after the first encrypted backup is safely stored.
 
 ## Launch evidence rule
 

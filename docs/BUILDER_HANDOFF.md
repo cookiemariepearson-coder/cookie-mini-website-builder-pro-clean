@@ -18,9 +18,10 @@ This document is the consolidated handoff for the completed owner-authentication
 - Launch-security production commit: `a23d34493fed112541b62628ea98a8299e9b9374`
 - AI Video usability production commit: `fbf592986b18c1cabd8c9c9e65d08b053102b002`
 - Current production application commit: `cf8d347f04a6ceb3478722322c7283272dce4a1e`
+- Current production source-of-truth commit before this final documentation handoff: `3ce027d3644528a3d73e0d2ef5f672a595fe1aa4`
 - Vercel production deployment state: `READY`
-- Vercel production deployment: `dpl_8ffbrj2YG931w43AsJwLM9rmBWxr`
-- Verified application build fingerprint: `cf8d347f04a6`
+- Vercel production deployment: `dpl_9BYYauV9jTFgntZVZVtSdLrwZ4Wd`
+- Verified live build fingerprint: `3ce027d36445`
 - Existing GitHub repository, Vercel project, Supabase project, production domains, Gumroad products, and provider connections were preserved. No duplicate project, repository, OAuth application, or production connection was created.
 
 ## Formal phase status
@@ -99,6 +100,16 @@ Legacy slug-keyed objects without `browserDraftStorageKey` remain readable; Cont
 Preview was intentionally omitted because the existing builder restore path starts autosave and cannot guarantee a strictly read-only view. Duplicate was intentionally omitted because legacy identity is the slug-like object key and the current builder does not yet provide a collision-proof independent-copy lifecycle. No misleading control was shipped.
 
 Implementation changed `app/customer/page.js`, `components/BrowserDraftDialog.js`, `lib/browserDraftBackups.mjs`, `app/builder/page.js`, `app/checkout/success/page.js`, and `app/globals.css`; `tests/browserDraftBackups.test.mjs` supplies the 38-case isolated matrix. No dependency, lockfile, environment, migration, RLS, API route, provider setting, price, domain, or secret file changed.
+
+The owner subsequently completed the required non-destructive production confirmation in the normal browser profile containing the real backups. The Browser Draft Backups total and first six cards appeared; saved date/time and available template labels were visible; the Rename Draft, Delete Draft, Delete Selected, and Delete All Browser Drafts confirmation surfaces were opened and canceled; and no real draft was renamed, continued, overwritten, or deleted. This confirmation is **PASSED** and must not be repeated unless a verified regression is reported.
+
+## Final production-readiness decision
+
+- **Builder-owned implementation and technical launch readiness: PASSED.** The protected account, checkout, subscription, website, AI Video, browser-draft, security, accessibility/mobile, SEO, backup-tooling, and recovery-documentation scopes are implemented and regression-tested.
+- **Current production deployment health: PASSED.** The existing production project is `READY`, its aliases have no error, the public homepage and protected customer/owner/AI Video surfaces respond from the expected live fingerprint, signed-out protected video access fails with `401` and `private, no-store`, and no runtime-error group or error/fatal production log appeared in the final one-hour verification window.
+- **Customer-data preservation: PASSED.** Final verification was read-only. No customer, website, browser draft, purchase, subscription, Gumroad event, domain, AI Video, entitlement, provider connection, or production secret was created, changed, reconciled, consumed, exposed, or deleted.
+- **Recovery implementation: PASSED; first operational recovery proof: BLOCKED BY OWNER-CONTROLLED INPUTS.** The encrypted backup and guarded isolated-restore tooling is complete, but the first real backup cannot be created without a private off-repository destination and owner-held `age` recovery identity, and the first restore drill cannot be run without an approved isolated Supabase test project.
+- **Safe launch decision:** the application is technically ready for a controlled soft launch. Do not treat disaster recovery as operationally proven until the two owner-controlled recovery actions below are completed.
 
 ## Security results
 
@@ -250,14 +261,15 @@ Approved prices and product boundaries remained unchanged: Business `$30/month`,
 - Focused account-routing matrix: **20/20 passed**, covering every required signed-out, account-return, purchase, claim, result-recovery, duplicate-click, multi-entitlement, and cross-customer scenario.
 - Focused My Websites matrix: **20/20 passed**, covering no/one/multiple website states; Published/Unpublished sections; edit/view routing; unpublish, cancel, and republish; recoverable delete, cancel, incorrect confirmation, and duplicate protection; signed-out and cross-customer denial; billing/account/other-website/AI-Video preservation; and mobile, keyboard, focus, screen-reader, and accessible-error behavior.
 - Focused browser-draft management matrix: **38/38 passed**, covering zero/one/large collections, exact counts and selection, correct Continue identity, rename validation and duplicate display names, individual/selected/all delete confirmation and cancellation, isolated deletion, immediate count/empty states, duplicate-click protection, all three sort orders, six-card progressive display, corrupt and legacy formats, deliberate Preview/Duplicate omission, server-data preservation, keyboard/screen-reader/focus behavior, and mobile/touch/reduced-motion behavior.
-- Supabase TypeScript generation: **not applicable to this browser-only phase**; the previously generated database types remain unchanged and passed their existing coverage.
+- Supabase TypeScript generation: **passed** against the current production schema during the final readiness pass.
 - Next.js production build and TypeScript: **passed**.
 - Production build output: **57 pages**.
-- Dependency graph and lockfile: **unchanged**; the prior same-lockfile dependency audit reported **0 vulnerabilities**. Fresh registry-backed audit attempts were blocked by the verification environment's network policy, so no new online audit result is claimed.
+- Dependency graph and lockfile: **unchanged**; the prior same-lockfile dependency audit reported **0 vulnerabilities**. The final registry-backed audit attempt was blocked by the verification environment's network policy, so no unsupported fresh audit result is claimed.
 - Shell and JavaScript validation: **passed**.
 - Secret, forbidden-artifact, diff, and plaintext-backup scans: **passed**.
 - React client-quality review: no new structural, focus, rendering, state, or fetch-waterfall blocker.
-- Vercel preview and production browser checks: **passed** for the non-destructive signed-out surface, headers, existing domains, responsive width, 44-pixel primary control, and application-origin console state. Authenticated browser-backup cards were not opened because the cloud browser does not hold the owner's session or local-storage collection; the bounded cancel-only visual confirmation remains below.
+- Vercel preview and production browser checks: **passed** for the non-destructive signed-out surface, headers, existing domains, responsive width, 44-pixel primary control, and application-origin console state. The separate owner-controlled browser-backup confirmation is now also **PASSED**.
+- Final readiness recheck: **passed** for the public homepage, `/customer`, `/video-studio`, `/admin/subscriptions`, protected AI Video jobs denial, live fingerprint, production alias state, build-error review, current one-hour runtime-error review, and error/fatal production logs.
 
 Regression coverage preserved owner password access/lock, customer creation/sign-in/sign-out/reset, paid checkout/activation, subscription lifecycle and unmatched events, approved DFY/Gumroad products, contact/support storage, protected AI Video, and prior mobile/accessibility protections. JavaScript syntax, diff whitespace, secret-pattern, and forbidden client-ownership-source checks passed. React review found no new render, effect, focus, state, or request-waterfall blocker.
 
@@ -309,19 +321,18 @@ Still open or informational:
 - browser-only backups remain vulnerable to local site-data clearing, private-session disposal, storage pressure, and browser eviction and are not recoverable from Supabase backups;
 - read-only Preview and collision-proof Duplicate remain intentionally unavailable until a future versioned storage design can guarantee those properties without migrating or risking legacy backups;
 - a fresh online dependency audit could not reach the package registry in the verification environment; the lockfile/dependency graph did not change and the prior same-lockfile audit remains zero vulnerabilities;
-- qualified legal review has not been completed; and
-- the documented soft-launch monitoring routine should begin after the first encrypted backup is safely stored.
+- qualified legal review remains outside the Builder-owned technical verification; and
+- the first post-launch monitoring pass was completed during this final readiness review, while the recurring monitoring schedule should begin after the first encrypted backup is safely stored.
 
 No unrelated index, RLS, data-reconciliation, provider-configuration, OAuth, DNS, or secret-rotation change was made merely to clear an advisor notice.
 
 ## Owner Action Required
 
-Only one release-specific visual confirmation remains. In the owner's normal browser—the browser profile that already holds the backups—sign in to `/customer` and confirm that **Browser Draft Backups** shows the expected total, the first six cards, saved date/time, and available template labels. Open one **Manage Draft** menu; open and cancel **Rename Draft** and **Delete Draft**. Enter **Select Drafts**, select test candidates only if desired, open and cancel **Delete Selected**, then cancel selection. Open **More draft options**, open and cancel **Delete All Browser Drafts**. Confirm Escape/cancel returns focus and no card, count, name, or saved time changes.
+Only these owner-controlled recovery actions remain:
 
-Do not confirm Rename, Delete Draft, Delete Selected Drafts, or Delete All Drafts on a real backup unless the owner later explicitly authorizes that exact destructive change. Do not use **Continue Draft** merely for this check because opening the Builder is unnecessary to verify the management surface. Report only a mismatch.
+1. On a trusted computer, create and privately retain the `age` recovery identity, choose a private encrypted backup destination outside the GitHub repository, set the documented backup variables without sharing their values, run the first encrypted production backup, and verify its checksum.
+2. Approve or provide an isolated Supabase test project that is not Mini Builder production and not Cookie Connect, then run the documented guarded restore drill using the owner-held identity and verify the restore checklist.
 
-The AI Video purchase-recovery/result confirmation and the My Websites Published/Unpublished plus Manage Website cancel confirmation are both **PASSED**. Remove them from future Owner Action Required lists and do not repeat either journey unless a verified regression is reported.
+Do not place the recovery identity, database password, service-role key, plaintext dump, encrypted archive, or provider secret in GitHub, this workspace, chat, or a public/shared location. Do not restore into production for this drill.
 
-The first encrypted backup/restore drill, any Supabase upgrade decision, legal review, and soft-launch monitoring remain separate operational items recorded above; they are not reasons to repeat a completed AI Video customer journey.
-
-Do not repeat the completed owner-login, account, purchase, subscription, Gumroad, DFY, AI Video, My Websites section, or Website management journeys unless a verified regression is reported.
+The browser-draft, AI Video purchase-recovery/result, My Websites management, owner-login, customer-account, subscription, Gumroad, DFY, and edit/republish confirmations are **PASSED**. Do not repeat them unless a verified regression is reported.
