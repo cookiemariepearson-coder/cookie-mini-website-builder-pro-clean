@@ -4,6 +4,7 @@ import { Children, cloneElement, isValidElement, useEffect, useId, useMemo, useR
 import SitePreview from '../../lib/SitePreview.js';
 import { createDefaultSite, templateLibrary, getTemplate, pageOptions, plans, slugify, sectionPrompts, normalizeSelectedPagesForPlan, planAllowsMedia, planAllowsAiVideo, planSectionLimit, customerActionLimit, customerActionTypes, normalizeCustomerActions } from '../../lib/siteDefaults';
 import { PENDING_CHECKOUT_STORAGE_KEY, createPendingCheckoutIntent, websiteCheckoutRoute } from '../../lib/commerceConfig.mjs';
+import { normalizeAuthoritativeWebsitePlan, planMatchesCheckoutAuthority, reconcileBuilderPlan } from '../../lib/builderPlanAuthority.mjs';
 import { useAccountModal } from '../../components/AccountModalProvider';
 
 const DRAFT_KEY = 'cookieDraftSite';
@@ -159,6 +160,8 @@ export default function Builder() {
   const [resumeCheckoutRequested, setResumeCheckoutRequested] = useState(false);
   const [checkoutBusyPlan, setCheckoutBusyPlan] = useState('');
   const [checkoutRetryPlan, setCheckoutRetryPlan] = useState('');
+  const [authoritativeCheckoutPlan, setAuthoritativeCheckoutPlan] = useState('');
+  const [builderReady, setBuilderReady] = useState(false);
   const [hasOwnerSession, setHasOwnerSession] = useState(false);
   const checkoutBusyRef = useRef(false);
   const tmpl = useMemo(() => getTemplate(site.typeKey, site.styleKey), [site.typeKey, site.styleKey]);
@@ -172,6 +175,7 @@ export default function Builder() {
       let checkoutIntentId = params.get('checkoutIntent') || '';
       let intentDraftSlug = '';
       const shouldResumeCheckout = params.get('resumeCheckout') === '1';
+      try {
       if (checkoutIntentId) {
         try {
           const token = ownerAccessToken();
@@ -184,6 +188,12 @@ export default function Builder() {
             return;
           }
           requestedCheckout = intent.plan;
+          const intentPlan = normalizeAuthoritativeWebsitePlan(intent.plan);
+          if (intent.plan !== 'extra' && !intentPlan) {
+            setMessage('Your selected website plan could not be confirmed. Return to Pricing and choose the plan again. Your draft is still safe.');
+            return;
+          }
+          setAuthoritativeCheckoutPlan(intentPlan);
           intentDraftSlug = intent.draftSlug || '';
           setPendingCheckoutIntent(intent.intentId);
           setResumeCheckoutRequested(shouldResumeCheckout);
@@ -205,6 +215,12 @@ export default function Builder() {
             return;
           }
           checkoutIntentId = intent.intentId;
+          const intentPlan = normalizeAuthoritativeWebsitePlan(intent.plan || requestedCheckout);
+          if (requestedCheckout !== 'extra' && !intentPlan) {
+            setMessage('Your selected website plan could not be confirmed. Return to Pricing and choose the plan again. Your draft is still safe.');
+            return;
+          }
+          setAuthoritativeCheckoutPlan(intentPlan);
           setPendingCheckoutIntent(intent.intentId);
           const nextParams = new URLSearchParams({ checkoutIntent: intent.intentId });
           if (draftFromUrl) nextParams.set('draft', draftFromUrl);
@@ -225,7 +241,7 @@ export default function Builder() {
           });
           const data = await res.json();
           if (data.ok && data.site) {
-            const merged = mergeDefaults({ ...data.site, ...(requestedPlan ? { plan: requestedPlan } : {}) });
+            const merged = mergeDefaults(reconcileBuilderPlan(data.site, requestedPlan).site);
             setSite(merged);
             localStorage.setItem(DRAFT_KEY, JSON.stringify(merged));
             localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftSlugFor(merged));
@@ -241,19 +257,22 @@ export default function Builder() {
       const saved = safeParse(localStorage.getItem(DRAFT_KEY));
       const savedStep = Number(localStorage.getItem(LAST_STEP_KEY || 0));
       if (saved) {
-        setSite(mergeDefaults({ ...saved, ...(requestedPlan ? { plan: requestedPlan } : {}) }));
+        setSite(mergeDefaults(reconcileBuilderPlan(saved, requestedPlan).site));
         localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftStorageKeyFor(saved));
         if (!Number.isNaN(savedStep)) setStep(Math.min(4, Math.max(0, savedStep)));
         setSaveMessage('Draft restored from this browser.');
       } else if (requestedPlan) {
-        setSite(current => mergeDefaults({ ...current, plan: requestedPlan }));
+        setSite(current => mergeDefaults(reconcileBuilderPlan(current, requestedPlan).site));
+      }
+      } finally {
+        setBuilderReady(true);
       }
     }
     restore();
   }, []);
 
   useEffect(() => {
-    if (!resumeCheckoutRequested || !pendingCheckout || !pendingCheckoutIntent || (pendingCheckout !== 'extra' && site.plan !== pendingCheckout) || !hasOwnerSession) return;
+    if (!builderReady || !resumeCheckoutRequested || !pendingCheckout || !pendingCheckoutIntent || (pendingCheckout !== 'extra' && !planMatchesCheckoutAuthority(site.plan, pendingCheckout)) || !hasOwnerSession) return;
     const intentId = pendingCheckoutIntent;
     setPendingCheckout('');
     setResumeCheckoutRequested(false);
@@ -262,7 +281,7 @@ export default function Builder() {
     else checkoutPlan(intentId);
     // checkoutPlan saves the verified owner's draft before opening checkout.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingCheckout, pendingCheckoutIntent, resumeCheckoutRequested, site.plan, hasOwnerSession]);
+  }, [builderReady, pendingCheckout, pendingCheckoutIntent, resumeCheckoutRequested, site.plan, hasOwnerSession]);
 
   useEffect(() => {
     function checkSize() {
@@ -287,6 +306,7 @@ export default function Builder() {
   }, []);
 
   useEffect(() => {
+    if (!builderReady) return;
     // Slower, lightweight autosave keeps the builder from freezing while typing or uploading images.
     const handle = setTimeout(() => {
       const localDraft = persistLocal('Draft auto-saved.', true);
@@ -294,7 +314,7 @@ export default function Builder() {
     }, 13000);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [site, step, hasOwnerSession]);
+  }, [builderReady, site, step, hasOwnerSession]);
 
   useEffect(() => {
     // No browser "Leave site?" popup. The builder already saves local drafts
@@ -306,6 +326,7 @@ export default function Builder() {
     setSite(current => ({
       ...current,
       ...patch,
+      ...(authoritativeCheckoutPlan ? { plan: authoritativeCheckoutPlan } : {}),
       sections: patch.sections ? { ...(current.sections || {}), ...(patch.sections || {}) } : current.sections,
       media: patch.media || current.media
     }));
@@ -484,7 +505,7 @@ export default function Builder() {
     localStorage.removeItem(GUEST_CLAIM_KEY);
     localStorage.removeItem(LAST_STEP_KEY);
     localStorage.removeItem(CURRENT_DRAFT_SLUG_KEY);
-    setSite(createDefaultSite());
+    setSite(reconcileBuilderPlan(createDefaultSite(), authoritativeCheckoutPlan).site);
     setStep(0);
     setMessage('Started a fresh website draft.');
     setSaveMessage('Fresh draft opened.');
@@ -570,6 +591,10 @@ export default function Builder() {
   }
 
   async function saveDraft() {
+    if (!planMatchesCheckoutAuthority(site.plan, authoritativeCheckoutPlan)) {
+      setMessage('Your selected plan could not be confirmed for this draft. Return to Pricing and choose the plan again before saving online.');
+      return;
+    }
     const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     setIsSaving(true);
     setSaveMessage('Saving draft...');
@@ -728,8 +753,12 @@ export default function Builder() {
 
   async function checkoutPlan(existingIntentId = '') {
     if (checkoutBusyRef.current) return;
+    if (!planMatchesCheckoutAuthority(site.plan, authoritativeCheckoutPlan)) {
+      setMessage('Your selected plan could not be confirmed for checkout. Return to Pricing and choose the plan again. Your draft is still safe.');
+      return;
+    }
     checkoutBusyRef.current = true;
-    const selectedPlan = site.plan;
+    const selectedPlan = authoritativeCheckoutPlan || site.plan;
     setCheckoutBusyPlan(selectedPlan);
     setCheckoutRetryPlan('');
     setMessage(`Opening your secure ${plans[selectedPlan]?.label || 'paid-plan'} checkout…`);
@@ -831,9 +860,9 @@ export default function Builder() {
           <span>Cookie Mini Website Builder Pro</span>
         </a>
         {['Choose Type & Look','Website Info','Design','Sections & Wording','Preview & Publish'].map((label, index) => (
-          <button className={`stepBtn ${step === index ? 'active' : ''}`} onClick={() => { persistLocal('Draft saved.'); setStep(index); }} key={label}>{index + 1}. {label}</button>
+          <button className={`stepBtn ${step === index ? 'active' : ''}`} disabled={!builderReady} onClick={() => { persistLocal('Draft saved.'); setStep(index); }} key={label}>{index + 1}. {label}</button>
         ))}
-        <button className="btn light" onClick={saveDraft} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Draft'}</button>
+        <button className="btn light" onClick={saveDraft} disabled={!builderReady || isSaving}>{isSaving ? 'Saving...' : 'Save Draft'}</button>
         {isSmallBuilderScreen && <button className="btn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button>}
         {planAllowsAiVideo(site.plan) ? <button className="btn light aiStudioBuilderBtn" onClick={goVideo}>AI Video Studio</button> : <button className="btn light lockedBtn aiStudioBuilderBtn" onClick={goVideo}>AI Video Upgrade</button>}
         <button className="btn light" type="button" onClick={() => hasOwnerSession ? window.location.assign('/customer') : openAccountModal({ mode: 'signin', destination: '/customer' })}>My Websites</button>
@@ -853,6 +882,12 @@ export default function Builder() {
       </aside>
 
       <section className="builderMain">
+        {!builderReady ? (
+          <div className="dashboard builderLoadingPanel" role="status" aria-live="polite">
+            <h2>Opening your website plan…</h2>
+            <p>We’re confirming your selected plan and draft before editing begins.</p>
+          </div>
+        ) : (
         <div className="row builderTwoCol">
           <div className="dashboard builderPanel">
             {!hasOwnerSession && (
@@ -919,7 +954,7 @@ export default function Builder() {
                 {site.typeKey === 'food' && <div className="notice"><strong>Food template image controls:</strong> The restaurant hero, menu promotion, and event promotion include original starter artwork. Starter Pro and higher customers can replace the hero here, then replace the Menu or Gallery promotion by uploading their own image to that section in Sections &amp; Wording.</div>}
                 {site.typeKey === 'beauty' && <div className="notice"><strong>Beauty template image controls:</strong> The salon hero, services promotion, and gallery promotion include original starter artwork. Starter Pro and higher customers can replace the hero here, then replace the Services or Gallery promotion by uploading their own image to that section in Sections &amp; Wording.</div>}
                 <p className="mutedText">Change the website type, template look, colors, layout, hero image, and media. Template changes apply immediately to the preview.</p>
-                <Field label="Plan"><select value={site.plan} onChange={e => {
+                <Field label="Plan"><select value={site.plan} disabled={Boolean(authoritativeCheckoutPlan)} aria-describedby={authoritativeCheckoutPlan ? 'checkout-plan-guidance' : undefined} onChange={e => {
                   const nextPlan = e.target.value;
                   if (nextPlan !== site.plan) {
                     setPendingCheckout('');
@@ -932,6 +967,7 @@ export default function Builder() {
                   update({ plan: nextPlan, pages: normalizeSelectedPagesForPlan(site.pages || ['Home'], nextPlan, site.extraPages || site.extra_pages), customerActions: normalizeCustomerActions(site.customerActions, nextPlan) });
                   setMessage(`Plan changed to ${plans[nextPlan]?.label}. Pick your own sections below instead of letting a template choose for you.`);
                 }}>{Object.entries(plans).map(([k, v]) => <option value={k} key={k}>{v.label} - {v.price}</option>)}</select></Field>
+                {authoritativeCheckoutPlan && <p className="mutedText" id="checkout-plan-guidance">Your {plans[authoritativeCheckoutPlan]?.label} plan is confirmed for this checkout and will stay with this draft.</p>}
                 <Field label="Website type"><select value={site.typeKey} onChange={e => chooseType(e.target.value)}>{templateLibrary.map(t => <option value={t.key} key={t.key}>{t.type}</option>)}</select></Field>
                 <h3>Template look</h3>
                 <StylePicker typeKey={site.typeKey} styleKey={site.styleKey} selectStyle={selectStyle} />
@@ -1065,6 +1101,7 @@ export default function Builder() {
             <SitePreview key={previewKey} site={previewSite} draftMode />
           </div>}
         </div>
+        )}
       </section>
       {isSmallBuilderScreen && isMobilePreviewOpen && <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(18,7,29,.72)', display: 'grid', placeItems: 'stretch', padding: 10 }}>
         <div style={{ background: '#fff8f1', borderRadius: 24, overflow: 'auto', boxShadow: '0 30px 90px rgba(0,0,0,.35)' }}>
