@@ -103,11 +103,13 @@ export async function POST(req) {
       const subscription = customerSubscriptionSummary(row);
       const verified = ['starter', 'business', 'premium'].includes(storedPlan) && subscription.active;
       return ({
+      id: row.id,
       slug: row.slug,
       business_name: row.business_name || siteFromRow(row).businessName || row.slug,
       plan: displayPlan,
       stored_plan: storedPlan,
       plan_access: displayPlan === 'free' ? 'free' : verified ? 'verified' : 'checkout_not_confirmed',
+      editor_kind: row.site?.typeKey && row.site?.styleKey ? 'builder' : 'legacy',
       status: row.status || siteFromRow(row).status || 'draft',
       access_status: row.access_status || 'active',
       subscription_status: row.subscription_status || 'unverified',

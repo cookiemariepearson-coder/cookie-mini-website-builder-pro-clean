@@ -29,9 +29,15 @@ export async function POST(req) {
     const site = body.site || body;
     const mediaCheck = validateSiteMedia(site);
     if (!mediaCheck.ok) return privateResponse({ ok: false, error: mediaCheck.error }, 400);
-    const slug = slugify(site.slug || site.businessName);
+    const requestedWebsiteId = String(site.websiteId || site.draftId || '').trim();
+    if (requestedWebsiteId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestedWebsiteId)) {
+      return privateResponse({ ok: false, error: 'Invalid website reference.' }, 400);
+    }
+    const requestedSlug = slugify(site.slug || site.businessName);
     const supabase = getSupabaseAdmin();
-    const { data: existing, error: lookupError } = await supabase.from('websites').select('*').eq('slug', slug).maybeSingle();
+    let lookup = supabase.from('websites').select('*');
+    lookup = requestedWebsiteId ? lookup.eq('id', requestedWebsiteId) : lookup.eq('slug', requestedSlug);
+    const { data: existing, error: lookupError } = await lookup.maybeSingle();
     if (lookupError) throw lookupError;
     if (existing && !siteBelongsToOwner(existing, owner)) {
       return privateResponse({ ok: false, error: 'That website address already belongs to a different verified email. Choose another business or website name.' }, 403);
@@ -40,6 +46,7 @@ export async function POST(req) {
       return privateResponse({ ok: false, error: 'This website is in recoverable Trash. Contact support to recover it before saving to the same address.' }, 409);
     }
 
+    const slug = existing?.slug || requestedSlug;
     const requestedPlan = normalizeWebsitePlan(site.plan) || 'free';
     const storedPlan = normalizeWebsitePlan(existing?.plan) || 'free';
     let authoritativePlan = storedPlan;
@@ -61,7 +68,7 @@ export async function POST(req) {
       authoritativePlan = requestedPlan;
     }
     const activeExtraPages = extraPageAccess(existing || {}).allowance;
-    const protectedSite = { ...site, slug, plan: authoritativePlan, customerEmail: owner.email, extraPages: activeExtraPages, status: 'draft' };
+    const protectedSite = { ...site, websiteId: existing?.id || requestedWebsiteId || null, draftId: existing?.id || requestedWebsiteId || null, slug, plan: authoritativePlan, customerEmail: owner.email, extraPages: activeExtraPages, status: 'draft' };
     const row = {
       slug,
       owner_id: owner.user.id,
@@ -74,10 +81,17 @@ export async function POST(req) {
       site: protectedSite,
       updated_at: new Date().toISOString()
     };
-    const { error } = await supabase.from('websites').upsert(row, { onConflict: 'slug' });
+    let write = existing
+      ? supabase.from('websites').update(row).eq('id', existing.id)
+      : supabase.from('websites').upsert(row, { onConflict: 'slug' });
+    if (existing) write = existing.owner_id
+      ? write.eq('owner_id', owner.user.id)
+      : write.is('owner_id', null).ilike('customer_email', owner.email);
+    const { data: saved, error } = await write.select('id,slug').maybeSingle();
     if (error) throw error;
+    if (!saved) return privateResponse({ ok: false, error: 'You do not have access to save this website.' }, 403);
     await sendAdminNotification({ subject: `Draft saved: ${row.business_name || slug}`, event: 'Website draft saved', slug, businessName: row.business_name, customerEmail: row.customer_email, details: `Plan: ${row.plan}` });
-    return privateResponse({ ok: true, slug, plan: authoritativePlan });
+    return privateResponse({ ok: true, id: saved.id, slug: saved.slug, plan: authoritativePlan });
   } catch (e) {
     console.error('[site-draft] save failed', { message: e?.message || String(e) });
     return privateResponse({ ok: false, error: friendlyError() }, 500);

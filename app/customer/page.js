@@ -533,7 +533,7 @@ export default function Customer() {
           {isUnavailable ? (
             <button className="btn dark" type="button" disabled aria-describedby={`website-${row.slug}-unavailable`}>Edit Website</button>
           ) : (
-            <a className="btn dark" href={`/builder?draft=${encodeURIComponent(row.slug)}`} onClick={() => rememberDashboardState(row.slug)}>Continue Editing</a>
+            <a className="btn dark" href={`/builder?website=${encodeURIComponent(row.id)}${row.editor_kind === 'legacy' ? '&convert=legacy' : ''}`} onClick={() => rememberDashboardState(row.slug)}>{row.editor_kind === 'legacy' ? 'Edit in Full Builder' : 'Continue Editing'}</a>
           )}
           {isPublished && <a className="btn light" href={liveUrl} target="_blank" rel="noreferrer">View Website</a>}
           <details className="websiteManageMenu">

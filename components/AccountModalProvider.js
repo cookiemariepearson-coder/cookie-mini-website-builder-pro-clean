@@ -15,6 +15,7 @@ function safeDestination(value = '') {
   if (/^\/customer\/edit\/[a-z0-9-]+$/.test(path)) return path;
   if (/^\/checkout\/continue\?intent=[0-9a-f-]+(?:&draft=[a-z0-9-]+)?$/i.test(path)) return path;
   if (/^\/builder\?(?:checkout|checkoutIntent)=/.test(path)) return path;
+  if (/^\/builder\?website=[0-9a-f-]{36}(?:&convert=legacy)?$/i.test(path)) return path;
   return '/customer';
 }
 

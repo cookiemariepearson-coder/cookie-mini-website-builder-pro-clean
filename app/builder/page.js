@@ -164,6 +164,7 @@ export default function Builder() {
   const [authoritativeCheckoutPlan, setAuthoritativeCheckoutPlan] = useState('');
   const [builderReady, setBuilderReady] = useState(false);
   const [hasOwnerSession, setHasOwnerSession] = useState(false);
+  const [paidPublishAllowed, setPaidPublishAllowed] = useState(false);
   const checkoutBusyRef = useRef(false);
   const tmpl = useMemo(() => getTemplate(site.typeKey, site.styleKey), [site.typeKey, site.styleKey]);
 
@@ -233,22 +234,34 @@ export default function Builder() {
       }
       const requestedPlan = requestedCheckout && requestedCheckout !== 'extra' ? requestedCheckout : '';
       if (requestedCheckout) setPendingCheckout(requestedCheckout);
+      const websiteId = String(params.get('website') || '').trim();
       const draftSlug = normalizeSlug(intentDraftSlug || params.get('draft') || params.get('slug') || '');
-      if (draftSlug && draftSlug !== 'my-website') {
+      if (websiteId || (draftSlug && draftSlug !== 'my-website')) {
         setSaveMessage('Opening saved draft...');
         try {
-          const res = await fetch(`/api/site/get?slug=${encodeURIComponent(draftSlug)}&owner=1`, {
+          const websiteReference = websiteId ? `id=${encodeURIComponent(websiteId)}` : `slug=${encodeURIComponent(draftSlug)}`;
+          const res = await fetch(`/api/site/get?${websiteReference}&owner=1`, {
             headers: ownerAuthHeaders()
           });
           const data = await res.json();
+          if (res.status === 401) {
+            const destination = `/builder?${websiteReference}${params.get('convert') === 'legacy' ? '&convert=legacy' : ''}`;
+            setMessage('Sign in to continue editing this website in the full Builder.');
+            openAccountModal({ mode: 'signin', destination });
+            return;
+          }
           if (data.ok && data.site) {
-            const merged = mergeDefaults(reconcileBuilderPlan(data.site, requestedPlan).site);
+            const restoredPayload = { ...data.site, checkoutState: data.checkoutState || 'free', checkoutIntent: data.checkoutIntent || null };
+            const merged = mergeDefaults(reconcileBuilderPlan(restoredPayload, requestedPlan).site);
             setSite(merged);
+            setPaidPublishAllowed(Boolean(data.publishAccess?.paid && data.publishAccess?.allowed));
             localStorage.setItem(DRAFT_KEY, JSON.stringify(merged));
             localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftSlugFor(merged));
             const restoredStep = Number(data.site.builderStep);
             setStep(Number.isInteger(restoredStep) ? Math.min(4, Math.max(0, restoredStep)) : 1);
-            setSaveMessage('Saved website/draft opened. Continue editing, then save or publish.');
+            setSaveMessage(params.get('convert') === 'legacy'
+              ? 'Opened in the full Builder. Compatible website content and the existing plan were preserved.'
+              : 'Saved website/draft opened. Continue editing, then save your draft or continue checkout.');
             return;
           }
           setSaveMessage(data.error || 'Could not open that saved draft. Restoring browser draft instead.');
@@ -588,6 +601,7 @@ export default function Builder() {
       error.status = res.status;
       throw error;
     }
+    if (data.id) setSite(current => ({ ...current, websiteId: data.id, draftId: data.id, slug: data.slug || current.slug }));
     if (!quiet) setSaveMessage(`Draft saved online. Find it later from My Website using your email or this name: ${data.slug}. ${nowStamp()}`);
     return data;
   }
@@ -673,7 +687,7 @@ export default function Builder() {
       setTimeout(() => { window.location.href = '/video-studio?intent=purchase'; }, 650);
       return;
     }
-    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
+    const draft = { ...site, builderStep: step, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     persistLocal('Draft saved before opening AI Video Studio.');
     saveLocalDraftIndex(draft);
     setSaveMessage('Saving your draft before opening AI Video Studio...');
@@ -715,6 +729,36 @@ export default function Builder() {
       else setMessage(data.error || 'Publish failed.');
     } catch (e) {
       setMessage(`Publish failed: ${e.message}`);
+    }
+  }
+
+  async function publishPaid() {
+    if (!paidPublishAllowed || !['starter', 'business', 'premium'].includes(site.plan)) {
+      setMessage('This paid website is not verified for publishing. Save the draft and continue to secure checkout.');
+      return;
+    }
+    const validationProblem = checkoutDraftProblem(site);
+    if (validationProblem) {
+      showCheckoutValidation(validationProblem);
+      return;
+    }
+    const published = { ...site, builderStep: 4, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), status: 'published' };
+    setMessage('Saving and publishing your verified website…');
+    try {
+      const response = await fetch('/api/site/publish', {
+        method: 'POST',
+        headers: ownerAuthHeaders(),
+        body: JSON.stringify({ site: published })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) {
+        setMessage(result.error || 'The website could not be published. Your draft remains saved.');
+        return;
+      }
+      setSite(current => ({ ...current, status: 'published' }));
+      setMessage('Saved and published. Your website is open to visitors.');
+    } catch {
+      setMessage('The website could not be published. Your draft remains saved; please try again.');
     }
   }
 
@@ -773,7 +817,7 @@ export default function Builder() {
       openAccountModal({ mode: 'signin', destination: `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draftSlug)}` });
       return;
     }
-    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlug, draftName: site.draftName || site.businessName, status: 'draft' };
+    const draft = { ...site, builderStep: step, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlug, draftName: site.draftName || site.businessName, status: 'draft' };
     try {
       await saveDraftOnline(draft, true);
     } catch (error) {
@@ -831,7 +875,7 @@ export default function Builder() {
       openAccountModal({ mode: 'signin', destination: `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draftSlug)}` });
       return;
     }
-    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
+    const draft = { ...site, builderStep: step, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     try { const lightDraft = stripHeavyLocalData(draft); localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft)); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draft.slug); saveLocalDraftIndex(lightDraft); } catch {}
     setMessage('Saving your draft before checkout. If checkout opens, your draft was saved.');
     try {
@@ -1117,10 +1161,12 @@ export default function Builder() {
               <>
                 <h2>Preview & Publish</h2>
                 <p>Your website name will be:</p>
-                <div className="notice"><strong>{plans[site.plan]?.label}</strong> will publish {limitText}. Selected sections: {selectedSections.join(', ')}.</div>
+                <div className="notice"><strong>{plans[site.plan]?.label} — {plans[site.plan]?.price}</strong> will publish {limitText}. Selected sections: {selectedSections.join(', ')}.</div>
                 <div className="notice"><strong>{draftSlugFor(site)}.cookiesdigitalcreations.com</strong></div>
                 <button type="button" className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}
-                {site.plan === 'free' ? <button type="button" className="btn" onClick={publishFree}>Publish Free Page</button> : (
+                {site.plan === 'free' ? <button type="button" className="btn" onClick={publishFree}>Save and Publish Free Page</button> : paidPublishAllowed ? (
+                  <button type="button" className="btn" onClick={publishPaid}>Save and Publish</button>
+                ) : (
                   <button
                     type="button"
                     className="btn"
@@ -1132,7 +1178,7 @@ export default function Builder() {
                       ? `Opening Secure ${plans[site.plan]?.price} Checkout…`
                       : checkoutRetryPlan === site.plan
                         ? `Retry Secure ${plans[site.plan]?.price} Checkout`
-                        : `Go to Secure ${plans[site.plan]?.price} Checkout`}
+                        : 'Save Draft and Continue to Secure Checkout'}
                   </button>
                 )}
                 <div className="navRow"><button type="button" className="btn dark" onClick={back}>Back</button></div>

@@ -149,7 +149,8 @@ test('16. every paid Builder checkout button uses the centralized handler and ne
     source('app/pricing/page.js')
   ]);
   assert.match(builder, /onClick=\{\(\) => checkoutPlan\(\)\}/);
-  assert.match(builder, /`Go to Secure \$\{plans\[site\.plan\]\?\.price\} Checkout`/);
+  assert.match(builder, /Save Draft and Continue to Secure Checkout/);
+  assert.match(builder, /paidPublishAllowed \?/);
   assert.doesNotMatch(builder, /href=["'`]\/customer["'`][^\n]*Go to/i);
   for (const plan of ['starter', 'business', 'premium']) assert.match(pricing, new RegExp(`href: '/builder\\?checkout=${plan}'`));
 });
