@@ -10,6 +10,7 @@ import {
   normalizeWebsiteCheckoutPlan,
   websiteCheckoutIntentState
 } from '../lib/websiteCheckoutIntent.mjs';
+import { websiteCheckoutRoute } from '../lib/commerceConfig.mjs';
 
 const NOW = Date.parse('2036-08-10T12:00:00Z');
 const ID = '11111111-1111-4111-8111-111111111111';
@@ -191,4 +192,33 @@ test('20. flagged supply-chain packages are absent from every repository manifes
   const dependencyText = `${manifest}\n${lockfile}`;
   assert.doesNotMatch(dependencyText, /axios/i);
   assert.doesNotMatch(dependencyText, /plain-crypto-js/i);
+});
+
+test('21. Preview & Publish click validates before creating an intent and focuses the exact missing field', async () => {
+  const builder = await source('app/builder/page.js');
+  const validationIndex = builder.indexOf('const validationProblem = checkoutDraftProblem(site)');
+  const intentIndex = builder.indexOf('intentId = await ensureCheckoutIntent(selectedPlan, draftSlug, existingIntentId)');
+  assert.ok(validationIndex > -1 && intentIndex > validationIndex);
+  assert.match(builder, /type="button"[\s\S]*onClick=\{\(\) => checkoutPlan\(\)\}/);
+  assert.match(builder, /fieldId: `customer-action-destination-\$\{missingAction\.index\}`/);
+  assert.match(builder, /field\.focus\(\)/);
+  assert.match(builder, /id=\{`customer-action-destination-\$\{index\}`\}/);
+  assert.match(builder, /needs a destination before checkout/);
+  assert.doesNotMatch(builder, /<form[\s>]/i);
+});
+
+test('22. valid Business and Premium clicks resolve to their exact external checkout routes', async () => {
+  const [businessPage, premiumPage, redirectPage, defaults] = await Promise.all([
+    source('app/checkout/business/page.js'),
+    source('app/checkout/premium/page.js'),
+    source('lib/checkoutRedirect.js'),
+    source('lib/siteDefaults.js')
+  ]);
+  assert.equal(websiteCheckoutRoute('business'), '/checkout/business');
+  assert.equal(websiteCheckoutRoute('premium'), '/checkout/premium');
+  assert.match(businessPage, /CheckoutRedirectPage plan="business"/);
+  assert.match(premiumPage, /CheckoutRedirectPage plan="premium"/);
+  assert.match(redirectPage, /redirect\(url\)/);
+  assert.match(defaults, /business:\s*\{[^}]*price:\s*'\$30\/mo'/s);
+  assert.match(defaults, /premium:\s*\{[^}]*price:\s*'\$50\/mo'/s);
 });

@@ -620,7 +620,47 @@ export default function Builder() {
     const usesActionSection = selected.includes('Order / Book / Buy') || selected.includes('Customer Action');
     if (!usesActionSection) return [];
     return normalizeCustomerActions(currentSite.customerActions, currentSite.plan)
-      .filter(action => !String(action.value || '').trim());
+      .map((action, index) => ({ action, index }))
+      .filter(({ action }) => !String(action.value || '').trim());
+  }
+
+  function focusBuilderField(fieldId) {
+    setTimeout(() => {
+      const field = document.getElementById(fieldId);
+      if (!field) return;
+      field.focus();
+      field.scrollIntoView({ block: 'center' });
+    }, 0);
+  }
+
+  function showCheckoutValidation(problem) {
+    setStep(problem.step);
+    setMessage(problem.message);
+    setCheckoutRetryPlan(authoritativeCheckoutPlan || site.plan);
+    setCheckoutBusyPlan('');
+    checkoutBusyRef.current = false;
+    focusBuilderField(problem.fieldId);
+  }
+
+  function checkoutDraftProblem(currentSite = site) {
+    const businessSlug = slugify(currentSite.businessName || '');
+    if (!businessSlug || ['my-business-name', 'my-website', 'published-website'].includes(businessSlug)) {
+      return {
+        step: 1,
+        fieldId: 'builder-business-name',
+        message: 'Enter your real business or website name before checkout. This name identifies the website attached to your purchase.'
+      };
+    }
+    const [missingAction] = missingActionLinks(currentSite);
+    if (missingAction) {
+      const label = String(missingAction.action.label || `Action button ${missingAction.index + 1}`).trim();
+      return {
+        step: 3,
+        fieldId: `customer-action-destination-${missingAction.index}`,
+        message: `${label} needs a destination before checkout. Enter its email address, phone number, booking form, menu, product, payment, or order link.`
+      };
+    }
+    return null;
   }
 
   async function goVideo() {
@@ -654,7 +694,8 @@ export default function Builder() {
     const incompleteActions = missingActionLinks(site);
     if (incompleteActions.length) {
       setStep(3);
-      setMessage(`Add the email, phone number, booking link, order link, menu link, or checkout link for ${incompleteActions.map(action => action.label).join(', ')} before publishing. Buttons without a destination cannot be clicked.`);
+      setMessage(`Add the email, phone number, booking link, order link, menu link, or checkout link for ${incompleteActions.map(({ action }) => action.label).join(', ')} before publishing. Buttons without a destination cannot be clicked.`);
+      focusBuilderField(`customer-action-destination-${incompleteActions[0].index}`);
       return;
     }
     const published = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, pages: normalizeSelectedPagesForPlan(site.pages, 'free'), plan: 'free', status: 'published' };
@@ -759,6 +800,11 @@ export default function Builder() {
     }
     checkoutBusyRef.current = true;
     const selectedPlan = authoritativeCheckoutPlan || site.plan;
+    const validationProblem = checkoutDraftProblem(site);
+    if (validationProblem) {
+      showCheckoutValidation(validationProblem);
+      return;
+    }
     setCheckoutBusyPlan(selectedPlan);
     setCheckoutRetryPlan('');
     setMessage(`Opening your secure ${plans[selectedPlan]?.label || 'paid-plan'} checkout…`);
@@ -779,15 +825,6 @@ export default function Builder() {
       persistLocal('Draft saved before secure email verification.');
       setMessage('Verify your email before checkout so the paid website belongs securely to you.');
       openAccountModal({ mode: 'signin', destination: `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draftSlug)}` });
-      return;
-    }
-    const incompleteActions = missingActionLinks(site);
-    if (incompleteActions.length) {
-      setStep(3);
-      setMessage(`Add the destination for ${incompleteActions.map(action => action.label).join(', ')} before checkout. Use an email, phone number, booking form, menu, product, payment, or order link.`);
-      setCheckoutRetryPlan(selectedPlan);
-      setCheckoutBusyPlan('');
-      checkoutBusyRef.current = false;
       return;
     }
     const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
@@ -860,13 +897,13 @@ export default function Builder() {
           <span>Cookie Mini Website Builder Pro</span>
         </a>
         {['Choose Type & Look','Website Info','Design','Sections & Wording','Preview & Publish'].map((label, index) => (
-          <button className={`stepBtn ${step === index ? 'active' : ''}`} disabled={!builderReady} onClick={() => { persistLocal('Draft saved.'); setStep(index); }} key={label}>{index + 1}. {label}</button>
+          <button type="button" className={`stepBtn ${step === index ? 'active' : ''}`} disabled={!builderReady} onClick={() => { persistLocal('Draft saved.'); setStep(index); }} key={label}>{index + 1}. {label}</button>
         ))}
-        <button className="btn light" onClick={saveDraft} disabled={!builderReady || isSaving}>{isSaving ? 'Saving...' : 'Save Draft'}</button>
-        {isSmallBuilderScreen && <button className="btn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button>}
-        {planAllowsAiVideo(site.plan) ? <button className="btn light aiStudioBuilderBtn" onClick={goVideo}>AI Video Studio</button> : <button className="btn light lockedBtn aiStudioBuilderBtn" onClick={goVideo}>AI Video Upgrade</button>}
+        <button type="button" className="btn light" onClick={saveDraft} disabled={!builderReady || isSaving}>{isSaving ? 'Saving...' : 'Save Draft'}</button>
+        {isSmallBuilderScreen && <button type="button" className="btn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button>}
+        {planAllowsAiVideo(site.plan) ? <button type="button" className="btn light aiStudioBuilderBtn" onClick={goVideo}>AI Video Studio</button> : <button type="button" className="btn light lockedBtn aiStudioBuilderBtn" onClick={goVideo}>AI Video Upgrade</button>}
         <button className="btn light" type="button" onClick={() => hasOwnerSession ? window.location.assign('/customer') : openAccountModal({ mode: 'signin', destination: '/customer' })}>My Websites</button>
-        <button className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
+        <button type="button" className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
         {showCurrentDraft && (
           <div className="notice smallNotice currentDraftNotice" role="status">
             <span><strong>Current draft:</strong> {draftSlugFor(site)}.cookiesdigitalcreations.com</span>
@@ -890,6 +927,7 @@ export default function Builder() {
         ) : (
         <div className="row builderTwoCol">
           <div className="dashboard builderPanel">
+            {message && <div className="notice builderMessage" role="status" aria-live="polite">{message}</div>}
             {!hasOwnerSession && (
               <div className="notice guestDraftNotice" role="status">
                 <strong>Saved on this device</strong><br />
@@ -903,7 +941,7 @@ export default function Builder() {
                 <p className="mutedText">Pick what the site is for first. Then pick the visual look. This changes the starter wording, pages, artwork, and design feel.</p>
                 <div className="templateList bigTemplateList">
                   {templateLibrary.map(t => (
-                    <button className={`pick ${site.typeKey === t.key ? 'active' : ''}`} onClick={() => chooseType(t.key)} key={t.key}>
+                    <button type="button" className={`pick ${site.typeKey === t.key ? 'active' : ''}`} onClick={() => chooseType(t.key)} key={t.key}>
                       <strong>{t.type}</strong><br />
                       <small>{t.pages.join(' • ')}</small>
                     </button>
@@ -919,7 +957,7 @@ export default function Builder() {
               <>
                 <h2>Website Info</h2>
                 <p className="mutedText">Enter the words that build the website. The preview updates on the right.</p>
-                <Field label="Business / website name"><input value={site.businessName || ''} onChange={e => update({ businessName: e.target.value })} /></Field>
+                <Field label="Business / website name"><input id="builder-business-name" value={site.businessName || ''} onChange={e => update({ businessName: e.target.value })} /></Field>
                 <Field label="Draft name / website address"><input placeholder="Example: cookie-kitchen-menu" value={site.draftName || ''} onChange={e => update({ draftName: e.target.value })} /></Field>
                 <Field label="Customer email for Contact button and dashboard"><input type="email" value={site.customerEmail || ''} onChange={e => update({ customerEmail: e.target.value })} /></Field>
                 <Field label="Phone (optional; not shown in top header)"><input value={site.phone || ''} onChange={e => update({ phone: e.target.value })} /></Field>
@@ -985,7 +1023,7 @@ export default function Builder() {
                   <Field label="Section style"><select value={site.sectionShape || 'cards'} onChange={e => updateDesign({ sectionShape: e.target.value })}><option value="cards">Clean cards</option><option value="floating">Floating 3D cards</option><option value="boxed">Boxed sections</option></select></Field>
                 </div>
                 {planAllowsMedia(site.plan) ? <>
-                  <Field label="Upload hero image / website visual"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => e.target.files?.[0] && uploadHero(e.target.files[0])} /><small>JPEG, PNG, or WebP; up to 8 MB and 6000 pixels per side.</small>{site.heroImage && <button className="btn dark" onClick={() => update({ heroImage: '' })}>Remove Uploaded Image</button>}</Field>
+                  <Field label="Upload hero image / website visual"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => e.target.files?.[0] && uploadHero(e.target.files[0])} /><small>JPEG, PNG, or WebP; up to 8 MB and 6000 pixels per side.</small>{site.heroImage && <button type="button" className="btn dark" onClick={() => update({ heroImage: '' })}>Remove Uploaded Image</button>}</Field>
                   <Field label="Video or media link for this website"><input placeholder="https://youtube.com/... or TikTok/Instagram/Vimeo link" value={site.heroMediaLink || ''} onChange={e => update({ heroMediaLink: e.target.value })} /></Field>
                 </> : <div className="notice"><strong>Image/video uploads are not included on the Free Launch Page.</strong><br />Starter Pro, Business, and Premium unlock image uploads and video/media links.</div>}
                 <NavRow back={back} next={next} />
@@ -1028,6 +1066,7 @@ export default function Builder() {
                     const isActionPage = page === 'Order / Book / Buy';
                     return (
                       <button
+                        type="button"
                         className={`pick ${isSelected ? 'active' : ''} ${isAtLimit && !isActionPage ? 'lockedPick' : ''} ${isActionPage ? 'orderBookBuyPick' : ''}`}
                         key={page}
                         disabled={(isAtLimit && !isActionPage) || (isHome && isSelected)}
@@ -1071,12 +1110,11 @@ export default function Builder() {
             {step === 4 && (
               <>
                 <h2>Preview & Publish</h2>
-                {message && <div className="notice error">{message}</div>}
                 <p>Your website name will be:</p>
                 <div className="notice"><strong>{plans[site.plan]?.label}</strong> will publish {limitText}. Selected sections: {selectedSections.join(', ')}.</div>
                 <div className="notice"><strong>{draftSlugFor(site)}.cookiesdigitalcreations.com</strong></div>
-                <button className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}
-                {site.plan === 'free' ? <button className="btn" onClick={publishFree}>Publish Free Page</button> : (
+                <button type="button" className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}
+                {site.plan === 'free' ? <button type="button" className="btn" onClick={publishFree}>Publish Free Page</button> : (
                   <button
                     type="button"
                     className="btn"
@@ -1091,7 +1129,7 @@ export default function Builder() {
                         : `Go to Secure ${plans[site.plan]?.price} Checkout`}
                   </button>
                 )}
-                <div className="navRow"><button className="btn dark" onClick={back}>Back</button></div>
+                <div className="navRow"><button type="button" className="btn dark" onClick={back}>Back</button></div>
               </>
             )}
           </div>
@@ -1120,25 +1158,27 @@ export default function Builder() {
 
 function Field({ label, help, children }) {
   const fieldId = useId();
+  let labelTargetId = fieldId;
   let connected = false;
   const labelledChildren = Children.map(children, child => {
     if (!connected && isValidElement(child) && ['input', 'select', 'textarea'].includes(child.type)) {
       connected = true;
-      return cloneElement(child, { id: child.props.id || fieldId });
+      labelTargetId = child.props.id || fieldId;
+      return cloneElement(child, { id: labelTargetId });
     }
     return child;
   });
-  return <div className="field"><label htmlFor={fieldId}>{label}</label>{help && <small>{help}</small>}{labelledChildren}</div>;
+  return <div className="field"><label htmlFor={labelTargetId}>{label}</label>{help && <small>{help}</small>}{labelledChildren}</div>;
 }
 
 function NavRow({ back, next }) {
-  return <div className="navRow"><button className="btn dark" onClick={back}>Back</button><button className="btn" onClick={next}>Save & Continue</button></div>;
+  return <div className="navRow"><button type="button" className="btn dark" onClick={back}>Back</button><button type="button" className="btn" onClick={next}>Save & Continue</button></div>;
 }
 
 function StylePicker({ typeKey, styleKey, selectStyle }) {
   const type = templateLibrary.find(t => t.key === typeKey) || templateLibrary[0];
   return <div className="templateList stylePickList enhancedStylePicker">{type.styles.map(style => (
-    <button className={`pick styleCard enhancedStyleCard ${styleKey === style.key ? 'active' : ''}`} onClick={() => selectStyle(style.key)} key={style.key}>
+    <button type="button" className={`pick styleCard enhancedStyleCard ${styleKey === style.key ? 'active' : ''}`} onClick={() => selectStyle(style.key)} key={style.key}>
       <span className="stylePalette" style={{ background: `linear-gradient(135deg, ${style.palette?.primary || '#20172f'}, ${style.palette?.accent || '#c46a2d'})` }} />
       <span className={`styleThumb styleThumb-${type.key} styleThumb-${style.key}`}>
         <b>{style.art}</b><i></i><i></i><i></i>
@@ -1226,6 +1266,7 @@ function CustomerActionEditor({ site, updateSection, updateCustomerActions }) {
 
               <Field label="Phone, email, checkout, booking, menu, payment, or custom link">
                 <input
+                  id={`customer-action-destination-${index}`}
                   value={action.value || ''}
                   onChange={e => updateAction(index, { value: e.target.value })}
                   placeholder={actionMeta.placeholder}
@@ -1326,13 +1367,13 @@ function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
       <Field label="Upload image to this section"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => e.target.files?.[0] && uploadQuick(e.target.files[0])} /><small>JPEG, PNG, or WebP; up to 8 MB and 6000 pixels per side.</small></Field>
       <div className="row">
         <Field label="Or paste video/media link"><input placeholder="https://youtube.com/..." value={quick.url} onChange={e => setQuick({ ...quick, url: e.target.value })} /></Field>
-        <div className="field mediaButtonField"><label>&nbsp;</label><button className="btn dark" onClick={addQuickLink}>Add Media Link</button></div>
+        <div className="field mediaButtonField"><label>&nbsp;</label><button type="button" className="btn dark" onClick={addQuickLink}>Add Media Link</button></div>
       </div>
     </div>
 
     <div className="navRow">
-      <button className="btn dark" onClick={() => addImageSlot(firstSelectedMediaSection)}>Add Empty Image Slot</button>
-      <button className="btn dark" onClick={() => addLinkSlot(firstSelectedMediaSection)}>Add Empty Video Link Slot</button>
+      <button type="button" className="btn dark" onClick={() => addImageSlot(firstSelectedMediaSection)}>Add Empty Image Slot</button>
+      <button type="button" className="btn dark" onClick={() => addLinkSlot(firstSelectedMediaSection)}>Add Empty Video Link Slot</button>
     </div>
     {media.length === 0 && <div className="notice">No media added yet. Add an uploaded image or a video/media link.</div>}
     {media.map((item, index) => (
@@ -1347,7 +1388,7 @@ function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
         ) : (
           <Field label="Video/social/media URL"><input placeholder="https://youtube.com/..." value={item.url || ''} onChange={e => updateItem(index, { url: e.target.value })} /></Field>
         )}
-        <button className="btn dark" onClick={() => removeItem(index)}>Remove Media</button>
+        <button type="button" className="btn dark" onClick={() => removeItem(index)}>Remove Media</button>
       </div>
     ))}
   </div>;
