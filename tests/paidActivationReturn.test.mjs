@@ -21,6 +21,7 @@ test('checkout return is bound to the exact HttpOnly intent and website UUID', a
 
 test('Gumroad handoff pre-fills immutable website and checkout references', async () => {
   const redirect = await source('lib/checkoutRedirect.js');
+  assert.match(redirect, /if \(url && !normalizedIntentId\) url = ''/);
   assert.match(redirect, /Website name or subdomain/);
   assert.match(redirect, /Checkout reference/);
   assert.match(redirect, /intent\.status !== 'checkout_started'/);
