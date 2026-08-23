@@ -68,7 +68,15 @@ export async function POST(request) {
     if (updateError) throw updateError;
     if (!started) return NextResponse.json({ ok: false, error: 'This checkout continuation was already used.' }, { status: 409 });
     traceWebsiteCheckout('GUMROAD_PRODUCT_SELECTED', { ...data, status: 'checkout_started' }, { websiteId: website.id, ownerId: owner.user.id, storedPlan: website.plan, builderPlan: website.site?.plan, intentPlan: state.plan, product: state.plan, entitlementState: 'unverified_checkout_only' });
-    return NextResponse.json({ ok: true, plan: state.plan, checkoutPath: websiteCheckoutRoute(state.plan) });
+    const response = NextResponse.json({ ok: true, plan: state.plan, checkoutPath: `${websiteCheckoutRoute(state.plan)}?intent=${encodeURIComponent(id)}` });
+    response.cookies.set('cookieWebsiteCheckoutReturn', id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 2 * 60 * 60
+    });
+    return response;
   } catch (error) {
     console.error('[website-checkout-intent] continue failed', { message: error?.message || String(error) });
     return NextResponse.json({ ok: false, error: 'The secure checkout could not continue. Your draft is still safe. Please try again shortly.' }, { status: 500 });
