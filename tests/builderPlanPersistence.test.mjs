@@ -52,7 +52,7 @@ test('desktop and tablet side-by-side preview stays sticky with internal scrolli
   const css = await source('app/globals.css');
   assert.match(css, /Persistent Live Draft Preview/);
   assert.match(css, /\.previewSticky\{top:16px;align-self:start;max-height:calc\(100dvh - 32px\);overflow:auto/);
-  assert.match(css, /@media\(min-width:981px\)\{\.builderMain\{overflow:visible\}\}/);
+  assert.match(css, /@media\(min-width:981px\)\{html:has\(\.builderShell\),body:has\(\.builderShell\)\{overflow-x:clip;overflow-y:visible\}\.builderMain\{overflow:visible\}\}/);
   assert.match(css, /@media\(min-width:981px\) and \(max-width:1100px\)\{\.builderTwoCol\{grid-template-columns:1fr 1fr\}\.previewSticky\{position:sticky/);
   assert.match(css, /@media\(max-width:980px\)\{\.builderTwoCol\{grid-template-columns:1fr\}\.previewSticky\{position:static/);
 });
