@@ -42,11 +42,20 @@ test('5. Published and Unpublished sections are clear and simple', async () => {
   assert.doesNotMatch(page, /Purchases or Plans|Archived Websites/);
 });
 
-test('6. Edit Website routes to the secure customer editor and preserves dashboard position', async () => {
+test('6. Continue Editing returns a saved website to the five-step Builder and preserves dashboard position', async () => {
   const page = await source('app/customer/page.js');
-  assert.match(page, /href=\{`\/customer\/edit\/\$\{row\.slug\}`\}/);
+  assert.match(page, /href=\{`\/builder\?draft=\$\{encodeURIComponent\(row\.slug\)\}`\}/);
+  assert.match(page, />Continue Editing</);
   assert.match(page, /rememberDashboardState\(row\.slug\)/);
   assert.match(page, /sessionStorage\.setItem\(DASHBOARD_STATE_KEY/);
+});
+
+test('6b. every website card identifies its plan and access state', async () => {
+  const [page, search] = await Promise.all([source('app/customer/page.js'), source('app/api/site/search/route.js')]);
+  assert.match(page, /planBadge/);
+  assert.match(page, /Checkout not confirmed/);
+  assert.match(search, /plan_access/);
+  assert.match(search, /website_checkout_intents/);
 });
 
 test('7. View Website is available only for a published website', async () => {

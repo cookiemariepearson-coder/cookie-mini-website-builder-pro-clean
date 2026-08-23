@@ -6,6 +6,8 @@ import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOw
 import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
 import { validateSiteMedia } from '../../../../lib/mediaValidation.mjs';
 import { extraPageAccess } from '../../../../lib/subscriptionLifecycle.mjs';
+import { normalizeWebsitePlan } from '../../../../lib/websitePublishPolicy.mjs';
+import { checkoutIntentBelongsToOwner, websiteCheckoutIntentState } from '../../../../lib/websiteCheckoutIntent.mjs';
 
 function privateResponse(body, status = 200) {
   return NextResponse.json(body, { status, headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
@@ -38,9 +40,28 @@ export async function POST(req) {
       return privateResponse({ ok: false, error: 'This website is in recoverable Trash. Contact support to recover it before saving to the same address.' }, 409);
     }
 
+    const requestedPlan = normalizeWebsitePlan(site.plan) || 'free';
+    const storedPlan = normalizeWebsitePlan(existing?.plan) || 'free';
+    let authoritativePlan = storedPlan;
+    if (requestedPlan !== storedPlan) {
+      const intentId = String(body.checkoutIntentId || '').trim();
+      const { data: intent, error: intentError } = intentId
+        ? await supabase.from('website_checkout_intents').select('*').eq('id', intentId).maybeSingle()
+        : { data: null, error: null };
+      if (intentError) throw intentError;
+      const state = websiteCheckoutIntentState(intent || {});
+      const validPaidSelection = ['starter', 'business', 'premium'].includes(requestedPlan)
+        && state.ok
+        && state.plan === requestedPlan
+        && state.draftSlug === slug
+        && checkoutIntentBelongsToOwner(intent, owner);
+      if (!validPaidSelection) {
+        return privateResponse({ ok: false, reasonCode: 'PLAN_CONFIRMATION_REQUIRED', error: 'This draft plan does not match its secure checkout selection. Return to Pricing and choose the plan again; your browser draft remains safe.' }, 409);
+      }
+      authoritativePlan = requestedPlan;
+    }
     const activeExtraPages = extraPageAccess(existing || {}).allowance;
-    const protectedSite = { ...site, slug, customerEmail: owner.email, extraPages: activeExtraPages, status: 'draft' };
-    const authoritativePlan = existing?.plan || 'free';
+    const protectedSite = { ...site, slug, plan: authoritativePlan, customerEmail: owner.email, extraPages: activeExtraPages, status: 'draft' };
     const row = {
       slug,
       owner_id: owner.user.id,
@@ -56,7 +77,7 @@ export async function POST(req) {
     const { error } = await supabase.from('websites').upsert(row, { onConflict: 'slug' });
     if (error) throw error;
     await sendAdminNotification({ subject: `Draft saved: ${row.business_name || slug}`, event: 'Website draft saved', slug, businessName: row.business_name, customerEmail: row.customer_email, details: `Plan: ${row.plan}` });
-    return privateResponse({ ok: true, slug });
+    return privateResponse({ ok: true, slug, plan: authoritativePlan });
   } catch (e) {
     console.error('[site-draft] save failed', { message: e?.message || String(e) });
     return privateResponse({ ok: false, error: friendlyError() }, 500);

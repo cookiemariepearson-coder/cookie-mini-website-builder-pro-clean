@@ -246,7 +246,8 @@ export default function Builder() {
             setSite(merged);
             localStorage.setItem(DRAFT_KEY, JSON.stringify(merged));
             localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftSlugFor(merged));
-            setStep(1);
+            const restoredStep = Number(data.site.builderStep);
+            setStep(Number.isInteger(restoredStep) ? Math.min(4, Math.max(0, restoredStep)) : 1);
             setSaveMessage('Saved website/draft opened. Continue editing, then save or publish.');
             return;
           }
@@ -579,7 +580,7 @@ export default function Builder() {
     const res = await fetch('/api/site/draft', {
       method: 'POST',
       headers: ownerAuthHeaders(),
-      body: JSON.stringify({ site: draft })
+      body: JSON.stringify({ site: draft, checkoutIntentId: pendingCheckoutIntent || '' })
     });
     const data = await res.json();
     if (!data.ok) {
@@ -596,7 +597,7 @@ export default function Builder() {
       setMessage('Your selected plan could not be confirmed for this draft. Return to Pricing and choose the plan again before saving online.');
       return;
     }
-    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
+    const draft = { ...site, builderStep: step, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     setIsSaving(true);
     setSaveMessage('Saving draft...');
     try {

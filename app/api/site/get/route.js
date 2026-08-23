@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 import { extraPageAccess } from '../../../../lib/subscriptionLifecycle.mjs';
+import { normalizeWebsitePlan } from '../../../../lib/websitePublishPolicy.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +56,27 @@ export async function GET(req) {
       }
     }
 
-    return NextResponse.json({ ok:true, row:data, site: fallbackSite(data) }, {
+    let site = fallbackSite(data);
+    let planAccess = null;
+    if (ownerOnly) {
+      const { data: latestIntent, error: intentError } = await supabase.from('website_checkout_intents')
+        .select('id,plan,status,website_id,draft_slug,created_at')
+        .eq('owner_id', owner.user.id)
+        .or(`website_id.eq.${data.id},draft_slug.eq.${data.slug}`)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (intentError) throw intentError;
+      const storedPlan = normalizeWebsitePlan(data.plan) || 'free';
+      const savedPlan = normalizeWebsitePlan(data.site?.plan);
+      const intentPlan = normalizeWebsitePlan(latestIntent?.plan);
+      const intendedPaidPlan = [storedPlan, savedPlan, intentPlan].find(plan => ['starter', 'business', 'premium'].includes(plan));
+      if (intendedPaidPlan) {
+        site = { ...site, plan: intendedPaidPlan };
+        planAccess = storedPlan === intendedPaidPlan ? 'stored_plan' : 'checkout_not_confirmed';
+      }
+    }
+    return NextResponse.json({ ok:true, row:data, site, planAccess }, {
       headers: { 'Cache-Control': ownerOnly ? 'private, no-store, max-age=0' : 'public, max-age=0, must-revalidate' }
     });
   } catch(e) {

@@ -513,13 +513,18 @@ export default function Customer() {
     const isUnavailable = isWebsiteUnavailable(row);
     const liveUrl = `https://${row.slug}.${ROOT}`;
     const name = websiteDisplayName(row);
+    const planNames = { free: 'Free', starter: 'Starter Pro', business: 'Business', premium: 'Premium' };
+    const planName = planNames[String(row.plan || 'free').toLowerCase()] || 'Free';
+    const accessLabel = row.plan_access === 'verified' ? 'Plan verified' : row.plan_access === 'checkout_not_confirmed' ? 'Checkout not confirmed' : 'Free access';
     return (
       <article className="websiteDashboardCard" id={`website-${row.slug}`} key={row.slug}>
         <div className="websiteCardDetails">
           <div className="websiteCardHeading">
             <h3>{name}</h3>
             <span className={`statusPill ${status}`}>{isPublished ? 'Published' : 'Unpublished'}</span>
+            <span className="statusPill planBadge">{planName}</span>
           </div>
+          <p className="websitePlanAccess"><strong>Plan access</strong><span>{accessLabel}</span></p>
           {isPublished && <p className="websiteAddress"><strong>Website address</strong><a href={liveUrl} target="_blank" rel="noreferrer">{row.slug}.{ROOT}</a></p>}
           <p className="websiteUpdated"><strong>Last updated</strong><span>{row.updated_at ? new Date(row.updated_at).toLocaleDateString() : 'Not available'}</span></p>
           {isUnavailable && <p className="websiteUnavailableNote">This website is safely stored but currently unavailable. Contact support if it should be restored.</p>}
@@ -528,7 +533,7 @@ export default function Customer() {
           {isUnavailable ? (
             <button className="btn dark" type="button" disabled aria-describedby={`website-${row.slug}-unavailable`}>Edit Website</button>
           ) : (
-            <a className="btn dark" href={`/customer/edit/${row.slug}`} onClick={() => rememberDashboardState(row.slug)}>Edit Website</a>
+            <a className="btn dark" href={`/builder?draft=${encodeURIComponent(row.slug)}`} onClick={() => rememberDashboardState(row.slug)}>Continue Editing</a>
           )}
           {isPublished && <a className="btn light" href={liveUrl} target="_blank" rel="noreferrer">View Website</a>}
           <details className="websiteManageMenu">

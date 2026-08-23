@@ -51,6 +51,10 @@ export default function Edit() {
             : (result.error || 'The website could not be loaded. Please try again.'));
           return;
         }
+        if (String(result.site?.status || result.row?.status || '').toLowerCase() !== 'published') {
+          window.location.replace(`/builder?draft=${encodeURIComponent(slug)}`);
+          return;
+        }
         setSite(result.site);
         setMsg('');
       } catch {
