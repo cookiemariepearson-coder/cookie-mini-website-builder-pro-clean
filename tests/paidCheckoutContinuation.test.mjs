@@ -235,7 +235,7 @@ test('23. checkout validation stays beside the exact missing destination field',
 
 test('24. deployment diagnostics expose a no-store, non-secret fingerprint', async () => {
   const [route, config] = await Promise.all([
-    source('app/api/diagnostics/deployment/route.js'),
+    source('app/api/build-info/route.js'),
     source('next.config.js')
   ]);
   assert.match(route, /fingerprint: commit\.slice\(0, 12\)/);
