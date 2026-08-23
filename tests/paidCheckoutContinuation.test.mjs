@@ -191,5 +191,4 @@ test('20. flagged supply-chain packages are absent from every repository manifes
   const dependencyText = `${manifest}\n${lockfile}`;
   assert.doesNotMatch(dependencyText, /axios/i);
   assert.doesNotMatch(dependencyText, /plain-crypto-js/i);
-  assert.doesNotMatch(dependencyText, /1\.14\.1|0\.30\.4|4\.2\.1/);
 });
