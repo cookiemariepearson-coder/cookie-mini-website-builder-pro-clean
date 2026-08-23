@@ -586,14 +586,14 @@ export default function Builder() {
     }
   }
 
-  async function saveDraftOnline(draft, quiet = false) {
+  async function saveDraftOnline(draft, quiet = false, checkoutIntentId = '') {
     if (!hasOwnerSession) {
       throw new Error('Sign in from the account window before saving online.');
     }
     const res = await fetch('/api/site/draft', {
       method: 'POST',
       headers: ownerAuthHeaders(),
-      body: JSON.stringify({ site: draft, checkoutIntentId: pendingCheckoutIntent || '' })
+      body: JSON.stringify({ site: draft, checkoutIntentId: checkoutIntentId || pendingCheckoutIntent || '' })
     });
     const data = await res.json();
     if (!data.ok) {
@@ -767,7 +767,7 @@ export default function Builder() {
     const response = await fetch('/api/checkout/intent/start', {
       method: 'POST',
       headers: ownerAuthHeaders(),
-      body: JSON.stringify({ plan, draftSlug, intentId })
+      body: JSON.stringify({ plan, draftSlug, intentId, websiteId: site.websiteId || site.draftId || '' })
     });
     const data = await response.json();
     if (!data.ok || !data.intentId) throw new Error(data.error || 'Secure checkout could not start.');
@@ -783,7 +783,7 @@ export default function Builder() {
     const response = await fetch('/api/checkout/intent/continue', {
       method: 'POST',
       headers: ownerAuthHeaders(),
-      body: JSON.stringify({ intentId, draftSlug })
+      body: JSON.stringify({ intentId, draftSlug, websiteId: site.websiteId || site.draftId || '' })
     });
     const data = await response.json();
     if (!data.ok || !data.checkoutPath) {
@@ -819,7 +819,7 @@ export default function Builder() {
     }
     const draft = { ...site, builderStep: step, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlug, draftName: site.draftName || site.businessName, status: 'draft' };
     try {
-      await saveDraftOnline(draft, true);
+      await saveDraftOnline(draft, true, intentId);
     } catch (error) {
       if (error.status === 401) {
         try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
@@ -879,7 +879,7 @@ export default function Builder() {
     try { const lightDraft = stripHeavyLocalData(draft); localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft)); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draft.slug); saveLocalDraftIndex(lightDraft); } catch {}
     setMessage('Saving your draft before checkout. If checkout opens, your draft was saved.');
     try {
-      await saveDraftOnline(draft, true);
+      await saveDraftOnline(draft, true, intentId);
     } catch (error) {
       if (error.status === 401) {
         try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
