@@ -160,6 +160,7 @@ export default function Builder() {
   const [resumeCheckoutRequested, setResumeCheckoutRequested] = useState(false);
   const [checkoutBusyPlan, setCheckoutBusyPlan] = useState('');
   const [checkoutRetryPlan, setCheckoutRetryPlan] = useState('');
+  const [checkoutFieldError, setCheckoutFieldError] = useState(null);
   const [authoritativeCheckoutPlan, setAuthoritativeCheckoutPlan] = useState('');
   const [builderReady, setBuilderReady] = useState(false);
   const [hasOwnerSession, setHasOwnerSession] = useState(false);
@@ -636,6 +637,7 @@ export default function Builder() {
   function showCheckoutValidation(problem) {
     setStep(problem.step);
     setMessage(problem.message);
+    setCheckoutFieldError({ fieldId: problem.fieldId, message: problem.message });
     setCheckoutRetryPlan(authoritativeCheckoutPlan || site.plan);
     setCheckoutBusyPlan('');
     checkoutBusyRef.current = false;
@@ -805,6 +807,7 @@ export default function Builder() {
       showCheckoutValidation(validationProblem);
       return;
     }
+    setCheckoutFieldError(null);
     setCheckoutBusyPlan(selectedPlan);
     setCheckoutRetryPlan('');
     setMessage(`Opening your secure ${plans[selectedPlan]?.label || 'paid-plan'} checkout…`);
@@ -1088,6 +1091,8 @@ export default function Builder() {
                       site={site}
                       updateSection={updateSection}
                       updateCustomerActions={updateCustomerActions}
+                      checkoutFieldError={checkoutFieldError}
+                      clearCheckoutFieldError={() => setCheckoutFieldError(null)}
                     />
                   ) : (
                     <Field label={`${page} wording`} help={sectionPrompts[page]} key={page}>
@@ -1191,7 +1196,7 @@ function StylePicker({ typeKey, styleKey, selectStyle }) {
 }
 
 
-function CustomerActionEditor({ site, updateSection, updateCustomerActions }) {
+function CustomerActionEditor({ site, updateSection, updateCustomerActions, checkoutFieldError, clearCheckoutFieldError }) {
   const actions = normalizeCustomerActions(site.customerActions, site.plan);
   const limit = customerActionLimit(site.plan);
   const canAddMore = actions.length < limit;
@@ -1201,6 +1206,7 @@ function CustomerActionEditor({ site, updateSection, updateCustomerActions }) {
     const next = [...actions];
     next[index] = { ...next[index], ...patch };
     updateCustomerActions(next);
+    if (Object.prototype.hasOwnProperty.call(patch, 'value') && String(patch.value || '').trim()) clearCheckoutFieldError?.();
   }
 
   function addAction() {
@@ -1267,11 +1273,18 @@ function CustomerActionEditor({ site, updateSection, updateCustomerActions }) {
               <Field label="Phone, email, checkout, booking, menu, payment, or custom link">
                 <input
                   id={`customer-action-destination-${index}`}
+                  aria-invalid={checkoutFieldError?.fieldId === `customer-action-destination-${index}`}
+                  aria-describedby={checkoutFieldError?.fieldId === `customer-action-destination-${index}` ? `customer-action-destination-error-${index}` : undefined}
                   value={action.value || ''}
                   onChange={e => updateAction(index, { value: e.target.value })}
                   placeholder={actionMeta.placeholder}
                 />
               </Field>
+              {checkoutFieldError?.fieldId === `customer-action-destination-${index}` && (
+                <div id={`customer-action-destination-error-${index}`} className="notice checkoutFieldError" role="alert">
+                  {checkoutFieldError.message}
+                </div>
+              )}
 
               <Field label="Optional note under button">
                 <input

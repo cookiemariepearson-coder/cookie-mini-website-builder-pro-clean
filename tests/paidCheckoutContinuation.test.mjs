@@ -222,3 +222,25 @@ test('22. valid Business and Premium clicks resolve to their exact external chec
   assert.match(defaults, /business:\s*\{[^}]*price:\s*'\$30\/mo'/s);
   assert.match(defaults, /premium:\s*\{[^}]*price:\s*'\$50\/mo'/s);
 });
+
+test('23. checkout validation stays beside the exact missing destination field', async () => {
+  const builder = await source('app/builder/page.js');
+  assert.match(builder, /const usesActionSection = selected\.includes\('Order \/ Book \/ Buy'\) \|\| selected\.includes\('Customer Action'\)/);
+  assert.match(builder, /if \(!usesActionSection\) return \[\]/);
+  assert.match(builder, /setCheckoutFieldError\(\{ fieldId: problem\.fieldId, message: problem\.message \}\)/);
+  assert.match(builder, /checkoutFieldError\?\.fieldId === `customer-action-destination-\$\{index\}`/);
+  assert.match(builder, /className="notice checkoutFieldError" role="alert"/);
+  assert.match(builder, /aria-describedby=\{checkoutFieldError/);
+});
+
+test('24. deployment diagnostics expose a no-store, non-secret fingerprint', async () => {
+  const [route, config] = await Promise.all([
+    source('app/api/diagnostics/deployment/route.js'),
+    source('next.config.js')
+  ]);
+  assert.match(route, /fingerprint: commit\.slice\(0, 12\)/);
+  assert.match(route, /VERCEL_DEPLOYMENT_ID/);
+  assert.match(route, /Cache-Control.*no-store/);
+  assert.match(config, /source: '\/builder\/:path\*'/);
+  assert.match(config, /private, no-cache, no-store/);
+});

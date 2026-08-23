@@ -18,6 +18,12 @@ const nextConfig = {
         ]
       },
       {
+        source: '/builder/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'private, no-cache, no-store, max-age=0, must-revalidate' }
+        ]
+      },
+      {
         source: '/video-studio/:path*',
         headers: [
           { key: 'Cache-Control', value: 'private, no-cache, no-store, max-age=0, must-revalidate' }
