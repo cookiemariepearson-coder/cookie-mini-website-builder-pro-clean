@@ -234,13 +234,17 @@ test('23. checkout validation stays beside the exact missing destination field',
 });
 
 test('24. deployment diagnostics expose a no-store, non-secret fingerprint', async () => {
-  const [route, config] = await Promise.all([
+  const [route, page, config] = await Promise.all([
     source('app/api/build-info/route.js'),
+    source('app/build-info/page.js'),
     source('next.config.js')
   ]);
   assert.match(route, /fingerprint: commit\.slice\(0, 12\)/);
   assert.match(route, /VERCEL_DEPLOYMENT_ID/);
   assert.match(route, /Cache-Control.*no-store/);
+  assert.match(page, /Cookie Mini Website Builder — Build Information/);
+  assert.match(page, /Fingerprint/);
+  assert.match(config, /source: '\/build-info'/);
   assert.match(config, /source: '\/builder\/:path\*'/);
   assert.match(config, /private, no-cache, no-store/);
 });
