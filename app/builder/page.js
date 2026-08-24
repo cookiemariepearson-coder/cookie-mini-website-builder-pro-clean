@@ -1176,7 +1176,7 @@ export default function Builder() {
                     <strong>Published</strong>
                     <a className="btn" href={`https://${draftSlugFor(site)}.cookiesdigitalcreations.com`} target="_blank" rel="noreferrer">View Published Website</a>
                     <a className="btn light" href="/customer">Go to My Websites</a>
-                    <button type="button" className="btn dark" onClick={() => setStep(0)}>Continue Editing</button>
+                    <button type="button" className="btn dark" onClick={() => { setSite(current => ({ ...current, status: 'draft' })); setStep(0); }}>Continue Editing</button>
                   </div>
                 ) : site.plan === 'free' ? <button type="button" className="btn" onClick={publishFree}>Save and Publish Free Page</button> : paidPublishAllowed ? (
                   <button type="button" className="btn" onClick={publishPaid} disabled={publishBusy} aria-busy={publishBusy}>{publishBusy ? 'Publishing…' : 'Save and Publish'}</button>
