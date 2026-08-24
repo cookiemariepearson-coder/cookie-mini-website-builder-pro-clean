@@ -67,6 +67,7 @@ test('successful publishing removes the duplicate publish action and exposes cle
   assert.match(builder, /View Published Website/);
   assert.match(builder, /Go to My Websites/);
   assert.match(builder, /Continue Editing/);
+  assert.match(builder, /setSite\(current => \(\{ \.\.\.current, status: 'draft' \}\)\)/);
   assert.match(builder, /if \(publishBusy \|\| site\.status === 'published'\) return/);
   assert.match(builder, /disabled=\{publishBusy\}/);
 });
