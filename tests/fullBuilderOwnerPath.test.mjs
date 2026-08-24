@@ -52,13 +52,37 @@ test('unpaid Business and Premium show checkout wording while paid entitlement e
   const builder = await source('app/builder/page.js');
   assert.match(builder, /Save Draft and Continue to Secure Checkout/);
   assert.match(builder, /paidPublishAllowed \?/);
-  assert.match(builder, /onClick=\{publishPaid\}>Save and Publish/);
+  assert.match(builder, /onClick=\{publishPaid\}[\s\S]*Save and Publish/);
   for (const plan of ['business', 'premium']) {
     const unpaid = { plan, site: { plan }, subscription_status: 'unverified', access_status: 'active' };
     assert.equal(publishPlanDecision(unpaid, { plan }, { plan }).allowed, false);
     const paid = { ...unpaid, subscription_status: 'active', gumroad_product_id: APPROVED_WEBSITE_PRODUCTS[plan].productId };
     assert.equal(publishPlanDecision(paid, { plan }, { plan }).allowed, true);
   }
+});
+
+test('successful publishing removes the duplicate publish action and exposes clear next steps', async () => {
+  const builder = await source('app/builder/page.js');
+  assert.match(builder, /site\.status === 'published'/);
+  assert.match(builder, /View Published Website/);
+  assert.match(builder, /Go to My Websites/);
+  assert.match(builder, /Continue Editing/);
+  assert.match(builder, /if \(publishBusy \|\| site\.status === 'published'\) return/);
+  assert.match(builder, /disabled=\{publishBusy\}/);
+});
+
+test('every authenticated Builder step includes the shared account menu and safe Sign Out', async () => {
+  const [builder, accountLink, provider] = await Promise.all([
+    source('app/builder/page.js'),
+    source('components/CustomerAccountLink.js'),
+    source('components/AccountModalProvider.js')
+  ]);
+  assert.match(builder, /<CustomerAccountLink \/>/);
+  assert.match(accountLink, /Sign Out/);
+  assert.match(accountLink, /onClick=\{signOut\}/);
+  assert.match(provider, /\/api\/auth\/site-owner\/signout/);
+  assert.match(provider, /localStorage\.removeItem\(LEGACY_AUTH_TOKEN_KEY\)/);
+  assert.match(provider, /window\.location\.assign\('\/'\)/);
 });
 
 test('Business and Premium checkout remain bound to exact centralized Gumroad routes', async () => {
