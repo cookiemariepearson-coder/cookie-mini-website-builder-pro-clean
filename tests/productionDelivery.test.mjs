@@ -9,10 +9,8 @@ test('AI Video production HTML is revalidated and identifies its deployed build'
   assert.match(config, /VERCEL_GIT_COMMIT_SHA/);
   assert.match(config, /source: '\/video-studio\/:path\*'/);
   assert.match(config, /source: '\/checkout\/ai-video'/);
-  assert.equal(
-    (config.match(/private, no-cache, no-store, max-age=0, must-revalidate/g) || []).length,
-    2
-  );
+  assert.match(config, /source: '\/builder\/:path\*'/);
+  assert.equal((config.match(/private, no-cache, no-store, max-age=0, must-revalidate/g) || []).length, 3);
 });
 
 test('the application does not register a service worker that can retain old HTML', async () => {

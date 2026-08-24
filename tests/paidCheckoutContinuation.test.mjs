@@ -10,6 +10,7 @@ import {
   normalizeWebsiteCheckoutPlan,
   websiteCheckoutIntentState
 } from '../lib/websiteCheckoutIntent.mjs';
+import { websiteCheckoutRoute } from '../lib/commerceConfig.mjs';
 
 const NOW = Date.parse('2036-08-10T12:00:00Z');
 const ID = '11111111-1111-4111-8111-111111111111';
@@ -67,7 +68,7 @@ test('6a. final draft slug is prepared server-side before authentication without
     source('app/builder/page.js'),
     source('app/api/checkout/intent/start/route.js')
   ]);
-  assert.match(builder, /body: JSON\.stringify\(\{ plan, draftSlug, intentId \}\)/);
+  assert.match(builder, /body: JSON\.stringify\(\{ plan, draftSlug, intentId, websiteId: site\.websiteId \|\| site\.draftId \|\| '' \}\)/);
   assert.match(startRoute, /requestedPlan !== storedPlan/);
   assert.match(startRoute, /update\(\{ draft_slug: draftSlug \}\)/);
   assert.match(startRoute, /\.is\('owner_id', null\)/);
@@ -148,7 +149,8 @@ test('16. every paid Builder checkout button uses the centralized handler and ne
     source('app/pricing/page.js')
   ]);
   assert.match(builder, /onClick=\{\(\) => checkoutPlan\(\)\}/);
-  assert.match(builder, /`Go to Secure \$\{plans\[site\.plan\]\?\.price\} Checkout`/);
+  assert.match(builder, /Save Draft and Continue to Secure Checkout/);
+  assert.match(builder, /paidPublishAllowed \?/);
   assert.doesNotMatch(builder, /href=["'`]\/customer["'`][^\n]*Go to/i);
   for (const plan of ['starter', 'business', 'premium']) assert.match(pricing, new RegExp(`href: '/builder\\?checkout=${plan}'`));
 });
@@ -191,5 +193,59 @@ test('20. flagged supply-chain packages are absent from every repository manifes
   const dependencyText = `${manifest}\n${lockfile}`;
   assert.doesNotMatch(dependencyText, /axios/i);
   assert.doesNotMatch(dependencyText, /plain-crypto-js/i);
-  assert.doesNotMatch(dependencyText, /1\.14\.1|0\.30\.4|4\.2\.1/);
+});
+
+test('21. Preview & Publish click validates before creating an intent and focuses the exact missing field', async () => {
+  const builder = await source('app/builder/page.js');
+  const validationIndex = builder.indexOf('const validationProblem = checkoutDraftProblem(site)');
+  const intentIndex = builder.indexOf('intentId = await ensureCheckoutIntent(selectedPlan, draftSlug, existingIntentId)');
+  assert.ok(validationIndex > -1 && intentIndex > validationIndex);
+  assert.match(builder, /type="button"[\s\S]*onClick=\{\(\) => checkoutPlan\(\)\}/);
+  assert.match(builder, /fieldId: `customer-action-destination-\$\{missingAction\.index\}`/);
+  assert.match(builder, /field\.focus\(\)/);
+  assert.match(builder, /id=\{`customer-action-destination-\$\{index\}`\}/);
+  assert.match(builder, /needs a destination before checkout/);
+  assert.doesNotMatch(builder, /<form[\s>]/i);
+});
+
+test('22. valid Business and Premium clicks resolve to their exact external checkout routes', async () => {
+  const [businessPage, premiumPage, redirectPage, defaults] = await Promise.all([
+    source('app/checkout/business/page.js'),
+    source('app/checkout/premium/page.js'),
+    source('lib/checkoutRedirect.js'),
+    source('lib/siteDefaults.js')
+  ]);
+  assert.equal(websiteCheckoutRoute('business'), '/checkout/business');
+  assert.equal(websiteCheckoutRoute('premium'), '/checkout/premium');
+  assert.match(businessPage, /CheckoutRedirectPage plan="business"/);
+  assert.match(premiumPage, /CheckoutRedirectPage plan="premium"/);
+  assert.match(redirectPage, /redirect\(url\)/);
+  assert.match(defaults, /business:\s*\{[^}]*price:\s*'\$30\/mo'/s);
+  assert.match(defaults, /premium:\s*\{[^}]*price:\s*'\$50\/mo'/s);
+});
+
+test('23. checkout validation stays beside the exact missing destination field', async () => {
+  const builder = await source('app/builder/page.js');
+  assert.match(builder, /const usesActionSection = selected\.includes\('Order \/ Book \/ Buy'\) \|\| selected\.includes\('Customer Action'\)/);
+  assert.match(builder, /if \(!usesActionSection\) return \[\]/);
+  assert.match(builder, /setCheckoutFieldError\(\{ fieldId: problem\.fieldId, message: problem\.message \}\)/);
+  assert.match(builder, /checkoutFieldError\?\.fieldId === `customer-action-destination-\$\{index\}`/);
+  assert.match(builder, /className="notice checkoutFieldError" role="alert"/);
+  assert.match(builder, /aria-describedby=\{checkoutFieldError/);
+});
+
+test('24. deployment diagnostics expose a no-store, non-secret fingerprint', async () => {
+  const [route, page, config] = await Promise.all([
+    source('app/api/build-info/route.js'),
+    source('app/build-info/page.js'),
+    source('next.config.js')
+  ]);
+  assert.match(route, /fingerprint: commit\.slice\(0, 12\)/);
+  assert.match(route, /VERCEL_DEPLOYMENT_ID/);
+  assert.match(route, /Cache-Control.*no-store/);
+  assert.match(page, /Cookie Mini Website Builder — Build Information/);
+  assert.match(page, /Fingerprint/);
+  assert.match(config, /source: '\/build-info'/);
+  assert.match(config, /source: '\/builder\/:path\*'/);
+  assert.match(config, /private, no-cache, no-store/);
 });

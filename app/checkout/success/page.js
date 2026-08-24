@@ -90,6 +90,25 @@ export default function CheckoutSuccess() {
         return;
       }
 
+      if (['starter', 'business', 'premium', 'extra'].includes(String(paidParam).toLowerCase())) {
+        const verificationResponse = await fetch('/api/checkout/verify', {
+          method: 'POST',
+          headers: ownerAuthHeaders(),
+          body: JSON.stringify({ plan: paidParam })
+        });
+        const verification = await verificationResponse.json();
+        if (!verification.ok || !verification.verified || !verification.returnPath) {
+          setIsPublishing(false);
+          setError(verification.error || 'Payment confirmation is still pending.');
+          setMessage('Your draft is safe. Publishing remains locked until Gumroad confirms the exact purchase.');
+          return;
+        }
+        setIsPublishing(false);
+        setMessage('Purchase confirmed. Returning to the correct saved website.');
+        window.location.replace(verification.returnPath);
+        return;
+      }
+
       const raw = localStorage.getItem(DRAFT_KEY);
       if (!raw) {
         setIsPublishing(false);

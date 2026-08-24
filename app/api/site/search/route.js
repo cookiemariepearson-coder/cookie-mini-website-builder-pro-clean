@@ -4,6 +4,7 @@ import { slugify } from '../../../../lib/siteDefaults';
 import { getVerifiedSiteOwner } from '../../../../lib/siteOwnerAuth';
 import { customerSubscriptionSummary } from '../../../../lib/subscriptionLifecycle.mjs';
 import { isCustomerDeletedWebsite } from '../../../../lib/customerWebsiteManagement.mjs';
+import { normalizeWebsitePlan } from '../../../../lib/websitePublishPolicy.mjs';
 
 function privateResponse(body, status = 200) {
   return NextResponse.json(body, {
@@ -82,22 +83,42 @@ export async function POST(req) {
         );
       }
     }
+    const { data: ownerIntents, error: intentError } = await supabase.from('website_checkout_intents')
+      .select('id,plan,status,website_id,draft_slug,created_at')
+      .eq('owner_id', owner.user.id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (intentError) throw intentError;
+    const latestIntentFor = row => (ownerIntents || []).find(intent => intent.website_id === row.id || intent.draft_slug === row.slug);
     const sites = Array.from(found.values())
       .filter(row => !isCustomerDeletedWebsite(row))
       .sort((a, b) => String(b.updated_at || '').localeCompare(String(a.updated_at || '')))
-      .map(row => ({
+      .map(row => {
+      const intent = latestIntentFor(row);
+      const storedPlan = normalizeWebsitePlan(row.plan) || 'free';
+      const savedPlan = normalizeWebsitePlan(row.site?.plan);
+      const intentPlan = normalizeWebsitePlan(intent?.plan);
+      const intendedPaidPlan = [storedPlan, savedPlan, intentPlan].find(plan => ['starter', 'business', 'premium'].includes(plan));
+      const displayPlan = intendedPaidPlan || storedPlan;
+      const subscription = customerSubscriptionSummary(row);
+      const verified = ['starter', 'business', 'premium'].includes(storedPlan) && subscription.active;
+      return ({
+      id: row.id,
       slug: row.slug,
       business_name: row.business_name || siteFromRow(row).businessName || row.slug,
-      plan: row.plan || siteFromRow(row).plan || 'free',
+      plan: displayPlan,
+      stored_plan: storedPlan,
+      plan_access: displayPlan === 'free' ? 'free' : verified ? 'verified' : 'checkout_not_confirmed',
+      editor_kind: row.site?.typeKey && row.site?.styleKey ? 'builder' : 'legacy',
       status: row.status || siteFromRow(row).status || 'draft',
       access_status: row.access_status || 'active',
       subscription_status: row.subscription_status || 'unverified',
       monthly_price: row.monthly_price || 0,
       extra_pages: row.extra_pages || 0,
-      subscription: customerSubscriptionSummary(row),
+      subscription,
       updated_at: row.updated_at,
-      site: siteFromRow(row)
-    }));
+      site: { ...siteFromRow(row), plan: displayPlan }
+    });});
 
     return privateResponse({ ok: true, sites });
   } catch (e) {

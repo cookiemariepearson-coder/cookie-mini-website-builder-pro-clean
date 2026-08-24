@@ -4,7 +4,9 @@ import { Children, cloneElement, isValidElement, useEffect, useId, useMemo, useR
 import SitePreview from '../../lib/SitePreview.js';
 import { createDefaultSite, templateLibrary, getTemplate, pageOptions, plans, slugify, sectionPrompts, normalizeSelectedPagesForPlan, planAllowsMedia, planAllowsAiVideo, planSectionLimit, customerActionLimit, customerActionTypes, normalizeCustomerActions } from '../../lib/siteDefaults';
 import { PENDING_CHECKOUT_STORAGE_KEY, createPendingCheckoutIntent, websiteCheckoutRoute } from '../../lib/commerceConfig.mjs';
+import { normalizeAuthoritativeWebsitePlan, planMatchesCheckoutAuthority, reconcileBuilderPlan } from '../../lib/builderPlanAuthority.mjs';
 import { useAccountModal } from '../../components/AccountModalProvider';
+import CustomerAccountLink from '../../components/CustomerAccountLink';
 
 const DRAFT_KEY = 'cookieDraftSite';
 const LAST_STEP_KEY = 'cookieBuilderStep';
@@ -159,7 +161,12 @@ export default function Builder() {
   const [resumeCheckoutRequested, setResumeCheckoutRequested] = useState(false);
   const [checkoutBusyPlan, setCheckoutBusyPlan] = useState('');
   const [checkoutRetryPlan, setCheckoutRetryPlan] = useState('');
+  const [checkoutFieldError, setCheckoutFieldError] = useState(null);
+  const [authoritativeCheckoutPlan, setAuthoritativeCheckoutPlan] = useState('');
+  const [builderReady, setBuilderReady] = useState(false);
   const [hasOwnerSession, setHasOwnerSession] = useState(false);
+  const [paidPublishAllowed, setPaidPublishAllowed] = useState(false);
+  const [publishBusy, setPublishBusy] = useState(false);
   const checkoutBusyRef = useRef(false);
   const tmpl = useMemo(() => getTemplate(site.typeKey, site.styleKey), [site.typeKey, site.styleKey]);
 
@@ -172,6 +179,7 @@ export default function Builder() {
       let checkoutIntentId = params.get('checkoutIntent') || '';
       let intentDraftSlug = '';
       const shouldResumeCheckout = params.get('resumeCheckout') === '1';
+      try {
       if (checkoutIntentId) {
         try {
           const token = ownerAccessToken();
@@ -184,6 +192,12 @@ export default function Builder() {
             return;
           }
           requestedCheckout = intent.plan;
+          const intentPlan = normalizeAuthoritativeWebsitePlan(intent.plan);
+          if (intent.plan !== 'extra' && !intentPlan) {
+            setMessage('Your selected website plan could not be confirmed. Return to Pricing and choose the plan again. Your draft is still safe.');
+            return;
+          }
+          setAuthoritativeCheckoutPlan(intentPlan);
           intentDraftSlug = intent.draftSlug || '';
           setPendingCheckoutIntent(intent.intentId);
           setResumeCheckoutRequested(shouldResumeCheckout);
@@ -205,6 +219,12 @@ export default function Builder() {
             return;
           }
           checkoutIntentId = intent.intentId;
+          const intentPlan = normalizeAuthoritativeWebsitePlan(intent.plan || requestedCheckout);
+          if (requestedCheckout !== 'extra' && !intentPlan) {
+            setMessage('Your selected website plan could not be confirmed. Return to Pricing and choose the plan again. Your draft is still safe.');
+            return;
+          }
+          setAuthoritativeCheckoutPlan(intentPlan);
           setPendingCheckoutIntent(intent.intentId);
           const nextParams = new URLSearchParams({ checkoutIntent: intent.intentId });
           if (draftFromUrl) nextParams.set('draft', draftFromUrl);
@@ -216,21 +236,34 @@ export default function Builder() {
       }
       const requestedPlan = requestedCheckout && requestedCheckout !== 'extra' ? requestedCheckout : '';
       if (requestedCheckout) setPendingCheckout(requestedCheckout);
+      const websiteId = String(params.get('website') || '').trim();
       const draftSlug = normalizeSlug(intentDraftSlug || params.get('draft') || params.get('slug') || '');
-      if (draftSlug && draftSlug !== 'my-website') {
+      if (websiteId || (draftSlug && draftSlug !== 'my-website')) {
         setSaveMessage('Opening saved draft...');
         try {
-          const res = await fetch(`/api/site/get?slug=${encodeURIComponent(draftSlug)}&owner=1`, {
+          const websiteReference = websiteId ? `id=${encodeURIComponent(websiteId)}` : `slug=${encodeURIComponent(draftSlug)}`;
+          const res = await fetch(`/api/site/get?${websiteReference}&owner=1`, {
             headers: ownerAuthHeaders()
           });
           const data = await res.json();
+          if (res.status === 401) {
+            const destination = `/builder?${websiteReference}${params.get('convert') === 'legacy' ? '&convert=legacy' : ''}`;
+            setMessage('Sign in to continue editing this website in the full Builder.');
+            openAccountModal({ mode: 'signin', destination });
+            return;
+          }
           if (data.ok && data.site) {
-            const merged = mergeDefaults({ ...data.site, ...(requestedPlan ? { plan: requestedPlan } : {}) });
+            const restoredPayload = { ...data.site, checkoutState: data.checkoutState || 'free', checkoutIntent: data.checkoutIntent || null };
+            const merged = mergeDefaults(reconcileBuilderPlan(restoredPayload, requestedPlan).site);
             setSite(merged);
+            setPaidPublishAllowed(Boolean(data.publishAccess?.paid && data.publishAccess?.allowed));
             localStorage.setItem(DRAFT_KEY, JSON.stringify(merged));
             localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftSlugFor(merged));
-            setStep(1);
-            setSaveMessage('Saved website/draft opened. Continue editing, then save or publish.');
+            const restoredStep = Number(data.site.builderStep);
+            setStep(Number.isInteger(restoredStep) ? Math.min(4, Math.max(0, restoredStep)) : 1);
+            setSaveMessage(params.get('convert') === 'legacy'
+              ? 'Opened in the full Builder. Compatible website content and the existing plan were preserved.'
+              : 'Saved website/draft opened. Continue editing, then save your draft or continue checkout.');
             return;
           }
           setSaveMessage(data.error || 'Could not open that saved draft. Restoring browser draft instead.');
@@ -241,19 +274,22 @@ export default function Builder() {
       const saved = safeParse(localStorage.getItem(DRAFT_KEY));
       const savedStep = Number(localStorage.getItem(LAST_STEP_KEY || 0));
       if (saved) {
-        setSite(mergeDefaults({ ...saved, ...(requestedPlan ? { plan: requestedPlan } : {}) }));
+        setSite(mergeDefaults(reconcileBuilderPlan(saved, requestedPlan).site));
         localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftStorageKeyFor(saved));
         if (!Number.isNaN(savedStep)) setStep(Math.min(4, Math.max(0, savedStep)));
         setSaveMessage('Draft restored from this browser.');
       } else if (requestedPlan) {
-        setSite(current => mergeDefaults({ ...current, plan: requestedPlan }));
+        setSite(current => mergeDefaults(reconcileBuilderPlan(current, requestedPlan).site));
+      }
+      } finally {
+        setBuilderReady(true);
       }
     }
     restore();
   }, []);
 
   useEffect(() => {
-    if (!resumeCheckoutRequested || !pendingCheckout || !pendingCheckoutIntent || (pendingCheckout !== 'extra' && site.plan !== pendingCheckout) || !hasOwnerSession) return;
+    if (!builderReady || !resumeCheckoutRequested || !pendingCheckout || !pendingCheckoutIntent || (pendingCheckout !== 'extra' && !planMatchesCheckoutAuthority(site.plan, pendingCheckout)) || !hasOwnerSession) return;
     const intentId = pendingCheckoutIntent;
     setPendingCheckout('');
     setResumeCheckoutRequested(false);
@@ -262,7 +298,7 @@ export default function Builder() {
     else checkoutPlan(intentId);
     // checkoutPlan saves the verified owner's draft before opening checkout.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingCheckout, pendingCheckoutIntent, resumeCheckoutRequested, site.plan, hasOwnerSession]);
+  }, [builderReady, pendingCheckout, pendingCheckoutIntent, resumeCheckoutRequested, site.plan, hasOwnerSession]);
 
   useEffect(() => {
     function checkSize() {
@@ -287,6 +323,7 @@ export default function Builder() {
   }, []);
 
   useEffect(() => {
+    if (!builderReady) return;
     // Slower, lightweight autosave keeps the builder from freezing while typing or uploading images.
     const handle = setTimeout(() => {
       const localDraft = persistLocal('Draft auto-saved.', true);
@@ -294,7 +331,7 @@ export default function Builder() {
     }, 13000);
     return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [site, step, hasOwnerSession]);
+  }, [builderReady, site, step, hasOwnerSession]);
 
   useEffect(() => {
     // No browser "Leave site?" popup. The builder already saves local drafts
@@ -306,6 +343,7 @@ export default function Builder() {
     setSite(current => ({
       ...current,
       ...patch,
+      ...(authoritativeCheckoutPlan ? { plan: authoritativeCheckoutPlan } : {}),
       sections: patch.sections ? { ...(current.sections || {}), ...(patch.sections || {}) } : current.sections,
       media: patch.media || current.media
     }));
@@ -484,7 +522,7 @@ export default function Builder() {
     localStorage.removeItem(GUEST_CLAIM_KEY);
     localStorage.removeItem(LAST_STEP_KEY);
     localStorage.removeItem(CURRENT_DRAFT_SLUG_KEY);
-    setSite(createDefaultSite());
+    setSite(reconcileBuilderPlan(createDefaultSite(), authoritativeCheckoutPlan).site);
     setStep(0);
     setMessage('Started a fresh website draft.');
     setSaveMessage('Fresh draft opened.');
@@ -550,14 +588,14 @@ export default function Builder() {
     }
   }
 
-  async function saveDraftOnline(draft, quiet = false) {
+  async function saveDraftOnline(draft, quiet = false, checkoutIntentId = '') {
     if (!hasOwnerSession) {
       throw new Error('Sign in from the account window before saving online.');
     }
     const res = await fetch('/api/site/draft', {
       method: 'POST',
       headers: ownerAuthHeaders(),
-      body: JSON.stringify({ site: draft })
+      body: JSON.stringify({ site: draft, checkoutIntentId: checkoutIntentId || pendingCheckoutIntent || '' })
     });
     const data = await res.json();
     if (!data.ok) {
@@ -565,12 +603,17 @@ export default function Builder() {
       error.status = res.status;
       throw error;
     }
+    if (data.id) setSite(current => ({ ...current, websiteId: data.id, draftId: data.id, slug: data.slug || current.slug }));
     if (!quiet) setSaveMessage(`Draft saved online. Find it later from My Website using your email or this name: ${data.slug}. ${nowStamp()}`);
     return data;
   }
 
   async function saveDraft() {
-    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
+    if (!planMatchesCheckoutAuthority(site.plan, authoritativeCheckoutPlan)) {
+      setMessage('Your selected plan could not be confirmed for this draft. Return to Pricing and choose the plan again before saving online.');
+      return;
+    }
+    const draft = { ...site, builderStep: step, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     setIsSaving(true);
     setSaveMessage('Saving draft...');
     try {
@@ -595,7 +638,48 @@ export default function Builder() {
     const usesActionSection = selected.includes('Order / Book / Buy') || selected.includes('Customer Action');
     if (!usesActionSection) return [];
     return normalizeCustomerActions(currentSite.customerActions, currentSite.plan)
-      .filter(action => !String(action.value || '').trim());
+      .map((action, index) => ({ action, index }))
+      .filter(({ action }) => !String(action.value || '').trim());
+  }
+
+  function focusBuilderField(fieldId) {
+    setTimeout(() => {
+      const field = document.getElementById(fieldId);
+      if (!field) return;
+      field.focus();
+      field.scrollIntoView({ block: 'center' });
+    }, 0);
+  }
+
+  function showCheckoutValidation(problem) {
+    setStep(problem.step);
+    setMessage(problem.message);
+    setCheckoutFieldError({ fieldId: problem.fieldId, message: problem.message });
+    setCheckoutRetryPlan(authoritativeCheckoutPlan || site.plan);
+    setCheckoutBusyPlan('');
+    checkoutBusyRef.current = false;
+    focusBuilderField(problem.fieldId);
+  }
+
+  function checkoutDraftProblem(currentSite = site) {
+    const businessSlug = slugify(currentSite.businessName || '');
+    if (!businessSlug || ['my-business-name', 'my-website', 'published-website'].includes(businessSlug)) {
+      return {
+        step: 1,
+        fieldId: 'builder-business-name',
+        message: 'Enter your real business or website name before checkout. This name identifies the website attached to your purchase.'
+      };
+    }
+    const [missingAction] = missingActionLinks(currentSite);
+    if (missingAction) {
+      const label = String(missingAction.action.label || `Action button ${missingAction.index + 1}`).trim();
+      return {
+        step: 3,
+        fieldId: `customer-action-destination-${missingAction.index}`,
+        message: `${label} needs a destination before checkout. Enter its email address, phone number, booking form, menu, product, payment, or order link.`
+      };
+    }
+    return null;
   }
 
   async function goVideo() {
@@ -605,7 +689,7 @@ export default function Builder() {
       setTimeout(() => { window.location.href = '/video-studio?intent=purchase'; }, 650);
       return;
     }
-    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
+    const draft = { ...site, builderStep: step, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     persistLocal('Draft saved before opening AI Video Studio.');
     saveLocalDraftIndex(draft);
     setSaveMessage('Saving your draft before opening AI Video Studio...');
@@ -629,7 +713,8 @@ export default function Builder() {
     const incompleteActions = missingActionLinks(site);
     if (incompleteActions.length) {
       setStep(3);
-      setMessage(`Add the email, phone number, booking link, order link, menu link, or checkout link for ${incompleteActions.map(action => action.label).join(', ')} before publishing. Buttons without a destination cannot be clicked.`);
+      setMessage(`Add the email, phone number, booking link, order link, menu link, or checkout link for ${incompleteActions.map(({ action }) => action.label).join(', ')} before publishing. Buttons without a destination cannot be clicked.`);
+      focusBuilderField(`customer-action-destination-${incompleteActions[0].index}`);
       return;
     }
     const published = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, pages: normalizeSelectedPagesForPlan(site.pages, 'free'), plan: 'free', status: 'published' };
@@ -649,12 +734,46 @@ export default function Builder() {
     }
   }
 
+  async function publishPaid() {
+    if (publishBusy || site.status === 'published') return;
+    if (!paidPublishAllowed || !['starter', 'business', 'premium'].includes(site.plan)) {
+      setMessage('This paid website is not verified for publishing. Save the draft and continue to secure checkout.');
+      return;
+    }
+    const validationProblem = checkoutDraftProblem(site);
+    if (validationProblem) {
+      showCheckoutValidation(validationProblem);
+      return;
+    }
+    const published = { ...site, builderStep: 4, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), status: 'published' };
+    setPublishBusy(true);
+    setMessage('Saving and publishing your verified website…');
+    try {
+      const response = await fetch('/api/site/publish', {
+        method: 'POST',
+        headers: ownerAuthHeaders(),
+        body: JSON.stringify({ site: published })
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) {
+        setMessage(result.error || 'The website could not be published. Your draft remains saved.');
+        return;
+      }
+      setSite(current => ({ ...current, status: 'published' }));
+      setMessage('Saved and published. Your website is open to visitors.');
+    } catch {
+      setMessage('The website could not be published. Your draft remains saved; please try again.');
+    } finally {
+      setPublishBusy(false);
+    }
+  }
+
   async function ensureCheckoutIntent(plan, draftSlug, existingIntentId = '') {
     const intentId = existingIntentId || pendingCheckoutIntent || '';
     const response = await fetch('/api/checkout/intent/start', {
       method: 'POST',
       headers: ownerAuthHeaders(),
-      body: JSON.stringify({ plan, draftSlug, intentId })
+      body: JSON.stringify({ plan, draftSlug, intentId, websiteId: site.websiteId || site.draftId || '' })
     });
     const data = await response.json();
     if (!data.ok || !data.intentId) throw new Error(data.error || 'Secure checkout could not start.');
@@ -670,7 +789,7 @@ export default function Builder() {
     const response = await fetch('/api/checkout/intent/continue', {
       method: 'POST',
       headers: ownerAuthHeaders(),
-      body: JSON.stringify({ intentId, draftSlug })
+      body: JSON.stringify({ intentId, draftSlug, websiteId: site.websiteId || site.draftId || '' })
     });
     const data = await response.json();
     if (!data.ok || !data.checkoutPath) {
@@ -704,9 +823,9 @@ export default function Builder() {
       openAccountModal({ mode: 'signin', destination: `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draftSlug)}` });
       return;
     }
-    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlug, draftName: site.draftName || site.businessName, status: 'draft' };
+    const draft = { ...site, builderStep: step, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlug, draftName: site.draftName || site.businessName, status: 'draft' };
     try {
-      await saveDraftOnline(draft, true);
+      await saveDraftOnline(draft, true, intentId);
     } catch (error) {
       if (error.status === 401) {
         try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
@@ -728,8 +847,18 @@ export default function Builder() {
 
   async function checkoutPlan(existingIntentId = '') {
     if (checkoutBusyRef.current) return;
+    if (!planMatchesCheckoutAuthority(site.plan, authoritativeCheckoutPlan)) {
+      setMessage('Your selected plan could not be confirmed for checkout. Return to Pricing and choose the plan again. Your draft is still safe.');
+      return;
+    }
     checkoutBusyRef.current = true;
-    const selectedPlan = site.plan;
+    const selectedPlan = authoritativeCheckoutPlan || site.plan;
+    const validationProblem = checkoutDraftProblem(site);
+    if (validationProblem) {
+      showCheckoutValidation(validationProblem);
+      return;
+    }
+    setCheckoutFieldError(null);
     setCheckoutBusyPlan(selectedPlan);
     setCheckoutRetryPlan('');
     setMessage(`Opening your secure ${plans[selectedPlan]?.label || 'paid-plan'} checkout…`);
@@ -752,20 +881,11 @@ export default function Builder() {
       openAccountModal({ mode: 'signin', destination: `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draftSlug)}` });
       return;
     }
-    const incompleteActions = missingActionLinks(site);
-    if (incompleteActions.length) {
-      setStep(3);
-      setMessage(`Add the destination for ${incompleteActions.map(action => action.label).join(', ')} before checkout. Use an email, phone number, booking form, menu, product, payment, or order link.`);
-      setCheckoutRetryPlan(selectedPlan);
-      setCheckoutBusyPlan('');
-      checkoutBusyRef.current = false;
-      return;
-    }
-    const draft = { ...site, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
+    const draft = { ...site, builderStep: step, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     try { const lightDraft = stripHeavyLocalData(draft); localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft)); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draft.slug); saveLocalDraftIndex(lightDraft); } catch {}
     setMessage('Saving your draft before checkout. If checkout opens, your draft was saved.');
     try {
-      await saveDraftOnline(draft, true);
+      await saveDraftOnline(draft, true, intentId);
     } catch (error) {
       if (error.status === 401) {
         try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
@@ -831,13 +951,14 @@ export default function Builder() {
           <span>Cookie Mini Website Builder Pro</span>
         </a>
         {['Choose Type & Look','Website Info','Design','Sections & Wording','Preview & Publish'].map((label, index) => (
-          <button className={`stepBtn ${step === index ? 'active' : ''}`} onClick={() => { persistLocal('Draft saved.'); setStep(index); }} key={label}>{index + 1}. {label}</button>
+          <button type="button" className={`stepBtn ${step === index ? 'active' : ''}`} disabled={!builderReady} onClick={() => { persistLocal('Draft saved.'); setStep(index); }} key={label}>{index + 1}. {label}</button>
         ))}
-        <button className="btn light" onClick={saveDraft} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save Draft'}</button>
-        {isSmallBuilderScreen && <button className="btn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button>}
-        {planAllowsAiVideo(site.plan) ? <button className="btn light aiStudioBuilderBtn" onClick={goVideo}>AI Video Studio</button> : <button className="btn light lockedBtn aiStudioBuilderBtn" onClick={goVideo}>AI Video Upgrade</button>}
+        <button type="button" className="btn light" onClick={saveDraft} disabled={!builderReady || isSaving}>{isSaving ? 'Saving...' : 'Save Draft'}</button>
+        {isSmallBuilderScreen && <button type="button" className="btn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button>}
+        {planAllowsAiVideo(site.plan) ? <button type="button" className="btn light aiStudioBuilderBtn" onClick={goVideo}>AI Video Studio</button> : <button type="button" className="btn light lockedBtn aiStudioBuilderBtn" onClick={goVideo}>AI Video Upgrade</button>}
         <button className="btn light" type="button" onClick={() => hasOwnerSession ? window.location.assign('/customer') : openAccountModal({ mode: 'signin', destination: '/customer' })}>My Websites</button>
-        <button className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
+        <div className="builderAccountMenu"><CustomerAccountLink placement="builder" /></div>
+        <button type="button" className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
         {showCurrentDraft && (
           <div className="notice smallNotice currentDraftNotice" role="status">
             <span><strong>Current draft:</strong> {draftSlugFor(site)}.cookiesdigitalcreations.com</span>
@@ -853,8 +974,15 @@ export default function Builder() {
       </aside>
 
       <section className="builderMain">
+        {!builderReady ? (
+          <div className="dashboard builderLoadingPanel" role="status" aria-live="polite">
+            <h2>Opening your website plan…</h2>
+            <p>We’re confirming your selected plan and draft before editing begins.</p>
+          </div>
+        ) : (
         <div className="row builderTwoCol">
           <div className="dashboard builderPanel">
+            {message && <div className="notice builderMessage" role="status" aria-live="polite">{message}</div>}
             {!hasOwnerSession && (
               <div className="notice guestDraftNotice" role="status">
                 <strong>Saved on this device</strong><br />
@@ -868,7 +996,7 @@ export default function Builder() {
                 <p className="mutedText">Pick what the site is for first. Then pick the visual look. This changes the starter wording, pages, artwork, and design feel.</p>
                 <div className="templateList bigTemplateList">
                   {templateLibrary.map(t => (
-                    <button className={`pick ${site.typeKey === t.key ? 'active' : ''}`} onClick={() => chooseType(t.key)} key={t.key}>
+                    <button type="button" className={`pick ${site.typeKey === t.key ? 'active' : ''}`} onClick={() => chooseType(t.key)} key={t.key}>
                       <strong>{t.type}</strong><br />
                       <small>{t.pages.join(' • ')}</small>
                     </button>
@@ -884,7 +1012,7 @@ export default function Builder() {
               <>
                 <h2>Website Info</h2>
                 <p className="mutedText">Enter the words that build the website. The preview updates on the right.</p>
-                <Field label="Business / website name"><input value={site.businessName || ''} onChange={e => update({ businessName: e.target.value })} /></Field>
+                <Field label="Business / website name"><input id="builder-business-name" value={site.businessName || ''} onChange={e => update({ businessName: e.target.value })} /></Field>
                 <Field label="Draft name / website address"><input placeholder="Example: cookie-kitchen-menu" value={site.draftName || ''} onChange={e => update({ draftName: e.target.value })} /></Field>
                 <Field label="Customer email for Contact button and dashboard"><input type="email" value={site.customerEmail || ''} onChange={e => update({ customerEmail: e.target.value })} /></Field>
                 <Field label="Phone (optional; not shown in top header)"><input value={site.phone || ''} onChange={e => update({ phone: e.target.value })} /></Field>
@@ -919,7 +1047,7 @@ export default function Builder() {
                 {site.typeKey === 'food' && <div className="notice"><strong>Food template image controls:</strong> The restaurant hero, menu promotion, and event promotion include original starter artwork. Starter Pro and higher customers can replace the hero here, then replace the Menu or Gallery promotion by uploading their own image to that section in Sections &amp; Wording.</div>}
                 {site.typeKey === 'beauty' && <div className="notice"><strong>Beauty template image controls:</strong> The salon hero, services promotion, and gallery promotion include original starter artwork. Starter Pro and higher customers can replace the hero here, then replace the Services or Gallery promotion by uploading their own image to that section in Sections &amp; Wording.</div>}
                 <p className="mutedText">Change the website type, template look, colors, layout, hero image, and media. Template changes apply immediately to the preview.</p>
-                <Field label="Plan"><select value={site.plan} onChange={e => {
+                <Field label="Plan"><select value={site.plan} disabled={Boolean(authoritativeCheckoutPlan)} aria-describedby={authoritativeCheckoutPlan ? 'checkout-plan-guidance' : undefined} onChange={e => {
                   const nextPlan = e.target.value;
                   if (nextPlan !== site.plan) {
                     setPendingCheckout('');
@@ -932,6 +1060,7 @@ export default function Builder() {
                   update({ plan: nextPlan, pages: normalizeSelectedPagesForPlan(site.pages || ['Home'], nextPlan, site.extraPages || site.extra_pages), customerActions: normalizeCustomerActions(site.customerActions, nextPlan) });
                   setMessage(`Plan changed to ${plans[nextPlan]?.label}. Pick your own sections below instead of letting a template choose for you.`);
                 }}>{Object.entries(plans).map(([k, v]) => <option value={k} key={k}>{v.label} - {v.price}</option>)}</select></Field>
+                {authoritativeCheckoutPlan && <p className="mutedText" id="checkout-plan-guidance">Your {plans[authoritativeCheckoutPlan]?.label} plan is confirmed for this checkout and will stay with this draft.</p>}
                 <Field label="Website type"><select value={site.typeKey} onChange={e => chooseType(e.target.value)}>{templateLibrary.map(t => <option value={t.key} key={t.key}>{t.type}</option>)}</select></Field>
                 <h3>Template look</h3>
                 <StylePicker typeKey={site.typeKey} styleKey={site.styleKey} selectStyle={selectStyle} />
@@ -949,7 +1078,7 @@ export default function Builder() {
                   <Field label="Section style"><select value={site.sectionShape || 'cards'} onChange={e => updateDesign({ sectionShape: e.target.value })}><option value="cards">Clean cards</option><option value="floating">Floating 3D cards</option><option value="boxed">Boxed sections</option></select></Field>
                 </div>
                 {planAllowsMedia(site.plan) ? <>
-                  <Field label="Upload hero image / website visual"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => e.target.files?.[0] && uploadHero(e.target.files[0])} /><small>JPEG, PNG, or WebP; up to 8 MB and 6000 pixels per side.</small>{site.heroImage && <button className="btn dark" onClick={() => update({ heroImage: '' })}>Remove Uploaded Image</button>}</Field>
+                  <Field label="Upload hero image / website visual"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => e.target.files?.[0] && uploadHero(e.target.files[0])} /><small>JPEG, PNG, or WebP; up to 8 MB and 6000 pixels per side.</small>{site.heroImage && <button type="button" className="btn dark" onClick={() => update({ heroImage: '' })}>Remove Uploaded Image</button>}</Field>
                   <Field label="Video or media link for this website"><input placeholder="https://youtube.com/... or TikTok/Instagram/Vimeo link" value={site.heroMediaLink || ''} onChange={e => update({ heroMediaLink: e.target.value })} /></Field>
                 </> : <div className="notice"><strong>Image/video uploads are not included on the Free Launch Page.</strong><br />Starter Pro, Business, and Premium unlock image uploads and video/media links.</div>}
                 <NavRow back={back} next={next} />
@@ -992,6 +1121,7 @@ export default function Builder() {
                     const isActionPage = page === 'Order / Book / Buy';
                     return (
                       <button
+                        type="button"
                         className={`pick ${isSelected ? 'active' : ''} ${isAtLimit && !isActionPage ? 'lockedPick' : ''} ${isActionPage ? 'orderBookBuyPick' : ''}`}
                         key={page}
                         disabled={(isAtLimit && !isActionPage) || (isHome && isSelected)}
@@ -1013,6 +1143,8 @@ export default function Builder() {
                       site={site}
                       updateSection={updateSection}
                       updateCustomerActions={updateCustomerActions}
+                      checkoutFieldError={checkoutFieldError}
+                      clearCheckoutFieldError={() => setCheckoutFieldError(null)}
                     />
                   ) : (
                     <Field label={`${page} wording`} help={sectionPrompts[page]} key={page}>
@@ -1035,12 +1167,20 @@ export default function Builder() {
             {step === 4 && (
               <>
                 <h2>Preview & Publish</h2>
-                {message && <div className="notice error">{message}</div>}
                 <p>Your website name will be:</p>
-                <div className="notice"><strong>{plans[site.plan]?.label}</strong> will publish {limitText}. Selected sections: {selectedSections.join(', ')}.</div>
+                <div className="notice"><strong>{plans[site.plan]?.label} — {plans[site.plan]?.price}</strong> will publish {limitText}. Selected sections: {selectedSections.join(', ')}.</div>
                 <div className="notice"><strong>{draftSlugFor(site)}.cookiesdigitalcreations.com</strong></div>
-                <button className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}
-                {site.plan === 'free' ? <button className="btn" onClick={publishFree}>Publish Free Page</button> : (
+                <button type="button" className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}
+                {site.status === 'published' ? (
+                  <div className="publishedBuilderActions" role="status" aria-live="polite">
+                    <strong>Published</strong>
+                    <a className="btn" href={`https://${draftSlugFor(site)}.cookiesdigitalcreations.com`} target="_blank" rel="noreferrer">View Published Website</a>
+                    <a className="btn light" href="/customer">Go to My Websites</a>
+                    <button type="button" className="btn dark" onClick={() => { setSite(current => ({ ...current, status: 'draft' })); setStep(0); }}>Continue Editing</button>
+                  </div>
+                ) : site.plan === 'free' ? <button type="button" className="btn" onClick={publishFree}>Save and Publish Free Page</button> : paidPublishAllowed ? (
+                  <button type="button" className="btn" onClick={publishPaid} disabled={publishBusy} aria-busy={publishBusy}>{publishBusy ? 'Publishing…' : 'Save and Publish'}</button>
+                ) : (
                   <button
                     type="button"
                     className="btn"
@@ -1052,10 +1192,10 @@ export default function Builder() {
                       ? `Opening Secure ${plans[site.plan]?.price} Checkout…`
                       : checkoutRetryPlan === site.plan
                         ? `Retry Secure ${plans[site.plan]?.price} Checkout`
-                        : `Go to Secure ${plans[site.plan]?.price} Checkout`}
+                        : 'Save Draft and Continue to Secure Checkout'}
                   </button>
                 )}
-                <div className="navRow"><button className="btn dark" onClick={back}>Back</button></div>
+                <div className="navRow"><button type="button" className="btn dark" onClick={back}>Back</button></div>
               </>
             )}
           </div>
@@ -1065,6 +1205,7 @@ export default function Builder() {
             <SitePreview key={previewKey} site={previewSite} draftMode />
           </div>}
         </div>
+        )}
       </section>
       {isSmallBuilderScreen && isMobilePreviewOpen && <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(18,7,29,.72)', display: 'grid', placeItems: 'stretch', padding: 10 }}>
         <div style={{ background: '#fff8f1', borderRadius: 24, overflow: 'auto', boxShadow: '0 30px 90px rgba(0,0,0,.35)' }}>
@@ -1083,25 +1224,27 @@ export default function Builder() {
 
 function Field({ label, help, children }) {
   const fieldId = useId();
+  let labelTargetId = fieldId;
   let connected = false;
   const labelledChildren = Children.map(children, child => {
     if (!connected && isValidElement(child) && ['input', 'select', 'textarea'].includes(child.type)) {
       connected = true;
-      return cloneElement(child, { id: child.props.id || fieldId });
+      labelTargetId = child.props.id || fieldId;
+      return cloneElement(child, { id: labelTargetId });
     }
     return child;
   });
-  return <div className="field"><label htmlFor={fieldId}>{label}</label>{help && <small>{help}</small>}{labelledChildren}</div>;
+  return <div className="field"><label htmlFor={labelTargetId}>{label}</label>{help && <small>{help}</small>}{labelledChildren}</div>;
 }
 
 function NavRow({ back, next }) {
-  return <div className="navRow"><button className="btn dark" onClick={back}>Back</button><button className="btn" onClick={next}>Save & Continue</button></div>;
+  return <div className="navRow"><button type="button" className="btn dark" onClick={back}>Back</button><button type="button" className="btn" onClick={next}>Save & Continue</button></div>;
 }
 
 function StylePicker({ typeKey, styleKey, selectStyle }) {
   const type = templateLibrary.find(t => t.key === typeKey) || templateLibrary[0];
   return <div className="templateList stylePickList enhancedStylePicker">{type.styles.map(style => (
-    <button className={`pick styleCard enhancedStyleCard ${styleKey === style.key ? 'active' : ''}`} onClick={() => selectStyle(style.key)} key={style.key}>
+    <button type="button" className={`pick styleCard enhancedStyleCard ${styleKey === style.key ? 'active' : ''}`} onClick={() => selectStyle(style.key)} key={style.key}>
       <span className="stylePalette" style={{ background: `linear-gradient(135deg, ${style.palette?.primary || '#20172f'}, ${style.palette?.accent || '#c46a2d'})` }} />
       <span className={`styleThumb styleThumb-${type.key} styleThumb-${style.key}`}>
         <b>{style.art}</b><i></i><i></i><i></i>
@@ -1114,7 +1257,7 @@ function StylePicker({ typeKey, styleKey, selectStyle }) {
 }
 
 
-function CustomerActionEditor({ site, updateSection, updateCustomerActions }) {
+function CustomerActionEditor({ site, updateSection, updateCustomerActions, checkoutFieldError, clearCheckoutFieldError }) {
   const actions = normalizeCustomerActions(site.customerActions, site.plan);
   const limit = customerActionLimit(site.plan);
   const canAddMore = actions.length < limit;
@@ -1124,6 +1267,7 @@ function CustomerActionEditor({ site, updateSection, updateCustomerActions }) {
     const next = [...actions];
     next[index] = { ...next[index], ...patch };
     updateCustomerActions(next);
+    if (Object.prototype.hasOwnProperty.call(patch, 'value') && String(patch.value || '').trim()) clearCheckoutFieldError?.();
   }
 
   function addAction() {
@@ -1189,11 +1333,19 @@ function CustomerActionEditor({ site, updateSection, updateCustomerActions }) {
 
               <Field label="Phone, email, checkout, booking, menu, payment, or custom link">
                 <input
+                  id={`customer-action-destination-${index}`}
+                  aria-invalid={checkoutFieldError?.fieldId === `customer-action-destination-${index}`}
+                  aria-describedby={checkoutFieldError?.fieldId === `customer-action-destination-${index}` ? `customer-action-destination-error-${index}` : undefined}
                   value={action.value || ''}
                   onChange={e => updateAction(index, { value: e.target.value })}
                   placeholder={actionMeta.placeholder}
                 />
               </Field>
+              {checkoutFieldError?.fieldId === `customer-action-destination-${index}` && (
+                <div id={`customer-action-destination-error-${index}`} className="notice checkoutFieldError" role="alert">
+                  {checkoutFieldError.message}
+                </div>
+              )}
 
               <Field label="Optional note under button">
                 <input
@@ -1289,13 +1441,13 @@ function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
       <Field label="Upload image to this section"><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e => e.target.files?.[0] && uploadQuick(e.target.files[0])} /><small>JPEG, PNG, or WebP; up to 8 MB and 6000 pixels per side.</small></Field>
       <div className="row">
         <Field label="Or paste video/media link"><input placeholder="https://youtube.com/..." value={quick.url} onChange={e => setQuick({ ...quick, url: e.target.value })} /></Field>
-        <div className="field mediaButtonField"><label>&nbsp;</label><button className="btn dark" onClick={addQuickLink}>Add Media Link</button></div>
+        <div className="field mediaButtonField"><label>&nbsp;</label><button type="button" className="btn dark" onClick={addQuickLink}>Add Media Link</button></div>
       </div>
     </div>
 
     <div className="navRow">
-      <button className="btn dark" onClick={() => addImageSlot(firstSelectedMediaSection)}>Add Empty Image Slot</button>
-      <button className="btn dark" onClick={() => addLinkSlot(firstSelectedMediaSection)}>Add Empty Video Link Slot</button>
+      <button type="button" className="btn dark" onClick={() => addImageSlot(firstSelectedMediaSection)}>Add Empty Image Slot</button>
+      <button type="button" className="btn dark" onClick={() => addLinkSlot(firstSelectedMediaSection)}>Add Empty Video Link Slot</button>
     </div>
     {media.length === 0 && <div className="notice">No media added yet. Add an uploaded image or a video/media link.</div>}
     {media.map((item, index) => (
@@ -1310,7 +1462,7 @@ function MediaEditor({ site, update, setSaveMessage, ensureMediaSection }) {
         ) : (
           <Field label="Video/social/media URL"><input placeholder="https://youtube.com/..." value={item.url || ''} onChange={e => updateItem(index, { url: e.target.value })} /></Field>
         )}
-        <button className="btn dark" onClick={() => removeItem(index)}>Remove Media</button>
+        <button type="button" className="btn dark" onClick={() => removeItem(index)}>Remove Media</button>
       </div>
     ))}
   </div>;

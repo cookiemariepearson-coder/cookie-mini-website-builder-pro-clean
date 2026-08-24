@@ -25,26 +25,24 @@ test('legacy migration fallback requires an unowned row and exact verified email
   assert.equal(siteBelongsToOwner(legacy, { user: { id: 'owner-b' }, email: 'different@example.com' }), false);
 });
 
-test('customer editor uses the secure same-origin cookie rather than retired browser auth', async () => {
+test('legacy editor cannot render a competing client editor and redirects into the full Builder', async () => {
   const editor = await source('app/customer/edit/[slug]/page.js');
-  assert.match(editor, /credentials: 'same-origin'/);
-  assert.match(editor, /useAccountModal/);
-  assert.match(editor, /accountState !== 'signed-in'/);
-  assert.doesNotMatch(editor, /cookieSiteOwnerAccessToken|AUTH_TOKEN_KEY|localStorage\.getItem|Authorization:/);
+  assert.match(editor, /redirect\(slug \? `\/builder\?draft=/);
+  assert.match(editor, /convert=legacy/);
+  assert.doesNotMatch(editor, /Save & Publish|SitePreview|fetch\(/);
 });
 
-test('signed-out editor access opens password sign-in with a validated return path', async () => {
-  const [editor, modal, commerce] = await Promise.all([
-    source('app/customer/edit/[slug]/page.js'),
+test('signed-out full-Builder website access preserves the UUID through password sign-in', async () => {
+  const [builder, modal, commerce] = await Promise.all([
+    source('app/builder/page.js'),
     source('components/AccountModalProvider.js'),
     source('lib/commerceConfig.mjs')
   ]);
-  assert.match(editor, /Sign In and Return to Editor/);
-  assert.match(editor, /openAccountModal\(\{ mode: 'signin', destination: editorPath\(slug\) \}\)/);
-  const safeEditorPathCheck = "if (/^\\/customer\\/edit\\/[a-z0-9-]+$/.test(path)) return path;";
-  assert.ok(modal.includes(safeEditorPathCheck));
-  assert.ok(commerce.includes(safeEditorPathCheck));
-  assert.equal(safeCustomerReturnPath('/customer/edit/my-safe-site'), '/customer/edit/my-safe-site');
+  assert.match(builder, /openAccountModal\(\{ mode: 'signin', destination \}\)/);
+  assert.match(modal, /builder\\\?website=/);
+  assert.match(commerce, /builder\\\?website=/);
+  const websitePath = '/builder?website=11111111-1111-4111-8111-111111111111';
+  assert.equal(safeCustomerReturnPath(websitePath), websitePath);
   assert.equal(safeCustomerReturnPath('/customer/edit/../../admin'), '/customer');
 });
 

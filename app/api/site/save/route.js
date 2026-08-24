@@ -5,7 +5,8 @@ import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOw
 import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
 import { validateSiteMedia } from '../../../../lib/mediaValidation.mjs';
 import { normalizeSelectedPagesForPlan } from '../../../../lib/siteDefaults';
-import { extraPageAccess, websitePlanAccess } from '../../../../lib/subscriptionLifecycle.mjs';
+import { extraPageAccess } from '../../../../lib/subscriptionLifecycle.mjs';
+import { enforceFreePublishingLimits, missingSelectedActionDestination, publishPlanDecision } from '../../../../lib/websitePublishPolicy.mjs';
 
 function privateResponse(body, status = 200) {
   return NextResponse.json(body, { status, headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
@@ -37,14 +38,24 @@ export async function POST(req) {
       return privateResponse({ ok: false, error: 'This website is not available for editing. Contact support if it should be recovered.' }, 409);
     }
 
-    if (websitePlanAccess(existing).paid && !websitePlanAccess(existing).active) {
-      return privateResponse({ ok: false, error: 'This paid plan is not currently active. Your edits remain on this screen; check the membership from your Gumroad receipt or Library.' }, 402);
-    }
+    const { data: latestIntent, error: intentError } = await supabase.from('website_checkout_intents')
+      .select('id,plan,status,website_id,draft_slug,owner_id,created_at')
+      .eq('owner_id', owner.user.id)
+      .or(`website_id.eq.${existing.id},draft_slug.eq.${slug}`)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (intentError) throw intentError;
+    const decision = publishPlanDecision(existing, site, latestIntent);
+    if (!decision.allowed) return privateResponse({ ok: false, reasonCode: decision.code, error: decision.message }, 402);
 
-    const authoritativePlan = existing.plan || 'free';
+    const authoritativePlan = decision.plan;
     const activeExtraPages = extraPageAccess(existing).allowance;
+    const missingAction = missingSelectedActionDestination(site, authoritativePlan, activeExtraPages);
+    if (missingAction) return privateResponse({ ok: false, reasonCode: 'ACTION_DESTINATION_REQUIRED', fieldId: missingAction.fieldId, error: missingAction.message }, 422);
+    const planLimitedSite = authoritativePlan === 'free' ? enforceFreePublishingLimits(site) : site;
     const protectedSite = {
-      ...site,
+      ...planLimitedSite,
       slug,
       plan: authoritativePlan,
       extraPages: activeExtraPages,
@@ -75,7 +86,7 @@ export async function POST(req) {
       customerEmail: owner.email,
       details: 'An owner or authorized editor saved changes through the website editor.'
     });
-    return privateResponse({ ok:true });
+    return privateResponse({ ok:true, publishDecision: decision.code });
   } catch(e) {
     console.error('[site-save] republish failed', { message: e?.message || String(e) });
     return privateResponse({ ok:false,error:'The website could not be republished. Your changes are still on this screen; please try again shortly.' }, 500);

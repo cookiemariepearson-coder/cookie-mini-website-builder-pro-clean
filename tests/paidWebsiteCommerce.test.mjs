@@ -125,32 +125,36 @@ test('website webhook requires approved product, exact website and verified owne
   assert.match(service, /sanitizeGumroadPayload\(payload\)/);
 });
 
-test('paid publishing requires the exact product bound to the selected plan', async () => {
+test('paid publishing requires the centralized exact-plan entitlement decision', async () => {
   const [publish, verify] = await Promise.all([
     source('app/api/site/publish/route.js'),
     source('app/api/checkout/verify/route.js')
   ]);
-  assert.match(publish, /websitePlanAccess\(existing\)\.active/);
+  assert.match(publish, /publishPlanDecision\(existing \|\| \{\}, site, checkoutIntent\)/);
   assert.match(verify, /productMatches/);
   assert.match(verify, /APPROVED_WEBSITE_PRODUCTS\[expected\]/);
 });
 
-test('client draft state cannot grant a paid plan or extra-page allowance', async () => {
-  const [draft, save, getSite, editor] = await Promise.all([
+test('client draft state can persist a paid selection only with the exact owner checkout intent', async () => {
+  const [draft, save, getSite, editor, builder] = await Promise.all([
     source('app/api/site/draft/route.js'),
     source('app/api/site/save/route.js'),
     source('app/api/site/get/route.js'),
-    source('app/customer/edit/[slug]/page.js')
+    source('app/customer/edit/[slug]/page.js'),
+    source('app/builder/page.js')
   ]);
-  assert.match(draft, /authoritativePlan = existing\?\.plan \|\| 'free'/);
+  assert.match(draft, /checkoutIntentBelongsToOwner\(intent, owner\)/);
+  assert.match(draft, /state\.plan === requestedPlan/);
+  assert.match(draft, /state\.draftSlug === slug/);
   assert.match(draft, /extra_pages: Math\.max\(0, Number\(existing\?\.extra_pages\) \|\| 0\)/);
   assert.doesNotMatch(draft, /extra_pages: Number\(site\.extraPages/);
-  assert.match(save, /authoritativePlan = existing\.plan \|\| 'free'/);
+  assert.match(save, /publishPlanDecision\(existing, site, latestIntent\)/);
   assert.doesNotMatch(save, /plan: site\.plan/);
   assert.doesNotMatch(save, /extra_pages: Number\(site\.extraPages/);
   assert.match(getSite, /extraPageAccess\(row\)\.allowance/);
   assert.doesNotMatch(editor, /NEXT_PUBLIC_EXTRA_PAGE_SUBSCRIPTION_CHECKOUT_URL/);
-  assert.match(editor, /Purchase Extra Page/);
+  assert.match(editor, /convert=legacy/);
+  assert.match(builder, /checkoutExtraPage/);
 });
 
 test('an active paid add-on expands section allowance without changing Premium', () => {

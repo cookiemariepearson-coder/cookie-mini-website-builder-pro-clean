@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "lint": "eslint .",
     "start": "next start",
     "test": "node --test tests/*.test.mjs",
     "check": "npm test && npm run build"
@@ -22,5 +23,9 @@
   },
   "engines": {
     "node": "24.x"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.2.12"
   }
 }

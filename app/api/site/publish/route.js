@@ -5,7 +5,8 @@ import { sendAdminNotification } from '../../../../lib/adminNotifications';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
 import { rateLimit, rateLimitResponse } from '../../../../lib/rateLimit.mjs';
 import { validateSiteMedia } from '../../../../lib/mediaValidation.mjs';
-import { extraPageAccess, websitePlanAccess } from '../../../../lib/subscriptionLifecycle.mjs';
+import { extraPageAccess } from '../../../../lib/subscriptionLifecycle.mjs';
+import { enforceFreePublishingLimits, missingSelectedActionDestination, publishPlanDecision } from '../../../../lib/websitePublishPolicy.mjs';
 
 function privateResponse(body, status = 200) {
   return NextResponse.json(body, { status, headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
@@ -30,16 +31,21 @@ export async function POST(req) {
     if (!businessSlug || ['my-business-name', 'my-website', 'published-website'].includes(businessSlug)) {
       return privateResponse({ ok: false, error: 'Add a real business or website name before publishing. This creates a unique website address.' }, 400);
     }
+    const requestedWebsiteId = String(site.websiteId || site.draftId || '').trim();
+    if (requestedWebsiteId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestedWebsiteId)) {
+      return privateResponse({ ok: false, error: 'Invalid website reference.' }, 400);
+    }
     const requestedSlug = slugify(site.slug || '');
     const placeholderSlugs = new Set(['my-website', 'my-business-name', 'published-website']);
-    const slug = requestedSlug && !placeholderSlugs.has(requestedSlug)
+    let slug = requestedSlug && !placeholderSlugs.has(requestedSlug)
       ? requestedSlug
       : slugify(site.draftName || site.businessName || 'my-website');
-    const requestedPlan = site.plan || 'free';
-    const paidPlans = new Set(['starter', 'business', 'premium']);
     const supabase = getSupabaseAdmin();
-    const { data: existing, error: lookupError } = await supabase.from('websites').select('*').eq('slug', slug).maybeSingle();
+    let lookup = supabase.from('websites').select('*');
+    lookup = requestedWebsiteId ? lookup.eq('id', requestedWebsiteId) : lookup.eq('slug', slug);
+    const { data: existing, error: lookupError } = await lookup.maybeSingle();
     if (lookupError) throw lookupError;
+    if (existing) slug = existing.slug;
     if (existing && !siteBelongsToOwner(existing, owner)) {
       return privateResponse({ ok: false, error: 'That website address already belongs to a different verified email. Choose another business or website name.' }, 403);
     }
@@ -47,20 +53,28 @@ export async function POST(req) {
       return privateResponse({ ok: false, error: 'This website is in recoverable Trash. Contact support to recover it before publishing again.' }, 409);
     }
 
-    if (paidPlans.has(requestedPlan)) {
-      const paidAccess = existing
-        && String(existing.plan || '').toLowerCase() === requestedPlan
-        && websitePlanAccess(existing).active;
-      if (!paidAccess) {
-        return privateResponse({ ok: false, error: 'Your paid plan is not confirmed yet. Complete checkout and wait for payment confirmation before publishing.' }, 402);
-      }
+    let checkoutIntent = null;
+    if (existing) {
+      const { data: latestIntent, error: intentError } = await supabase.from('website_checkout_intents')
+        .select('id,plan,status,website_id,draft_slug,owner_id,created_at')
+        .eq('owner_id', owner.user.id)
+        .or(`website_id.eq.${existing.id},draft_slug.eq.${slug}`)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (intentError) throw intentError;
+      checkoutIntent = latestIntent;
     }
-
-    const plan = paidPlans.has(requestedPlan) ? requestedPlan : 'free';
+    const decision = publishPlanDecision(existing || {}, site, checkoutIntent);
+    if (!decision.allowed) return privateResponse({ ok: false, reasonCode: decision.code, error: decision.message }, 402);
+    const plan = decision.plan;
     const monthly = plan === 'premium' ? 50 : plan === 'business' ? 30 : plan === 'starter' ? 19 : 0;
 
     const activeExtraPages = extraPageAccess(existing || {}).allowance;
-    const protectedSite = { ...site, slug, customerEmail: owner.email, extraPages: activeExtraPages, status: 'published' };
+    const missingAction = missingSelectedActionDestination(site, plan, activeExtraPages);
+    if (missingAction) return privateResponse({ ok: false, reasonCode: 'ACTION_DESTINATION_REQUIRED', fieldId: missingAction.fieldId, error: missingAction.message }, 422);
+    const planLimitedSite = plan === 'free' ? enforceFreePublishingLimits(site) : site;
+    const protectedSite = { ...planLimitedSite, websiteId: existing?.id || requestedWebsiteId || null, draftId: existing?.id || requestedWebsiteId || null, slug, plan, customerEmail: owner.email, extraPages: activeExtraPages, status: 'published' };
     const row = {
       slug,
       owner_id: owner.user.id,
@@ -73,10 +87,14 @@ export async function POST(req) {
       site: protectedSite,
       updated_at: new Date().toISOString()
     };
-    const { error } = await supabase.from('websites').upsert(row, { onConflict: 'slug' });
+    const write = existing
+      ? supabase.from('websites').update(row).eq('id', existing.id).eq('owner_id', owner.user.id)
+      : supabase.from('websites').upsert(row, { onConflict: 'slug' });
+    const { data: saved, error } = await write.select('id,slug').maybeSingle();
     if (error) throw error;
+    if (!saved) return privateResponse({ ok: false, error: 'You do not have access to publish this website.' }, 403);
     await sendAdminNotification({ subject: `Website published: ${row.business_name || slug}`, event: 'Website published', slug, businessName: row.business_name, customerEmail: row.customer_email, details: `Plan: ${row.plan}` });
-    return privateResponse({ ok: true, slug, url: `https://${slug}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'cookiesdigitalcreations.com'}` });
+    return privateResponse({ ok: true, slug, publishDecision: decision.code, url: `https://${slug}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'cookiesdigitalcreations.com'}` });
   } catch (e) {
     console.error('[site-publish] publish failed', { message: e?.message || String(e) });
     return privateResponse({ ok: false, error: friendlyError() }, 500);

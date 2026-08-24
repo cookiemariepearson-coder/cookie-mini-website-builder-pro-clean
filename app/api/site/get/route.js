@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../lib/supabaseAdmin';
 import { getVerifiedSiteOwner, siteBelongsToOwner } from '../../../../lib/siteOwnerAuth';
-import { extraPageAccess } from '../../../../lib/subscriptionLifecycle.mjs';
+import { extraPageAccess, websitePlanAccess } from '../../../../lib/subscriptionLifecycle.mjs';
+import { normalizeWebsitePlan } from '../../../../lib/websitePublishPolicy.mjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,15 +33,21 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const slug = searchParams.get('slug');
+    const websiteId = String(searchParams.get('id') || '').trim();
     const ownerOnly = searchParams.get('owner') === '1';
-    if (!slug) return privateResponse({ ok:false,error:'Missing slug' }, 400);
+    if (!slug && !websiteId) return privateResponse({ ok:false,error:'Missing website reference' }, 400);
+    if (websiteId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(websiteId)) {
+      return privateResponse({ ok:false,error:'Invalid website reference' }, 400);
+    }
     let owner = null;
     if (ownerOnly) {
       owner = await getVerifiedSiteOwner(req);
       if (!owner.ok) return privateResponse({ ok: false, error: owner.error }, owner.status);
     }
     const supabase = owner?.supabase || getSupabaseAdmin();
-    const { data, error } = await supabase.from('websites').select('*').eq('slug', slug).maybeSingle();
+    let websiteQuery = supabase.from('websites').select('*');
+    websiteQuery = websiteId ? websiteQuery.eq('id', websiteId) : websiteQuery.eq('slug', slug);
+    const { data, error } = await websiteQuery.maybeSingle();
     if (error) throw error;
     if (!data) return privateResponse({ ok:false,error:'Not found' }, 404);
 
@@ -55,7 +62,45 @@ export async function GET(req) {
       }
     }
 
-    return NextResponse.json({ ok:true, row:data, site: fallbackSite(data) }, {
+    let site = fallbackSite(data);
+    let planAccess = null;
+    let latestCheckoutIntent = null;
+    if (ownerOnly) {
+      const { data: latestIntent, error: intentError } = await supabase.from('website_checkout_intents')
+        .select('id,plan,status,website_id,draft_slug,created_at')
+        .eq('owner_id', owner.user.id)
+        .or(`website_id.eq.${data.id},draft_slug.eq.${data.slug}`)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (intentError) throw intentError;
+      latestCheckoutIntent = latestIntent;
+      const storedPlan = normalizeWebsitePlan(data.plan) || 'free';
+      const savedPlan = normalizeWebsitePlan(data.site?.plan);
+      const intentPlan = normalizeWebsitePlan(latestIntent?.plan);
+      const intendedPaidPlan = [storedPlan, savedPlan, intentPlan].find(plan => ['starter', 'business', 'premium'].includes(plan));
+      if (intendedPaidPlan) {
+        site = { ...site, plan: intendedPaidPlan };
+        planAccess = storedPlan === intendedPaidPlan ? 'stored_plan' : 'checkout_not_confirmed';
+      }
+    }
+    const access = websitePlanAccess({ ...data, plan: site.plan });
+    site = {
+      ...site,
+      websiteId: data.id,
+      draftId: data.id,
+      slug: data.slug,
+      builderStep: Number.isInteger(Number(site.builderStep)) ? Number(site.builderStep) : 1
+    };
+    return NextResponse.json({
+      ok:true,
+      row:data,
+      site,
+      planAccess,
+      checkoutState: planAccess === 'checkout_not_confirmed' ? 'checkout_not_confirmed' : access.active && access.paid ? 'verified_entitlement' : access.paid ? 'entitlement_inactive' : 'free',
+      checkoutIntent: latestCheckoutIntent ? { id: latestCheckoutIntent.id, plan: latestCheckoutIntent.plan, status: latestCheckoutIntent.status } : null,
+      publishAccess: { allowed: access.active, paid: access.paid, reason: access.reason }
+    }, {
       headers: { 'Cache-Control': ownerOnly ? 'private, no-store, max-age=0' : 'public, max-age=0, must-revalidate' }
     });
   } catch(e) {
