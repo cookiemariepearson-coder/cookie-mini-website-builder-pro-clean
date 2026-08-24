@@ -78,12 +78,30 @@ test('every authenticated Builder step includes the shared account menu and safe
     source('components/CustomerAccountLink.js'),
     source('components/AccountModalProvider.js')
   ]);
-  assert.match(builder, /<CustomerAccountLink \/>/);
+  assert.match(builder, /<CustomerAccountLink placement="builder" \/>/);
   assert.match(accountLink, /Sign Out/);
   assert.match(accountLink, /onClick=\{signOut\}/);
   assert.match(provider, /\/api\/auth\/site-owner\/signout/);
   assert.match(provider, /localStorage\.removeItem\(LEGACY_AUTH_TOKEN_KEY\)/);
   assert.match(provider, /window\.location\.assign\('\/'\)/);
+});
+
+test('Builder Account is a contained accessible sidebar menu', async () => {
+  const [accountLink, styles] = await Promise.all([
+    source('components/CustomerAccountLink.js'),
+    source('app/globals.css')
+  ]);
+  assert.match(accountLink, /aria-haspopup="menu"/);
+  assert.match(accountLink, /aria-expanded=\{open\}/);
+  assert.match(accountLink, /role="menu"/);
+  assert.match(accountLink, /My Websites/);
+  assert.match(accountLink, /Account Settings/);
+  assert.match(accountLink, /event\.key !== 'Escape'/);
+  assert.match(accountLink, /document\.addEventListener\('pointerdown'/);
+  assert.match(accountLink, /firstItemRef\.current\?\.focus/);
+  assert.match(styles, /\.builderAccountMenu,.builderAccountControl\{[^}]*width:100%/);
+  assert.match(styles, /\.builderAccountControl \.navAccountMenuPanel\{[^}]*left:0;right:0/);
+  assert.match(styles, /@media\(max-width:900px\)\{\.builderAccountControl \.navAccountMenuPanel\{position:relative/);
 });
 
 test('Business and Premium checkout remain bound to exact centralized Gumroad routes', async () => {
