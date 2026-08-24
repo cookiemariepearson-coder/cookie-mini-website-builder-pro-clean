@@ -957,7 +957,7 @@ export default function Builder() {
         {isSmallBuilderScreen && <button type="button" className="btn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button>}
         {planAllowsAiVideo(site.plan) ? <button type="button" className="btn light aiStudioBuilderBtn" onClick={goVideo}>AI Video Studio</button> : <button type="button" className="btn light lockedBtn aiStudioBuilderBtn" onClick={goVideo}>AI Video Upgrade</button>}
         <button className="btn light" type="button" onClick={() => hasOwnerSession ? window.location.assign('/customer') : openAccountModal({ mode: 'signin', destination: '/customer' })}>My Websites</button>
-        <div className="builderAccountMenu"><CustomerAccountLink /></div>
+        <div className="builderAccountMenu"><CustomerAccountLink placement="builder" /></div>
         <button type="button" className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
         {showCurrentDraft && (
           <div className="notice smallNotice currentDraftNotice" role="status">
