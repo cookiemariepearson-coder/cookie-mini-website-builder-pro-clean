@@ -6,6 +6,7 @@ import { createDefaultSite, templateLibrary, getTemplate, pageOptions, plans, sl
 import { PENDING_CHECKOUT_STORAGE_KEY, createPendingCheckoutIntent, websiteCheckoutRoute } from '../../lib/commerceConfig.mjs';
 import { normalizeAuthoritativeWebsitePlan, planMatchesCheckoutAuthority, reconcileBuilderPlan } from '../../lib/builderPlanAuthority.mjs';
 import { useAccountModal } from '../../components/AccountModalProvider';
+import CustomerAccountLink from '../../components/CustomerAccountLink';
 
 const DRAFT_KEY = 'cookieDraftSite';
 const LAST_STEP_KEY = 'cookieBuilderStep';
@@ -165,6 +166,7 @@ export default function Builder() {
   const [builderReady, setBuilderReady] = useState(false);
   const [hasOwnerSession, setHasOwnerSession] = useState(false);
   const [paidPublishAllowed, setPaidPublishAllowed] = useState(false);
+  const [publishBusy, setPublishBusy] = useState(false);
   const checkoutBusyRef = useRef(false);
   const tmpl = useMemo(() => getTemplate(site.typeKey, site.styleKey), [site.typeKey, site.styleKey]);
 
@@ -733,6 +735,7 @@ export default function Builder() {
   }
 
   async function publishPaid() {
+    if (publishBusy || site.status === 'published') return;
     if (!paidPublishAllowed || !['starter', 'business', 'premium'].includes(site.plan)) {
       setMessage('This paid website is not verified for publishing. Save the draft and continue to secure checkout.');
       return;
@@ -743,6 +746,7 @@ export default function Builder() {
       return;
     }
     const published = { ...site, builderStep: 4, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), status: 'published' };
+    setPublishBusy(true);
     setMessage('Saving and publishing your verified website…');
     try {
       const response = await fetch('/api/site/publish', {
@@ -759,6 +763,8 @@ export default function Builder() {
       setMessage('Saved and published. Your website is open to visitors.');
     } catch {
       setMessage('The website could not be published. Your draft remains saved; please try again.');
+    } finally {
+      setPublishBusy(false);
     }
   }
 
@@ -951,6 +957,7 @@ export default function Builder() {
         {isSmallBuilderScreen && <button type="button" className="btn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button>}
         {planAllowsAiVideo(site.plan) ? <button type="button" className="btn light aiStudioBuilderBtn" onClick={goVideo}>AI Video Studio</button> : <button type="button" className="btn light lockedBtn aiStudioBuilderBtn" onClick={goVideo}>AI Video Upgrade</button>}
         <button className="btn light" type="button" onClick={() => hasOwnerSession ? window.location.assign('/customer') : openAccountModal({ mode: 'signin', destination: '/customer' })}>My Websites</button>
+        <div className="builderAccountMenu"><CustomerAccountLink /></div>
         <button type="button" className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
         {showCurrentDraft && (
           <div className="notice smallNotice currentDraftNotice" role="status">
@@ -1164,8 +1171,15 @@ export default function Builder() {
                 <div className="notice"><strong>{plans[site.plan]?.label} — {plans[site.plan]?.price}</strong> will publish {limitText}. Selected sections: {selectedSections.join(', ')}.</div>
                 <div className="notice"><strong>{draftSlugFor(site)}.cookiesdigitalcreations.com</strong></div>
                 <button type="button" className="btn dark" onClick={saveDraft}>Save Draft / Continue Later</button>{' '}
-                {site.plan === 'free' ? <button type="button" className="btn" onClick={publishFree}>Save and Publish Free Page</button> : paidPublishAllowed ? (
-                  <button type="button" className="btn" onClick={publishPaid}>Save and Publish</button>
+                {site.status === 'published' ? (
+                  <div className="publishedBuilderActions" role="status" aria-live="polite">
+                    <strong>Published</strong>
+                    <a className="btn" href={`https://${draftSlugFor(site)}.cookiesdigitalcreations.com`} target="_blank" rel="noreferrer">View Published Website</a>
+                    <a className="btn light" href="/customer">Go to My Websites</a>
+                    <button type="button" className="btn dark" onClick={() => setStep(0)}>Continue Editing</button>
+                  </div>
+                ) : site.plan === 'free' ? <button type="button" className="btn" onClick={publishFree}>Save and Publish Free Page</button> : paidPublishAllowed ? (
+                  <button type="button" className="btn" onClick={publishPaid} disabled={publishBusy} aria-busy={publishBusy}>{publishBusy ? 'Publishing…' : 'Save and Publish'}</button>
                 ) : (
                   <button
                     type="button"
