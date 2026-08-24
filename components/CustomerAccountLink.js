@@ -1,12 +1,34 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 import { useAccountModal } from './AccountModalProvider';
 
 export default function CustomerAccountLink({ placement = 'nav' }) {
   const { accountState, openAccountModal, signOut } = useAccountModal();
+  const [open, setOpen] = useState(false);
+  const controlRef = useRef(null);
+  const buttonRef = useRef(null);
+  const firstItemRef = useRef(null);
   const signedIn = accountState === 'signed-in';
   const checking = accountState === 'checking';
+
+  useEffect(() => {
+    if (!open) return;
+    function handlePointerDown(event) {
+      if (!controlRef.current?.contains(event.target)) setOpen(false);
+    }
+    document.addEventListener('pointerdown', handlePointerDown);
+    window.setTimeout(() => firstItemRef.current?.focus(), 0);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [open]);
+
+  function handleKeyDown(event) {
+    if (event.key !== 'Escape' || !open) return;
+    event.preventDefault();
+    setOpen(false);
+    window.setTimeout(() => buttonRef.current?.focus(), 0);
+  }
 
   if (placement === 'hero') {
     return <div className="returningCustomerAccess" data-account-state={accountState}>
@@ -22,14 +44,15 @@ export default function CustomerAccountLink({ placement = 'nav' }) {
   }
 
   if (signedIn) {
-    return <details className="navAccountMenu">
-      <summary className="navAccountLink">Account</summary>
-      <div className="navAccountMenuPanel">
-        <Link href="/customer">My Websites</Link>
-        <Link href="/customer/account">Account Settings</Link>
-        <button type="button" onClick={signOut}>Sign Out</button>
+    return <div className={`navAccountMenu ${placement === 'builder' ? 'builderAccountControl' : ''}`} ref={controlRef} onKeyDown={handleKeyDown}>
+      <button ref={buttonRef} className="navAccountLink" type="button" aria-haspopup="menu" aria-expanded={open} aria-controls={`${placement}-account-menu`} onClick={() => setOpen(value => !value)}>Account</button>
+      {open && <div id={`${placement}-account-menu`} className="navAccountMenuPanel" role="menu" aria-label="Customer account actions">
+        <Link ref={firstItemRef} role="menuitem" href="/customer">My Websites</Link>
+        <Link role="menuitem" href="/customer/account">Account Settings</Link>
+        <button role="menuitem" type="button" onClick={signOut}>Sign Out</button>
       </div>
-    </details>;
+      }
+    </div>;
   }
 
   return <span className="navAccountControl" data-account-state={accountState}>
