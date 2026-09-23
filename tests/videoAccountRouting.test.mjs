@@ -22,7 +22,7 @@ test('2. middle-homepage AI Video links preserve purchase intent behind the same
 test('3. pricing and product AI Video entrances cannot bypass customer authentication', async () => {
   const [pricing, builder] = await Promise.all([source('app/pricing/page.js'), source('app/builder/page.js')]);
   assert.equal((pricing.match(/href="\/video-studio\?intent=purchase"/g) || []).length, 2);
-  assert.match(builder, /window\.location\.href = '\/video-studio\?intent=purchase'/);
+  assert.match(builder, /router\.push\('\/video-studio\?intent=purchase'\)/);
 });
 
 test('4. new account creation returns automatically to the intended AI Video screen', async () => {

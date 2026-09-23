@@ -11,7 +11,13 @@ export default function OwnerFooter() {
       <div className="ownerProjectCopy">
         <strong>Owned and operated by Southern Realty Investment Group, LLC</strong>
         <span>All proceeds from Cookie Mini Website Builder support the company&apos;s business operations.</span>
-        <Link href="/contact">Contact Us</Link>
+        <nav className="ownerProjectLinks" aria-label="Footer policies and support">
+          <Link href="/privacy">Privacy Policy</Link>
+          <Link href="/terms">Terms of Service</Link>
+          <Link href="/refund-policy">Refund / Cancellation Policy</Link>
+          <Link href="/legal">Legal Hub</Link>
+          <Link href="/contact">Contact Us</Link>
+        </nav>
       </div>
     </footer>
   );

@@ -36,6 +36,19 @@
   font-size:14px;
   color:#0d315e;
 }
+.ownerProjectLinks{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px 14px;
+  margin-top:7px;
+}
+.ownerProjectLinks a{
+  color:#0b4585;
+  font-size:14px;
+  font-weight:700;
+  line-height:1.35;
+  text-underline-offset:3px;
+}
 @media(max-width:720px){
   .ownerProjectFooter{
     margin:24px 14px;
@@ -47,4 +60,6 @@
   .ownerProjectLogoImage{width:60px;height:60px;}
   .ownerProjectCopy strong{font-size:15px;}
   .ownerProjectCopy span{font-size:13px;}
+  .ownerProjectLinks{gap:8px 12px;}
+  .ownerProjectLinks a{font-size:13px;}
 }

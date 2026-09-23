@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 const AccountModalContext = createContext(null);
@@ -76,6 +77,7 @@ export function AccountAction({ children, destination = '/customer', guestAllowe
 }
 
 export default function AccountModalProvider({ children }) {
+  const router = useRouter();
   const [accountState, setAccountState] = useState('checking');
   const [accountEmail, setAccountEmail] = useState('');
   const [open, setOpen] = useState(false);
@@ -205,16 +207,16 @@ export default function AccountModalProvider({ children }) {
     window.location.assign(safeDestination(destination));
   }
 
-  async function signOut() {
+  const signOut = useCallback(async () => {
     setAccountState('checking');
     try { await fetch('/api/auth/site-owner/signout', { method: 'POST' }); } catch {}
     try { localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY); } catch {}
     setAccountState('signed-out');
     setAccountEmail('');
-    window.location.assign('/');
-  }
+    router.push('/');
+  }, [router]);
 
-  const contextValue = useMemo(() => ({ accountState, accountEmail, openAccountModal, closeAccountModal, refreshSession, signOut }), [accountState, accountEmail, openAccountModal, closeAccountModal, refreshSession]);
+  const contextValue = useMemo(() => ({ accountState, accountEmail, openAccountModal, closeAccountModal, refreshSession, signOut }), [accountState, accountEmail, openAccountModal, closeAccountModal, refreshSession, signOut]);
   const heading = mode === 'create' ? 'Create your free account' : mode === 'reset' ? 'Set or reset your password' : 'Welcome back';
   const support = mode === 'create'
     ? 'Save your websites, open them on another device, purchase a plan, and publish when you’re ready.'

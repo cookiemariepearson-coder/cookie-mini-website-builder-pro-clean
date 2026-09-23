@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Nav from '../../lib/Nav';
 import { PENDING_CHECKOUT_STORAGE_KEY, createPendingCheckoutIntent, customerReturnPath, pendingCheckoutReturnPath, safeCustomerReturnPath } from '../../lib/commerceConfig.mjs';
 import { useAccountModal } from '../../components/AccountModalProvider';
@@ -45,6 +46,7 @@ function isWebsiteUnavailable(site = {}) {
 }
 
 export default function Customer() {
+  const router = useRouter();
   const { accountState, accountEmail, openAccountModal } = useAccountModal();
   const [query, setQuery] = useState('');
   const [msg, setMsg] = useState('');
@@ -312,7 +314,7 @@ export default function Customer() {
       window.setTimeout(() => browserDraftStatusRef.current?.focus(), 0);
       return;
     }
-    window.location.href = '/builder?restore=1';
+    router.push('/builder?restore=1');
   }
 
   function refreshBrowserDrafts(serialized) {
