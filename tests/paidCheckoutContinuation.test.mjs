@@ -143,7 +143,7 @@ test('15. durable intent table is server-only and protected by RLS', async () =>
   assert.match(migration, /status in \('pending_auth', 'ready', 'checkout_started'\)/i);
 });
 
-test('16. every paid Builder checkout button uses the centralized handler and never links directly to Customer Dashboard', async () => {
+test('16. paid checkout uses the centralized handler while the approved post-publication screen links to My Websites', async () => {
   const [builder, pricing] = await Promise.all([
     source('app/builder/page.js'),
     source('app/pricing/page.js')
@@ -151,7 +151,7 @@ test('16. every paid Builder checkout button uses the centralized handler and ne
   assert.match(builder, /onClick=\{\(\) => checkoutPlan\(\)\}/);
   assert.match(builder, /Save Draft and Continue to Secure Checkout/);
   assert.match(builder, /paidPublishAllowed \?/);
-  assert.doesNotMatch(builder, /href=["'`]\/customer["'`][^\n]*Go to/i);
+  assert.match(builder, /href=["'`]\/customer["'`]>Go to My Websites<\/a>/i);
   for (const plan of ['starter', 'business', 'premium']) assert.match(pricing, new RegExp(`href: '/builder\\?checkout=${plan}'`));
 });
 
