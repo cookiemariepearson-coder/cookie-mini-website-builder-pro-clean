@@ -1,6 +1,7 @@
 'use client';
 
 import { Children, cloneElement, isValidElement, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import SitePreview from '../../lib/SitePreview.js';
 import { createDefaultSite, templateLibrary, getTemplate, pageOptions, plans, slugify, sectionPrompts, normalizeSelectedPagesForPlan, planAllowsMedia, planAllowsAiVideo, planSectionLimit, customerActionLimit, customerActionTypes, normalizeCustomerActions } from '../../lib/siteDefaults';
 import { PENDING_CHECKOUT_STORAGE_KEY, createPendingCheckoutIntent, websiteCheckoutRoute } from '../../lib/commerceConfig.mjs';
@@ -147,6 +148,7 @@ async function compressImage(file, maxSize = 900, quality = 0.68) {
 }
 
 export default function Builder() {
+  const router = useRouter();
   const { accountState, openAccountModal } = useAccountModal();
   const [step, setStep] = useState(0);
   const [site, setSite] = useState(() => createDefaultSite());
@@ -686,7 +688,7 @@ export default function Builder() {
     if (!planAllowsAiVideo(site.plan)) {
       persistLocal('Draft saved before viewing AI Video upgrade options.');
       setMessage('AI Video Studio is available on Business and Premium. Upgrade to unlock real AI video creation.');
-      setTimeout(() => { window.location.href = '/video-studio?intent=purchase'; }, 650);
+      setTimeout(() => { router.push('/video-studio?intent=purchase'); }, 650);
       return;
     }
     const draft = { ...site, builderStep: step, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
@@ -694,7 +696,7 @@ export default function Builder() {
     saveLocalDraftIndex(draft);
     setSaveMessage('Saving your draft before opening AI Video Studio...');
     try { await saveDraftOnline(draft, true); } catch {}
-    window.location.href = `/video-studio?return=builder&draft=${encodeURIComponent(draft.slug)}`;
+    router.push(`/video-studio?return=builder&draft=${encodeURIComponent(draft.slug)}`);
   }
 
   async function publishFree() {
@@ -727,7 +729,7 @@ export default function Builder() {
         body: JSON.stringify({ site: published })
       });
       const data = await res.json();
-      if (data.ok) window.location.href = '/checkout/success?paid=free';
+      if (data.ok) router.push('/checkout/success?paid=free');
       else setMessage(data.error || 'Publish failed.');
     } catch (e) {
       setMessage(`Publish failed: ${e.message}`);
@@ -830,7 +832,7 @@ export default function Builder() {
       if (error.status === 401) {
         try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
         setMessage('Your secure session expired. Re-verify your email to continue this add-on checkout.');
-        setTimeout(() => { window.location.href = `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draft.slug)}`; }, 700);
+        setTimeout(() => { router.push(`/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draft.slug)}`); }, 700);
         return;
       }
       setMessage(error.message || 'Secure online draft save failed. Add-on checkout was not opened.');
@@ -890,7 +892,7 @@ export default function Builder() {
       if (error.status === 401) {
         try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
         setMessage('Your secure session expired. Re-verify your email to continue this checkout.');
-        setTimeout(() => { window.location.href = `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draft.slug)}`; }, 700);
+        setTimeout(() => { router.push(`/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draft.slug)}`); }, 700);
         return;
       }
       setMessage(error.message || 'Secure online draft save failed. Checkout was not opened.');
@@ -907,7 +909,7 @@ export default function Builder() {
       if (error.status === 401) {
         try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
         setMessage('Your secure session expired. Re-verify your email to continue this checkout.');
-        setTimeout(() => { window.location.href = `/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draft.slug)}`; }, 700);
+        setTimeout(() => { router.push(`/checkout/continue?intent=${encodeURIComponent(intentId)}&draft=${encodeURIComponent(draft.slug)}`); }, 700);
         return;
       }
       setMessage(error.message || 'Secure checkout could not continue. Your draft is still safe.');
@@ -956,7 +958,7 @@ export default function Builder() {
         <button type="button" className="btn light" onClick={saveDraft} disabled={!builderReady || isSaving}>{isSaving ? 'Saving...' : 'Save Draft'}</button>
         {isSmallBuilderScreen && <button type="button" className="btn" onClick={() => setIsMobilePreviewOpen(true)}>Open Live Preview</button>}
         {planAllowsAiVideo(site.plan) ? <button type="button" className="btn light aiStudioBuilderBtn" onClick={goVideo}>AI Video Studio</button> : <button type="button" className="btn light lockedBtn aiStudioBuilderBtn" onClick={goVideo}>AI Video Upgrade</button>}
-        <button className="btn light" type="button" onClick={() => hasOwnerSession ? window.location.assign('/customer') : openAccountModal({ mode: 'signin', destination: '/customer' })}>My Websites</button>
+        <button className="btn light" type="button" onClick={() => hasOwnerSession ? router.push('/customer') : openAccountModal({ mode: 'signin', destination: '/customer' })}>My Websites</button>
         <div className="builderAccountMenu"><CustomerAccountLink placement="builder" /></div>
         <button type="button" className="btn light" onClick={startNewDraft}>Start Fresh Draft</button>
         {showCurrentDraft && (

@@ -83,7 +83,7 @@ test('every authenticated Builder step includes the shared account menu and safe
   assert.match(accountLink, /onClick=\{signOut\}/);
   assert.match(provider, /\/api\/auth\/site-owner\/signout/);
   assert.match(provider, /localStorage\.removeItem\(LEGACY_AUTH_TOKEN_KEY\)/);
-  assert.match(provider, /window\.location\.assign\('\/'\)/);
+  assert.match(provider, /router\.push\('\/'\)/);
 });
 
 test('Builder Account is a contained accessible sidebar menu', async () => {

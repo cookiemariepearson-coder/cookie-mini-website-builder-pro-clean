@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAccountModal } from '../../../components/AccountModalProvider';
 import SitePreview from '../../../lib/SitePreview.js';
 import { slugify, plans, normalizeSelectedPagesForPlan } from '../../../lib/siteDefaults';
@@ -65,6 +66,7 @@ function updateLocalDraft(site) {
 }
 
 export default function CheckoutSuccess() {
+  const router = useRouter();
   const { accountState, openAccountModal } = useAccountModal();
   const [site, setSite] = useState(null);
   const [message, setMessage] = useState('Completing checkout...');
@@ -186,7 +188,7 @@ export default function CheckoutSuccess() {
       localStorage.removeItem(DRAFT_KEY);
       localStorage.removeItem(CURRENT_DRAFT_SLUG_KEY);
     } catch {}
-    window.location.href = '/builder';
+    router.push('/builder');
   }
 
   if (aiVideoPurchase) {

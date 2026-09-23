@@ -86,14 +86,20 @@ test('valid restored customer sessions continue instead of terminating at the da
   assert.match(callback, /PENDING_CHECKOUT_STORAGE_KEY/);
 });
 
-test('Contact Us is publicly reachable from persistent navigation and homepage footer', async () => {
+test('policy and support links are publicly reachable from the homepage footer', async () => {
   const [nav, footer, contact] = await Promise.all([
     source('lib/Nav.jsx'),
     source('lib/OwnerFooter.jsx'),
     source('app/contact/page.js')
   ]);
   assert.match(nav, /href="\/contact">Contact Us/);
-  assert.match(footer, /href="\/contact">Contact Us/);
+  for (const [href, label] of [
+    ['\/privacy', 'Privacy Policy'],
+    ['\/terms', 'Terms of Service'],
+    ['\/refund-policy', 'Refund \/ Cancellation Policy'],
+    ['\/legal', 'Legal Hub'],
+    ['\/contact', 'Contact Us']
+  ]) assert.match(footer, new RegExp(`href="${href}">${label}`));
   assert.match(contact, /fetch\('\/api\/contact'/);
 });
 
