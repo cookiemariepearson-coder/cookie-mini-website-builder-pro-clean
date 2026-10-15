@@ -351,6 +351,35 @@ export default function Builder() {
     }));
   }
 
+  async function importCookieAiBusinessHandoff(file) {
+    if (!file) return;
+    try {
+      if (file.size > 1024 * 1024) throw new Error('The import file is too large. Please choose the JSON file downloaded from Cookie AI Business in a Box.');
+      const data = JSON.parse(await file.text());
+      if (data?.format !== 'cookies-digital-creations-business-handoff' || data?.version !== 1 || !data?.business) {
+        throw new Error('This is not a recognized Cookie AI Builder Import file. Download the Builder Import JSON from Cookie AI Business in a Box and try again.');
+      }
+      const profile = data.business;
+      const name = typeof profile.name === 'string' ? profile.name.trim().slice(0, 120) : '';
+      const industry = typeof profile.industry === 'string' ? profile.industry.trim().slice(0, 120) : '';
+      const goal = typeof profile.goal === 'string' ? profile.goal.trim().slice(0, 1500) : '';
+      const websiteCopy = typeof profile.websiteCopy === 'string' ? profile.websiteCopy.trim().slice(0, 3000) : '';
+      const patch = {};
+      if (name) {
+        patch.businessName = name;
+        patch.draftName = slugify(name);
+        patch.headline = `Welcome to ${name}`;
+      }
+      if (goal) patch.description = goal;
+      else if (profile.tool === 'website' && websiteCopy) patch.description = websiteCopy;
+      if (Object.keys(patch).length) update(patch);
+      setStep(1);
+      setMessage(`Imported business details from Cookie AI Business in a Box${industry ? ` (${industry})` : ''}. Review the wording, add your customer email and phone if needed, and edit everything before publishing.`);
+    } catch (error) {
+      setMessage(error?.message || 'Could not read that import file. Download a fresh Builder Import JSON file and try again.');
+    }
+  }
+
   function updateSection(name, value) {
     setSite(current => ({ ...current, sections: { ...(current.sections || {}), [name]: value } }));
   }
@@ -1014,6 +1043,11 @@ export default function Builder() {
               <>
                 <h2>Website Info</h2>
                 <p className="mutedText">Enter the words that build the website. The preview updates on the right.</p>
+                <div className="notice handoffImportNotice">
+                  <strong>✨ Already planned your business in Cookie AI Business in a Box?</strong>
+                  <p className="mutedText">Import your Builder Import JSON to prefill your business name and starter wording. You can review and change every field before saving or publishing.</p>
+                  <Field label="Import business details (JSON file)"><input type="file" accept=".json,application/json" onChange={e => { void importCookieAiBusinessHandoff(e.currentTarget.files?.[0] || null); e.currentTarget.value = ''; }} /></Field>
+                </div>
                 <Field label="Business / website name"><input id="builder-business-name" value={site.businessName || ''} onChange={e => update({ businessName: e.target.value })} /></Field>
                 <Field label="Draft name / website address"><input placeholder="Example: cookie-kitchen-menu" value={site.draftName || ''} onChange={e => update({ draftName: e.target.value })} /></Field>
                 <Field label="Customer email for Contact button and dashboard"><input type="email" value={site.customerEmail || ''} onChange={e => update({ customerEmail: e.target.value })} /></Field>
