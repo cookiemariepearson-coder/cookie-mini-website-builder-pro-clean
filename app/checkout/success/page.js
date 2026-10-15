@@ -252,6 +252,7 @@ export default function CheckoutSuccess() {
         <a className="btn light" href="/customer">Open My Websites</a>
         {['business','premium'].includes(displayedPlan) && <a className="btn aiStudioSuccessBtn" href={`/video-studio?return=builder&draft=${encodeURIComponent(publishedSlug || '')}`}>Open AI Video Studio</a>}
         <a className="btn light" href="/builder">Back to Builder</a>
+        <a className="btn light" href="https://connect.cookiesdigitalcreations.com/" target="_blank" rel="noreferrer">Explore Cookie Connect</a>
         <button className="btn dark" onClick={startFreshDraft}>Start Fresh Draft</button>
       </div>
 
