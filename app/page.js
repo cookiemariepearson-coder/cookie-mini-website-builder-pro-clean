@@ -79,17 +79,16 @@ export default function Home(){
             <p className="aiReviewNote">Created with the assistance of AI and professionally reviewed by Cookie Digital Creations for quality and accuracy.</p>
             <LandingWelcomeExperience />
           </div>
-          <div className="brandHeroMockup" aria-label="Website builder preview">
+          <div className="brandHeroMockup" aria-label="Preview of a website template customers can customize">
             <div className="mockBrowser">
-              <div className="mockDots"><span></span><span></span><span></span></div>
-              <h3>Your Business</h3>
-              <h2>A beautiful website that gets customers moving.</h2>
-              <div className="mockActionRow">
-                <span>Order Now</span>
-                <span>Book Appointment</span>
-                <span>Request Quote</span>
+              <div className="mockBrowserBar"><span className="mockDots"><i></i><i></i><i></i></span><span className="mockBrowserAddress">yourbusiness.com</span><span className="mockLiveLabel">Template preview</span></div>
+              <img className="heroTemplatePhoto" src="/templates/beauty/luxury-hero-v3.webp" alt="Luxury beauty website template preview available in the Mini Website Builder" />
+              <div className="heroTemplateCaption">
+                <span className="kicker">Choose it. Make it yours.</span>
+                <h2>A beautiful website, built around your business.</h2>
+                <p>Start with a template, personalize your content, and give customers a clear next step.</p>
+                <Link className="heroTemplateLink" href="/builder">Create your version <span aria-hidden="true">↗</span></Link>
               </div>
-              <div className="mockCards"><span></span><span></span><span></span></div>
             </div>
           </div>
         </section>
