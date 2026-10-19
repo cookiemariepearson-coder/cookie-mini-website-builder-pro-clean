@@ -4,6 +4,7 @@ import OwnerFooter from '../lib/OwnerFooter';
 import LandingWelcomeExperience from '../components/LandingWelcomeExperience';
 import CustomerAccountLink from '../components/CustomerAccountLink';
 import { AccountAction } from '../components/AccountModalProvider';
+import CustomerHeroAccountPrompt from '../components/CustomerHeroAccountPrompt';
 import './landing-home-refresh.css';
 
 const planTiles = [
@@ -74,13 +75,7 @@ export default function Home(){
               <AccountAction className="btn" destination="/builder" guestAllowed mode="create">Start Building Free</AccountAction>
               <Link className="btn light" href="#featured-templates">Explore Templates</Link>
             </div>
-            <div className="heroAccountPrompt">
-              <span>New customer?</span>
-              <AccountAction className="heroTextAction" destination="/customer" mode="create">Create your free account</AccountAction>
-              <span aria-hidden="true">·</span>
-              <span>Returning customer?</span>
-              <AccountAction className="heroTextAction" destination="/customer" mode="signin">Sign in</AccountAction>
-            </div>
+            <CustomerHeroAccountPrompt />
             <p className="aiReviewNote">Created with the assistance of AI and professionally reviewed by Cookie Digital Creations for quality and accuracy.</p>
             <LandingWelcomeExperience />
           </div>

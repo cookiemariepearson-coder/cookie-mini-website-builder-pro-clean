@@ -137,7 +137,8 @@ export async function POST(request) {
     console.info('[builder-password-auth]', { event: 'PASSWORD_RESET_REQUEST_ACCEPTED_PRIVACY_PROTECTED' });
     return authResponse({ ok: true, pendingReset: true, message: 'If this email belongs to a Mini Website Builder account, a password link will arrive shortly.' });
   } catch (error) {
-    console.error('[builder-password-auth] request failed', { message: error?.message || String(error) });
+    const errorDetails = { name: error?.name, message: typeof error?.message === 'string' ? error.message : undefined, code: error?.code, status: error?.status, statusCode: error?.statusCode, error: error?.error, details: error?.details, hint: error?.hint };
+    console.error('[builder-password-auth] request failed', JSON.stringify(Object.fromEntries(Object.entries(errorDetails).filter(([, value]) => value !== undefined && value !== null && value !== ''))));
     return authResponse({ ok: false, error: 'Account access is temporarily unavailable. Please try again shortly.' }, 500);
   }
 }

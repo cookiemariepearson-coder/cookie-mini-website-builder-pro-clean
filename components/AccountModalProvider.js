@@ -217,11 +217,11 @@ export default function AccountModalProvider({ children }) {
   }, [router]);
 
   const contextValue = useMemo(() => ({ accountState, accountEmail, openAccountModal, closeAccountModal, refreshSession, signOut }), [accountState, accountEmail, openAccountModal, closeAccountModal, refreshSession, signOut]);
-  const heading = mode === 'create' ? 'Create your free account' : mode === 'reset' ? 'Set or reset your password' : 'Welcome back';
+  const heading = mode === 'create' ? 'Create your free account' : mode === 'reset' ? 'Forgot your password or need to set one?' : 'Welcome back';
   const support = mode === 'create'
     ? 'Save your websites, open them on another device, purchase a plan, and publish when you’re ready.'
     : mode === 'reset'
-      ? 'We’ll email a one-time recovery link. Your existing websites and purchases stay with the same account.'
+      ? 'We’ll email you a secure link to choose a new password. Your existing websites and purchases stay with the same account.'
       : 'Sign in to open your saved websites and continue building. Previously signed in with an email link? Set your password here once.';
 
   return <AccountModalContext.Provider value={contextValue}>
@@ -244,12 +244,12 @@ export default function AccountModalProvider({ children }) {
             {mode === 'create' && <small>Use at least 10 characters. Password-manager paste is supported.</small>}
           </div>}
           <div aria-hidden="true" className="accountHoneypot"><label htmlFor="account-company-website">Company website</label><input id="account-company-website" tabIndex="-1" autoComplete="off" value={companyWebsite} onChange={event => setCompanyWebsite(event.target.value)} /></div>
-          <button className="btn accountPrimary" type="submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'create' ? 'Create Free Account' : mode === 'reset' ? 'Email Password Link' : 'Sign In'}</button>
+          <button className="btn accountPrimary" type="submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'create' ? 'Create Free Account' : mode === 'reset' ? 'Email Me a Secure Link' : 'Sign In'}</button>
         </form>
         {error && <div className="notice error accountModalMessage" role="alert">{error}</div>}
         {message && <div className="notice success accountModalMessage" role="status" aria-live="polite">{message}</div>}
         <div className="accountModalChoices">
-          {mode === 'signin' && <><button type="button" onClick={() => { setMode('reset'); setMessage(''); setError(''); }}>Set or Reset Password</button><button type="button" onClick={() => { setMode('create'); setMessage(''); setError(''); }}>Need an account? Create Free Account</button></>}
+          {mode === 'signin' && <><button type="button" onClick={() => { setMode('reset'); setMessage(''); setError(''); }}>Forgot password or need to set one?</button><button type="button" onClick={() => { setMode('create'); setMessage(''); setError(''); }}>Need an account? Create Free Account</button></>}
           {mode === 'create' && <button type="button" onClick={() => { setMode('signin'); setMessage(''); setError(''); }}>Already have an account? Sign In</button>}
           {mode === 'reset' && <button type="button" onClick={() => { setMode('signin'); setMessage(''); setError(''); }}>Return to Sign In</button>}
           {guestAllowed && <button type="button" onClick={continueGuest}>Continue as Guest</button>}
