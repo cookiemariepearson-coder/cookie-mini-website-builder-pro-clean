@@ -312,3 +312,71 @@ body:has(.brandLanding),
   background: rgba(250, 247, 252, .98) !important;
   border-bottom-color: #e4d8eb !important;
 }
+
+
+/* Explicitly repaint the complete public landing page in muted, warm lavender. */
+html:has(body .brandLanding),
+body:has(main.brandLanding) {
+  background: #f0eaf6 !important;
+  background-image: none !important;
+  color: #30243b !important;
+}
+main.brandLanding {
+  background: #f0eaf6 !important;
+  background-image: none !important;
+  color: #30243b !important;
+}
+main.brandLanding > section:not(.brandHero) {
+  background: #f0eaf6 !important;
+  background-image: none !important;
+  color: #30243b !important;
+  border-color: #ded2e8 !important;
+}
+main.brandLanding > .featuredTemplatesSection,
+main.brandLanding > .wrap.cardGrid,
+main.brandLanding > .homepageFaqSection,
+main.brandLanding > .creatorBusinessSection {
+  background: #f7f2fa !important;
+  background-image: none !important;
+}
+main.brandLanding > .brandHero {
+  background: linear-gradient(135deg, #f3edf7 0%, #f7eff1 52%, #ebe4f4 100%) !important;
+  background-image: linear-gradient(135deg, #f3edf7 0%, #f7eff1 52%, #ebe4f4 100%) !important;
+  color: #30243b !important;
+  border-color: #ded2e8 !important;
+}
+main.brandLanding > .brandHero h1,
+main.brandLanding > .brandHero p:not(.aiReviewNote),
+main.brandLanding > .brandHero .heroAccountPrompt,
+main.brandLanding > .brandHero .heroAccountPrompt > span {
+  color: #30243b !important;
+  text-shadow: none !important;
+}
+main.brandLanding > .brandPlanSection .brandPlanTile,
+main.brandLanding > .wrap.cardGrid .card,
+main.brandLanding > .creatorBusinessSection article,
+main.brandLanding > .homepageFaqSection details {
+  background: #faf7fc !important;
+  background-image: none !important;
+  color: #30243b !important;
+  border-color: #ded2e8 !important;
+}
+main.brandLanding > .brandPlanSection .brandPlanTile strong,
+main.brandLanding > .brandPlanSection .brandPlanTile small,
+main.brandLanding > .brandPlanSection .brandPlanTile em,
+main.brandLanding > .brandPlanSection .brandPlanTile span {
+  color: #453451 !important;
+}
+main.brandLanding > .brandSplitCta {
+  background: linear-gradient(125deg, #f3eaf1 0%, #f0e9f7 100%) !important;
+  background-image: linear-gradient(125deg, #f3eaf1 0%, #f0e9f7 100%) !important;
+  color: #30243b !important;
+  border-color: #ded2e8 !important;
+}
+main.brandLanding > .brandSplitCta h2,
+main.brandLanding > .brandSplitCta p {
+  color: #30243b !important;
+  text-shadow: none !important;
+}
+/* No public navigation link is rendered for the owner dashboard. */
+.mainAdminAccessLink { display: none !important; }
