@@ -37,7 +37,7 @@ function browserDraftsForAccount(items = [], email = '') {
   const ownerAccount = isCanonicalOwnerEmail(accountEmail);
   return items.filter(item => {
     const draft = item?.draft || {};
-    const assignedEmail = normalizeOwnerEmail(draft.browserDraftOwnerEmail || draft.customerEmail || draft.ownerEmail || '');
+    const assignedEmail = normalizeOwnerEmail(draft.browserDraftOwnerEmail || '');
     // Older, untagged backups are retained for the canonical owner, never exposed to customer accounts.
     return assignedEmail ? assignedEmail === accountEmail : ownerAccount;
   });
