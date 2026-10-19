@@ -131,7 +131,7 @@ export default function Home(){
               <div className="featuredTemplateCopy"><span className="templateCategory">Creators &amp; portfolios</span><h3>Cinematic Creator</h3><p>Put your work, personality, and offers front and center.</p><Link href="/builder" className="templateCardLink">Use this style <span aria-hidden="true">↗</span></Link></div>
             </article>
           </div>
-          <div className="featuredTemplatesFooter"><p>These are previews of styles available in the builder—not separate paid products.</p><AccountAction className="btn" destination="/builder" guestAllowed mode="create">Browse Templates in the Builder</AccountAction></div>
+          <div className="featuredTemplatesFooter"><p>These are previews of styles available in the builder—not separate paid products.</p><div className="featuredTemplatesActions"><AccountAction className="btn" destination="/builder" guestAllowed mode="create">Browse Templates in the Builder</AccountAction><button type="button" className="templateHelpLink" data-cookie-ai-open="Help me choose a Mini Builder template for my business">Questions? Ask Cookie AI</button></div></div>
         </section>
 
         <section className="brandSection">
