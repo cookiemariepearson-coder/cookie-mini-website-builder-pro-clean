@@ -9,6 +9,7 @@ import WebsiteManagementDialog from '../../components/WebsiteManagementDialog';
 import BrowserDraftDialog from '../../components/BrowserDraftDialog';
 import { customerWebsiteStatus, websiteDisplayName } from '../../lib/customerWebsiteManagement.mjs';
 import { templateLibrary } from '../../lib/siteDefaults';
+import { isCanonicalOwnerEmail, normalizeOwnerEmail } from '../../lib/adminAuth.mjs';
 import {
   BROWSER_DRAFT_DISPLAY_NAME_FIELD,
   BROWSER_DRAFT_PAGE_SIZE,
@@ -29,6 +30,18 @@ const LAST_DRAFT_STEP_KEY = 'cookieBuilderStep';
 const GUEST_CLAIM_KEY = 'cookieGuestDraftClaimV1';
 const DASHBOARD_STATE_KEY = 'cookieMyWebsitesPageStateV1';
 const BROWSER_DRAFT_SORT_KEY = 'cookieBrowserDraftSortV1';
+
+function browserDraftsForAccount(items = [], email = '') {
+  const accountEmail = normalizeOwnerEmail(email);
+  if (!accountEmail) return [];
+  const ownerAccount = isCanonicalOwnerEmail(accountEmail);
+  return items.filter(item => {
+    const draft = item?.draft || {};
+    const assignedEmail = normalizeOwnerEmail(draft.browserDraftOwnerEmail || '');
+    // Older, untagged backups are retained for the canonical owner, never exposed to customer accounts.
+    return assignedEmail ? assignedEmail === accountEmail : ownerAccount;
+  });
+}
 
 function normalizeSubdomain(input = '') {
   let value = String(input || '').trim().toLowerCase();
@@ -164,7 +177,7 @@ export default function Customer() {
 
     try {
       const parsed = parseBrowserDraftIndex(localStorage.getItem(DRAFTS_INDEX_KEY) || '');
-      setBrowserDrafts(parsed.items);
+      setBrowserDrafts(browserDraftsForAccount(parsed.items, accountEmail));
       setBrowserDraftReadError(parsed.error);
       const savedSort = sessionStorage.getItem(BROWSER_DRAFT_SORT_KEY);
       if (['newest', 'oldest', 'name'].includes(savedSort)) setBrowserDraftSort(savedSort);
@@ -181,6 +194,20 @@ export default function Customer() {
       restoredSiteRef.current = String(saved.slug || '');
     } catch {}
   }, []);
+
+  useEffect(() => {
+    if (!verifiedEmail) return;
+    try {
+      const parsed = parseBrowserDraftIndex(localStorage.getItem(DRAFTS_INDEX_KEY) || '');
+      setBrowserDrafts(browserDraftsForAccount(parsed.items, verifiedEmail));
+      setBrowserDraftReadError(parsed.error);
+      setSelectedBrowserDrafts([]);
+      setBrowserDraftSelectionMode(false);
+      setBrowserDraftDialog(null);
+    } catch {
+      setBrowserDraftReadError('Browser draft backups are unavailable in this browser. No backups were changed.');
+    }
+  }, [verifiedEmail]);
 
   useEffect(() => {
     const slug = restoredSiteRef.current;
@@ -319,7 +346,7 @@ export default function Customer() {
 
   function refreshBrowserDrafts(serialized) {
     const parsed = parseBrowserDraftIndex(serialized);
-    setBrowserDrafts(parsed.items);
+    setBrowserDrafts(browserDraftsForAccount(parsed.items, verifiedEmail || accountEmail));
     setBrowserDraftReadError(parsed.error);
     setBrowserDraftVisibleCount(current => Math.max(BROWSER_DRAFT_PAGE_SIZE, Math.min(current, Math.max(parsed.items.length, BROWSER_DRAFT_PAGE_SIZE))));
     return parsed;
