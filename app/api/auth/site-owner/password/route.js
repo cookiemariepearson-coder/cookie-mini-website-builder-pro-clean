@@ -5,7 +5,7 @@ import { safeCustomerReturnPath } from '../../../../../lib/commerceConfig.mjs';
 import { builderCustomerConfirmationUrl, canonicalBuilderOrigin } from '../../../../../lib/builderCheckoutAuth.mjs';
 import { siteOwnerAccountExists } from '../../../../../lib/customerAuthUtils.mjs';
 import { sendResendEmail } from '../../../../../lib/resendEmail.mjs';
-import { SITE_OWNER_SESSION_COOKIE, siteOwnerSessionCookieOptions } from '../../../../../lib/siteOwnerAuth';
+import { ADMIN_SESSION_COOKIE, adminSessionCookieOptions, SITE_OWNER_SESSION_COOKIE, siteOwnerSessionCookieOptions } from '../../../../../lib/siteOwnerAuth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -67,7 +67,12 @@ export async function POST(request) {
         console.info('[builder-password-auth]', { event: 'PASSWORD_SIGN_IN_REJECTED' });
         return authResponse({ ok: false, error: 'The email or password was not accepted. Try again or set/reset your password.' }, 401);
       }
+      const existingAdminToken = request.cookies.get(ADMIN_SESSION_COOKIE)?.value || '';
+      if (existingAdminToken) {
+        try { await supabase.auth.admin.signOut(existingAdminToken, 'local'); } catch {}
+      }
       const response = authResponse({ ok: true, signedIn: true, returnPath, email: data.user.email || '' });
+      response.cookies.set(ADMIN_SESSION_COOKIE, '', { ...adminSessionCookieOptions(60), maxAge: 0 });
       response.cookies.set(SITE_OWNER_SESSION_COOKIE, data.session.access_token, siteOwnerSessionCookieOptions(data.session.expires_in));
       console.info('[builder-password-auth]', { event: 'PASSWORD_SIGN_IN_SUCCEEDED' });
       return response;
