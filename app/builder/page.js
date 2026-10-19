@@ -68,7 +68,7 @@ function draftStorageKeyFor(draft = {}, accountEmail = '') {
   const email = normalizeDraftOwnerEmail(accountEmail);
   if (!email) return baseKey;
   if (baseKey.startsWith(`${email}::`)) return baseKey;
-  const existingOwner = normalizeDraftOwnerEmail(draft.browserDraftOwnerEmail || draft.customerEmail || draft.ownerEmail || '');
+  const existingOwner = normalizeDraftOwnerEmail(draft.browserDraftOwnerEmail || '');
   // Preserve older owner backups under their existing keys; namespace customer backups to avoid collisions.
   if (!existingOwner && (email === 'cookiemariepearson@gmail.com' || email === 'hello@cookiesdigitalcreations.com')) return baseKey;
   return `${email}::${baseKey}`.slice(0, 200);
