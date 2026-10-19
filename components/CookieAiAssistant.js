@@ -237,7 +237,7 @@ export default function CookieAiAssistant() {
   }
 
   return (
-    <div className={`cookieAiAssistant cookieAiV2 ${open ? 'open' : ''}`}>
+    <div className={`cookieAiAssistant cookieAiV2 ${pagePath === '/' ? 'cookieAiLandingInline' : ''} ${open ? 'open' : ''}`}>
       {open && (
         <section
           className={`cookieAiPanel ${showDetails ? 'showDetails' : ''}`}
