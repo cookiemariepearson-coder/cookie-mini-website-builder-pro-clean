@@ -58,14 +58,26 @@ function draftSlugFor(draft = {}) {
   return slugify(draft.draftName || draft.businessName || 'my-website');
 }
 
-function draftStorageKeyFor(draft = {}) {
-  const savedStorageKey = String(draft.browserDraftStorageKey || '').trim();
-  return savedStorageKey && savedStorageKey.length <= 200 ? savedStorageKey : draftSlugFor(draft);
+function normalizeDraftOwnerEmail(value = '') {
+  return String(value || '').trim().toLowerCase();
 }
 
-function saveLocalDraftIndex(draft) {
+function draftStorageKeyFor(draft = {}, accountEmail = '') {
+  const savedStorageKey = String(draft.browserDraftStorageKey || '').trim();
+  const baseKey = savedStorageKey && savedStorageKey.length <= 200 ? savedStorageKey : draftSlugFor(draft);
+  const email = normalizeDraftOwnerEmail(accountEmail);
+  if (!email) return baseKey;
+  if (baseKey.startsWith(`${email}::`)) return baseKey;
+  const existingOwner = normalizeDraftOwnerEmail(draft.browserDraftOwnerEmail || draft.customerEmail || draft.ownerEmail || '');
+  // Preserve older owner backups under their existing keys; namespace customer backups to avoid collisions.
+  if (!existingOwner && (email === 'cookiemariepearson@gmail.com' || email === 'hello@cookiesdigitalcreations.com')) return baseKey;
+  return `${email}::${baseKey}`.slice(0, 200);
+}
+
+function saveLocalDraftIndex(draft, accountEmail = '') {
   try {
-    const storageKey = draftStorageKeyFor(draft);
+    const email = normalizeDraftOwnerEmail(accountEmail);
+    const storageKey = draftStorageKeyFor(draft, email);
     const rawText = localStorage.getItem(DRAFTS_INDEX_KEY);
     const raw = safeParse(rawText);
     if (rawText && (!raw || typeof raw !== 'object' || Array.isArray(raw))) return;
@@ -74,6 +86,7 @@ function saveLocalDraftIndex(draft) {
       ...draft,
       slug: draftSlugFor(draft),
       browserDraftStorageKey: storageKey,
+      ...(email ? { browserDraftOwnerEmail: email } : {}),
       updatedAt: new Date().toISOString()
     });
     localStorage.setItem(DRAFTS_INDEX_KEY, JSON.stringify({ ...existing, [storageKey]: lightDraft }));
@@ -149,7 +162,7 @@ async function compressImage(file, maxSize = 900, quality = 0.68) {
 
 export default function Builder() {
   const router = useRouter();
-  const { accountState, openAccountModal } = useAccountModal();
+  const { accountState, accountEmail, openAccountModal } = useAccountModal();
   const [step, setStep] = useState(0);
   const [site, setSite] = useState(() => createDefaultSite());
   const [message, setMessage] = useState('');
@@ -577,11 +590,11 @@ export default function Builder() {
 
   function persistLocal(note = 'Draft saved in this browser.', silent = false) {
     try {
-      const lightDraft = stripHeavyLocalData({ ...site, localDraftVersion: 1, updatedAt: new Date().toISOString() });
+      const lightDraft = stripHeavyLocalData({ ...site, ...(accountEmail ? { browserDraftOwnerEmail: normalizeDraftOwnerEmail(accountEmail) } : {}), localDraftVersion: 1, updatedAt: new Date().toISOString() });
       localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft));
       localStorage.setItem(LAST_STEP_KEY, String(step));
-      localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftStorageKeyFor(lightDraft));
-      saveLocalDraftIndex(lightDraft);
+      localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftStorageKeyFor(lightDraft, accountEmail));
+      saveLocalDraftIndex(lightDraft, accountEmail);
       if (!silent) setSaveMessage(`${note} ${nowStamp()}`);
       return lightDraft;
     } catch (e) {
