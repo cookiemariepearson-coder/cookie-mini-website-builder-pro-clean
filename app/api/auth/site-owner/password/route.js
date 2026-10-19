@@ -84,7 +84,10 @@ export async function POST(request) {
     const requestUrl = new URL(request.url);
     const rootDomain = String(process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'cookiesdigitalcreations.com').trim().toLowerCase();
     const origin = canonicalBuilderOrigin(requestUrl, rootDomain);
-    const accountExists = await siteOwnerAccountExists(supabase, email);
+    // Avoid scanning the entire Supabase Auth user directory during signup. That admin listing
+    // can fail independently and prevent every new customer from registering. Signup itself
+    // handles duplicate addresses safely below; account lookup is needed only for recovery.
+    const accountExists = action === 'reset' ? await siteOwnerAccountExists(supabase, email) : false;
 
     if (action === 'signup') {
       const policyError = passwordPolicyError(password);
@@ -97,7 +100,15 @@ export async function POST(request) {
           password,
           options: { data: { display_name: displayName } }
         });
-        if (linkError) throw linkError;
+        if (linkError) {
+          const errorText = [linkError.code, linkError.message, linkError.msg, linkError.error].filter(Boolean).join(' ').toLowerCase();
+          const alreadyRegistered = /already (?:been )?registered|user already exists|already exists|user_already_exists|email_exists/.test(errorText) || Number(linkError.status) === 422;
+          if (alreadyRegistered) {
+            console.info('[builder-password-auth]', { event: 'SIGNUP_REQUEST_ACCEPTED_EXISTING_ACCOUNT' });
+            return authResponse({ ok: true, pendingConfirmation: true, message: 'Check your email to confirm your account. If you already have an account, use Set or reset password.' });
+          }
+          throw linkError;
+        }
         const confirmationUrl = builderCustomerConfirmationUrl({
           origin,
           returnPath,
