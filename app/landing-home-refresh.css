@@ -1,0 +1,62 @@
+/* Focused homepage refresh: clearer first action, calmer CTA hierarchy, real template previews. */
+.brandLanding .heroButtonRowClean{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:26px 0 12px}
+.brandLanding .heroButtonRowClean .btn:first-child{background:linear-gradient(135deg,#f18a2a 0%,#e84d87 55%,#8755dc 100%);box-shadow:0 12px 28px #9c4b8733}
+.brandLanding .heroButtonRowClean .btn{min-height:50px;padding:15px 24px}
+.brandLanding .heroAccountPrompt{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:10px 0 18px;font-size:14px;color:#66556f}
+.brandLanding .heroAccountPrompt>span:first-child{font-weight:800;color:#332344}
+.brandLanding .heroTextAction{display:inline!important;padding:0!important;min-height:0!important;border:0!important;background:none!important;color:#9b3f87!important;text-decoration:underline!important;text-underline-offset:3px;font-weight:900;box-shadow:none!important}
+.brandLanding .heroAccountPrompt a:not(.heroTextAction){font-size:14px;font-weight:800;color:#49305d}
+.brandLanding .featuredTemplatesSection{max-width:1240px;margin:0 auto;padding:clamp(42px,6vw,76px) clamp(18px,4vw,40px);scroll-margin-top:90px}
+.brandLanding .featuredTemplatesIntro{max-width:760px;margin:0 auto 30px;text-align:center}
+.brandLanding .featuredTemplatesIntro h2{font-size:clamp(30px,4vw,46px);line-height:1.08;letter-spacing:-.035em;margin:12px 0}
+.brandLanding .featuredTemplatesIntro p{font-size:17px;line-height:1.7;color:#66556f;margin:0 auto}
+.brandLanding .featuredTemplatesGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.brandLanding .featuredTemplateCard{overflow:hidden;border:1px solid #eaddec;border-radius:22px;background:#fff;box-shadow:0 14px 34px #2811390b;transition:transform .18s ease,box-shadow .18s ease}
+.brandLanding .featuredTemplateCard:hover{transform:translateY(-4px);box-shadow:0 22px 44px #28113918}
+.brandLanding .featuredTemplateCard img{display:block;width:100%;height:210px;object-fit:cover;background:linear-gradient(135deg,#fff1de,#f5dff1)}
+.brandLanding .featuredTemplateCopy{padding:19px 20px 21px}
+.brandLanding .templateCategory{display:inline-flex;align-items:center;border-radius:999px;background:#fff1e8;color:#9b4b22;padding:6px 10px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;font-weight:900}
+.brandLanding .featuredTemplateCopy h3{font-size:23px;line-height:1.2;margin:12px 0 7px;color:#281b36}
+.brandLanding .featuredTemplateCopy p{min-height:48px;margin:0 0 14px;color:#6b5a74;line-height:1.55;font-size:14px}
+.brandLanding .templateCardLink{display:inline-flex;gap:8px;align-items:center;color:#883d87;text-decoration:none;font-weight:900}
+.brandLanding .templateCardLink:hover{text-decoration:underline;text-underline-offset:4px}
+.brandLanding .featuredTemplatesFooter{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;margin-top:24px;padding:18px 20px;border-radius:18px;background:linear-gradient(100deg,#fff5e8,#fff0f7 55%,#f3edff)}
+.brandLanding .featuredTemplatesFooter p{margin:0;color:#6b5a74;font-size:13px;line-height:1.5}
+.brandLanding .featuredTemplatesFooter .btn{flex-shrink:0;background:linear-gradient(135deg,#e77d2c,#d84c91);box-shadow:0 10px 22px #b94c7130}
+.brandLanding .accountHowItWorksActionsClean{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brandLanding .accountHowItWorksActionsClean .btn{background:linear-gradient(135deg,#f18a2a,#e84d87);box-shadow:0 10px 22px #b94c7126}
+@media(max-width:900px){.brandLanding .featuredTemplatesGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.brandLanding .featuredTemplateCard img{height:190px}}
+@media(max-width:560px){.brandLanding .heroButtonRowClean{align-items:stretch;flex-direction:column}.brandLanding .heroButtonRowClean .btn{width:100%;text-align:center}.brandLanding .featuredTemplatesGrid{grid-template-columns:1fr;gap:15px}.brandLanding .featuredTemplateCard img{height:220px}.brandLanding .featuredTemplateCopy p{min-height:0}.brandLanding .featuredTemplatesFooter{align-items:stretch}.brandLanding .featuredTemplatesFooter .btn{width:100%;text-align:center}.brandLanding .heroAccountPrompt{gap:7px}}
+@media(prefers-reduced-motion:reduce){.brandLanding .featuredTemplateCard{transition:none}.brandLanding .featuredTemplateCard:hover{transform:none}}
+
+/* Landing-page readability and calmer motion */
+.brandLanding .brandHero{isolation:isolate}
+.brandLanding .brandHero h1,
+.brandLanding .brandHero p:not(.aiReviewNote){color:#fff!important;text-shadow:0 2px 16px rgba(10,3,18,.3)}
+.brandLanding .brandHero .aiReviewNote{color:#fff!important;background:rgba(22,8,33,.72)!important;border-color:rgba(255,255,255,.34)!important}
+.brandLanding .heroAccountPrompt{color:#fff!important}
+.brandLanding .heroAccountPrompt>span:first-child,.brandLanding .heroAccountPrompt>span:nth-of-type(2){color:#fff!important}
+.brandLanding .heroAccountPrompt .heroTextAction{color:#ffd36a!important}
+.brandLanding .featuredTemplatesIntro h2,.brandLanding .featuredTemplateCopy h3{color:#281b36!important}
+.brandLanding .featuredTemplatesIntro p,.brandLanding .featuredTemplateCopy p,.brandLanding .featuredTemplatesFooter p{color:#51445d!important}
+.brandLanding .brandSection,.brandLanding .brandPlanSection,.brandLanding .accountHowItWorks,.brandLanding .aiReadyCommerceSection,.brandLanding .homepageFaqSection,.brandLanding .creatorBusinessSection{color:#281b36}
+.brandLanding .brandSection p,.brandLanding .accountHowItWorks p,.brandLanding .aiReadyCommerceSection p,.brandLanding .homepageFaqSection p,.brandLanding .creatorBusinessSection p{color:#51445d!important}
+.brandLanding .brandSection h2,.brandLanding .brandPlanSection h2,.brandLanding .accountHowItWorks h2,.brandLanding .aiReadyCommerceSection h2,.brandLanding .homepageFaqSection h2,.brandLanding .creatorBusinessSection h2{color:#281b36!important}
+.brandLanding .brandPlanTile{color:#fff!important}
+.brandLanding .brandPlanTile strong,.brandLanding .brandPlanTile small,.brandLanding .brandPlanTile em{color:#fff!important}
+.brandLanding .brandPlanTile span{color:#ffcf68!important}
+.brandLanding .brandSplitCta h2,.brandLanding .brandSplitCta p{color:#fff!important}
+.brandLanding .featuredTemplatesActions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brandLanding .templateHelpLink{border:0;background:transparent;color:#6f347e;text-decoration:underline;text-underline-offset:4px;font:900 14px/1.4 Arial,sans-serif;padding:10px 4px;cursor:pointer}
+.brandLanding .templateHelpLink:hover{color:#3f1850}
+.brandLanding .templateHelpLink:focus-visible{outline:3px solid #a34fc1;outline-offset:4px;border-radius:6px}
+/* Keep the assistant available, but don't pin a floating chat pill over the homepage. */
+.cookieAiLandingInline .cookieAiLauncher{display:none!important}
+.cookieAiLandingInline.open .cookieAiLauncher{display:none!important}
+.cookieAiLandingInline .cookieAiPanel{position:fixed;right:18px;bottom:18px;margin:0}
+@media(max-width:560px){.brandLanding .featuredTemplatesActions{align-items:stretch;flex-direction:column}.brandLanding .featuredTemplatesActions .btn,.brandLanding .templateHelpLink{width:100%;text-align:center}.cookieAiLandingInline .cookieAiPanel{right:10px;bottom:10px}}
+/* Calm the decorative hero: no drifting cards, pulsing buttons, or floating sparkles. */
+.brandLanding .landingWelcomeExperience{display:none!important}
+.brandLanding .brandHeroMockup,.brandLanding .mockActionRow span,.brandLanding .mockCards span,.brandLanding .brandHero h1,.brandLanding .brandHero p,.brandLanding .heroButtonRow{animation:none!important;transition:none!important}
+.brandLanding .brandPlanTile:hover{transform:none}
+@media(prefers-reduced-motion:reduce){.brandLanding *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}

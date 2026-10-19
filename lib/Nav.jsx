@@ -19,7 +19,7 @@ export default function Nav({ context = 'customer' }) {
   return <nav className="nav" aria-label="Main navigation">
     {homeLink}
     <div className="navLinks">
-      <AccountAction className="navBuilderAction" destination="/builder" guestAllowed mode="create">Start Building Free</AccountAction><Link href="/pricing">Pricing</Link><Link href="/done-for-you">Done for You</Link><Link href="/video-studio">AI Video</Link><CustomerAccountLink /><Link href="/contact">Contact Us</Link>
+      <AccountAction className="navBuilderAction" destination="/builder" guestAllowed mode="create">Start Building Free</AccountAction><Link href="/#featured-templates">Templates</Link><Link href="/pricing">Pricing</Link><Link href="/done-for-you">Done for You</Link><CustomerAccountLink />
     </div>
   </nav>;
 }
