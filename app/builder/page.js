@@ -290,7 +290,7 @@ export default function Builder() {
       const savedStep = Number(localStorage.getItem(LAST_STEP_KEY || 0));
       if (saved) {
         setSite(mergeDefaults(reconcileBuilderPlan(saved, requestedPlan).site));
-        localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftStorageKeyFor(saved));
+        localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draftStorageKeyFor(saved, accountEmail));
         if (!Number.isNaN(savedStep)) setStep(Math.min(4, Math.max(0, savedStep)));
         setSaveMessage('Draft restored from this browser.');
       } else if (requestedPlan) {
@@ -664,7 +664,7 @@ export default function Builder() {
       const lightDraft = stripHeavyLocalData(draft);
       localStorage.setItem(DRAFT_KEY, JSON.stringify(lightDraft));
       localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, draft.slug);
-      saveLocalDraftIndex(lightDraft);
+      saveLocalDraftIndex(lightDraft, accountEmail);
       if (!hasOwnerSession) {
         await syncGuestDraftClaim(lightDraft);
       } else {
@@ -735,7 +735,7 @@ export default function Builder() {
     }
     const draft = { ...site, builderStep: step, pages: normalizeSelectedPagesForPlan(site.pages, site.plan, site.extraPages || site.extra_pages), slug: draftSlugFor(site), draftName: site.draftName || site.businessName, status: 'draft' };
     persistLocal('Draft saved before opening AI Video Studio.');
-    saveLocalDraftIndex(draft);
+    saveLocalDraftIndex(draft, accountEmail);
     setSaveMessage('Saving your draft before opening AI Video Studio...');
     try { await saveDraftOnline(draft, true); } catch {}
     router.push(`/video-studio?return=builder&draft=${encodeURIComponent(draft.slug)}`);
@@ -762,7 +762,7 @@ export default function Builder() {
       return;
     }
     const published = { ...site, slug: draftSlugFor(site), draftName: site.draftName || site.businessName, pages: normalizeSelectedPagesForPlan(site.pages, 'free'), plan: 'free', status: 'published' };
-    try { const lightPublished = stripHeavyLocalData(published); localStorage.setItem(DRAFT_KEY, JSON.stringify(lightPublished)); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, published.slug); saveLocalDraftIndex(lightPublished); } catch {}
+    try { const lightPublished = stripHeavyLocalData(published); localStorage.setItem(DRAFT_KEY, JSON.stringify(lightPublished)); localStorage.setItem(CURRENT_DRAFT_SLUG_KEY, published.slug); saveLocalDraftIndex(lightPublished, accountEmail); } catch {}
     setMessage('Publishing free launch page...');
     try {
       const res = await fetch('/api/site/publish', {
