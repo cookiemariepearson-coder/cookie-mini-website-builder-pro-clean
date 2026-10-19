@@ -13,6 +13,8 @@ import { sendResendEmail } from '../../../../../lib/resendEmail.mjs';
 import {
   ADMIN_SESSION_COOKIE,
   adminSessionCookieOptions,
+  SITE_OWNER_SESSION_COOKIE,
+  siteOwnerSessionCookieOptions,
   isAllowedAdminEmail,
   ownerEmail
 } from '../../../../../lib/siteOwnerAuth';
@@ -78,7 +80,10 @@ async function passwordSignIn(request, { email, password, returnPath, captchaTok
     return privateResponse({ ok: false, error: GENERIC_SIGN_IN_ERROR }, 401);
   }
 
+  const existingCustomerToken = request.cookies.get(SITE_OWNER_SESSION_COOKIE)?.value || '';
+  await revokeToken(supabase, existingCustomerToken);
   const response = privateResponse({ ok: true, signedIn: true, returnPath: safeAdminReturnPath(returnPath) });
+  response.cookies.set(SITE_OWNER_SESSION_COOKIE, '', { ...siteOwnerSessionCookieOptions(60), maxAge: 0 });
   response.cookies.set(ADMIN_SESSION_COOKIE, accessToken, adminSessionCookieOptions(data.session.expires_in));
   console.info('[owner-password-auth]', { event: 'OWNER_PASSWORD_SIGN_IN_SUCCEEDED' });
   return response;
