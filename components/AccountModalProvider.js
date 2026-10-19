@@ -128,8 +128,11 @@ export default function AccountModalProvider({ children }) {
     setMode(options.mode === 'create' ? 'create' : options.mode === 'reset' ? 'reset' : 'signin');
     setDestination(safeDestination(options.destination || '/customer'));
     setGuestAllowed(Boolean(options.guestAllowed));
+    setDisplayName('');
+    setEmail('');
     setPassword('');
     setShowPassword(false);
+    setCompanyWebsite('');
     setMessage('');
     setError('');
     setOpen(true);
@@ -236,8 +239,8 @@ export default function AccountModalProvider({ children }) {
         <h2 id="account-modal-title" ref={headingRef} tabIndex="-1">{heading}</h2>
         <p id="account-modal-support">{support}</p>
         <form onSubmit={submit}>
-          {mode === 'create' && <div className="field"><label htmlFor="account-display-name">Display name</label><input id="account-display-name" required autoComplete="name" value={displayName} onChange={event => setDisplayName(event.target.value)} /></div>}
-          <div className="field"><label htmlFor="account-email">Email</label><input id="account-email" required type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} /></div>
+          {mode === 'create' && <div className="field"><label htmlFor="account-display-name">Display name</label><input id="account-display-name" required autoComplete="off" value={displayName} onChange={event => setDisplayName(event.target.value)} /></div>}
+          <div className="field"><label htmlFor="account-email">Email</label><input id="account-email" required type="email" autoComplete="off" value={email} onChange={event => setEmail(event.target.value)} /></div>
           {mode !== 'reset' && <div className="field">
             <label htmlFor="account-password">Password</label>
             <div className="passwordInputRow"><input id="account-password" required type={showPassword ? 'text' : 'password'} minLength={mode === 'create' ? 10 : undefined} autoComplete={mode === 'create' ? 'new-password' : 'current-password'} value={password} onChange={event => setPassword(event.target.value)} /><button className="btn light passwordToggle" type="button" aria-pressed={showPassword} onClick={() => setShowPassword(value => !value)}>{showPassword ? 'Hide' : 'Show'}</button></div>

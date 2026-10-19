@@ -2,6 +2,7 @@ import Link from 'next/link';
 import CustomerAccountLink from '../components/CustomerAccountLink';
 import { AccountAction } from '../components/AccountModalProvider';
 import OwnerAccountControl from '../components/OwnerAccountControl';
+import OwnerAdminAccessLink from '../components/OwnerAdminAccessLink';
 
 export default function Nav({ context = 'customer' }) {
   const ownerContext = context === 'owner';
@@ -19,7 +20,7 @@ export default function Nav({ context = 'customer' }) {
   return <nav className="nav" aria-label="Main navigation">
     {homeLink}
     <div className="navLinks">
-      <AccountAction className="navBuilderAction" destination="/builder" guestAllowed mode="create">Start Building Free</AccountAction><Link href="/#featured-templates">Templates</Link><Link href="/pricing">Pricing</Link><Link href="/done-for-you">Done for You</Link><CustomerAccountLink /><Link className="mainAdminAccessLink" href="/admin" aria-label="Open the Mini Website Builder admin dashboard">Admin Access</Link>
+      <AccountAction className="navBuilderAction" destination="/builder" guestAllowed mode="create">Start Building Free</AccountAction><Link href="/#featured-templates">Templates</Link><Link href="/pricing">Pricing</Link><Link href="/done-for-you">Done for You</Link><CustomerAccountLink /><OwnerAdminAccessLink />
     </div>
   </nav>;
 }
