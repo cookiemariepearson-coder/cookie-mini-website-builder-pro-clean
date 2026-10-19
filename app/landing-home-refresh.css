@@ -28,3 +28,35 @@
 @media(max-width:900px){.brandLanding .featuredTemplatesGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.brandLanding .featuredTemplateCard img{height:190px}}
 @media(max-width:560px){.brandLanding .heroButtonRowClean{align-items:stretch;flex-direction:column}.brandLanding .heroButtonRowClean .btn{width:100%;text-align:center}.brandLanding .featuredTemplatesGrid{grid-template-columns:1fr;gap:15px}.brandLanding .featuredTemplateCard img{height:220px}.brandLanding .featuredTemplateCopy p{min-height:0}.brandLanding .featuredTemplatesFooter{align-items:stretch}.brandLanding .featuredTemplatesFooter .btn{width:100%;text-align:center}.brandLanding .heroAccountPrompt{gap:7px}}
 @media(prefers-reduced-motion:reduce){.brandLanding .featuredTemplateCard{transition:none}.brandLanding .featuredTemplateCard:hover{transform:none}}
+
+/* Landing-page readability and calmer motion */
+.brandLanding .brandHero{isolation:isolate}
+.brandLanding .brandHero h1,
+.brandLanding .brandHero p:not(.aiReviewNote){color:#fff!important;text-shadow:0 2px 16px rgba(10,3,18,.3)}
+.brandLanding .brandHero .aiReviewNote{color:#fff!important;background:rgba(22,8,33,.72)!important;border-color:rgba(255,255,255,.34)!important}
+.brandLanding .heroAccountPrompt{color:#fff!important}
+.brandLanding .heroAccountPrompt>span:first-child,.brandLanding .heroAccountPrompt>span:nth-of-type(2){color:#fff!important}
+.brandLanding .heroAccountPrompt .heroTextAction{color:#ffd36a!important}
+.brandLanding .featuredTemplatesIntro h2,.brandLanding .featuredTemplateCopy h3{color:#281b36!important}
+.brandLanding .featuredTemplatesIntro p,.brandLanding .featuredTemplateCopy p,.brandLanding .featuredTemplatesFooter p{color:#51445d!important}
+.brandLanding .brandSection,.brandLanding .brandPlanSection,.brandLanding .accountHowItWorks,.brandLanding .aiReadyCommerceSection,.brandLanding .homepageFaqSection,.brandLanding .creatorBusinessSection{color:#281b36}
+.brandLanding .brandSection p,.brandLanding .accountHowItWorks p,.brandLanding .aiReadyCommerceSection p,.brandLanding .homepageFaqSection p,.brandLanding .creatorBusinessSection p{color:#51445d!important}
+.brandLanding .brandSection h2,.brandLanding .brandPlanSection h2,.brandLanding .accountHowItWorks h2,.brandLanding .aiReadyCommerceSection h2,.brandLanding .homepageFaqSection h2,.brandLanding .creatorBusinessSection h2{color:#281b36!important}
+.brandLanding .brandPlanTile{color:#fff!important}
+.brandLanding .brandPlanTile strong,.brandLanding .brandPlanTile small,.brandLanding .brandPlanTile em{color:#fff!important}
+.brandLanding .brandPlanTile span{color:#ffcf68!important}
+.brandLanding .brandSplitCta h2,.brandLanding .brandSplitCta p{color:#fff!important}
+.brandLanding .featuredTemplatesActions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brandLanding .templateHelpLink{border:0;background:transparent;color:#6f347e;text-decoration:underline;text-underline-offset:4px;font:900 14px/1.4 Arial,sans-serif;padding:10px 4px;cursor:pointer}
+.brandLanding .templateHelpLink:hover{color:#3f1850}
+.brandLanding .templateHelpLink:focus-visible{outline:3px solid #a34fc1;outline-offset:4px;border-radius:6px}
+/* Keep the assistant available, but don't pin a floating chat pill over the homepage. */
+.cookieAiLandingInline .cookieAiLauncher{display:none!important}
+.cookieAiLandingInline.open .cookieAiLauncher{display:none!important}
+.cookieAiLandingInline .cookieAiPanel{position:fixed;right:18px;bottom:18px;margin:0}
+@media(max-width:560px){.brandLanding .featuredTemplatesActions{align-items:stretch;flex-direction:column}.brandLanding .featuredTemplatesActions .btn,.brandLanding .templateHelpLink{width:100%;text-align:center}.cookieAiLandingInline .cookieAiPanel{right:10px;bottom:10px}}
+/* Calm the decorative hero: no drifting cards, pulsing buttons, or floating sparkles. */
+.brandLanding .landingWelcomeExperience{display:none!important}
+.brandLanding .brandHeroMockup,.brandLanding .mockActionRow span,.brandLanding .mockCards span,.brandLanding .brandHero h1,.brandLanding .brandHero p,.brandLanding .heroButtonRow{animation:none!important;transition:none!important}
+.brandLanding .brandPlanTile:hover{transform:none}
+@media(prefers-reduced-motion:reduce){.brandLanding *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
