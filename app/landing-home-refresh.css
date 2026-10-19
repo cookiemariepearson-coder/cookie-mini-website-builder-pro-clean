@@ -275,3 +275,40 @@ body:has(.brandLanding){
 @media(max-width:760px){
   .mainAdminAccessLink{width:100%;min-height:46px}
 }
+
+
+/* Owner-only admin entry and a warmer, muted lavender landing-page palette. */
+body:has(.brandLanding),
+.accountModalBackground:has(.brandLanding),
+.brandLanding {
+  background: #f7f2fa !important;
+  color: #30243b !important;
+}
+.brandLanding .brandSection,
+.brandLanding .brandPlanSection,
+.brandLanding .accountHowItWorks,
+.brandLanding .homepageFaqSection,
+.brandLanding .creatorBusinessSection {
+  background: #f7f2fa !important;
+  color: #30243b !important;
+}
+.brandLanding .brandSection:nth-of-type(even),
+.brandLanding .homepageFaqSection,
+.brandLanding .creatorBusinessSection {
+  background: #fbf8fd !important;
+}
+.brandLanding .brandPlanSection {
+  background: linear-gradient(135deg, #f7f0fa 0%, #fcf9fd 54%, #f0e8f7 100%) !important;
+  border-color: #e4d8eb !important;
+}
+.brandLanding .brandHero {
+  background: linear-gradient(125deg, #f8f1f8 0%, #f8eee9 48%, #eee7f7 100%) !important;
+  border-color: #e7d9e9 !important;
+}
+.brandLanding .brandSplitCta {
+  background: linear-gradient(125deg, #f7eee8 0%, #f6eaf1 54%, #eee7f7 100%) !important;
+}
+.nav:has(+ main.brandLanding) {
+  background: rgba(250, 247, 252, .98) !important;
+  border-bottom-color: #e4d8eb !important;
+}
