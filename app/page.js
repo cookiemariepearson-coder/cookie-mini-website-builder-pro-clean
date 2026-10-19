@@ -78,7 +78,8 @@ export default function Home(){
               <span>New customer?</span>
               <AccountAction className="heroTextAction" destination="/customer" mode="create">Create your free account</AccountAction>
               <span aria-hidden="true">·</span>
-              <CustomerAccountLink placement="hero" />
+              <span>Returning customer?</span>
+              <AccountAction className="heroTextAction" destination="/customer" mode="signin">Sign in</AccountAction>
             </div>
             <p className="aiReviewNote">Created with the assistance of AI and professionally reviewed by Cookie Digital Creations for quality and accuracy.</p>
             <LandingWelcomeExperience />
