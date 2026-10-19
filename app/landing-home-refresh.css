@@ -317,17 +317,17 @@ body:has(.brandLanding),
 /* Explicitly repaint the complete public landing page in muted, warm lavender. */
 html:has(body .brandLanding),
 body:has(main.brandLanding) {
-  background: #f0eaf6 !important;
+  background: #d2c0dc !important;
   background-image: none !important;
   color: #30243b !important;
 }
 main.brandLanding {
-  background: #f0eaf6 !important;
+  background: #d2c0dc !important;
   background-image: none !important;
   color: #30243b !important;
 }
 main.brandLanding > section:not(.brandHero) {
-  background: #f0eaf6 !important;
+  background: #d2c0dc !important;
   background-image: none !important;
   color: #30243b !important;
   border-color: #ded2e8 !important;
@@ -340,8 +340,8 @@ main.brandLanding > .creatorBusinessSection {
   background-image: none !important;
 }
 main.brandLanding > .brandHero {
-  background: linear-gradient(135deg, #f3edf7 0%, #f7eff1 52%, #ebe4f4 100%) !important;
-  background-image: linear-gradient(135deg, #f3edf7 0%, #f7eff1 52%, #ebe4f4 100%) !important;
+  background: linear-gradient(135deg, #d9c9e2 0%, #e5d1da 52%, #d2c4e2 100%) !important;
+  background-image: linear-gradient(135deg, #d9c9e2 0%, #e5d1da 52%, #d2c4e2 100%) !important;
   color: #30243b !important;
   border-color: #ded2e8 !important;
 }
@@ -378,5 +378,5 @@ main.brandLanding > .brandSplitCta p {
   color: #30243b !important;
   text-shadow: none !important;
 }
-/* No public navigation link is rendered for the owner dashboard. */
-.mainAdminAccessLink { display: none !important; }
+/* Only the verified owner-session component renders this link. */
+.mainAdminAccessLink { display: inline-flex; }
