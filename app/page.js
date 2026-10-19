@@ -4,6 +4,7 @@ import OwnerFooter from '../lib/OwnerFooter';
 import LandingWelcomeExperience from '../components/LandingWelcomeExperience';
 import CustomerAccountLink from '../components/CustomerAccountLink';
 import { AccountAction } from '../components/AccountModalProvider';
+import './landing-home-refresh.css';
 
 const planTiles = [
   ['Free Launch Page', '$0', 'Up to 3 selected sections', '1 action button'],
@@ -69,12 +70,16 @@ export default function Home(){
               Create a polished website that gives visitors a clear way to contact you, book with you,
               order from you, buy from you, request a quote, or get started.
             </p>
-            <div className="heroButtonRow">
+            <div className="heroButtonRow heroButtonRowClean">
               <AccountAction className="btn" destination="/builder" guestAllowed mode="create">Start Building Free</AccountAction>
-              <Link className="btn dark" href="/pricing">View Website Plans</Link>
-              <Link className="btn light" href="/video-studio?intent=purchase">AI Video Studio — $5</Link>
+              <Link className="btn light" href="#featured-templates">Explore Templates</Link>
             </div>
-            <CustomerAccountLink placement="hero" />
+            <div className="heroAccountPrompt">
+              <span>New customer?</span>
+              <AccountAction className="heroTextAction" destination="/customer" mode="create">Create your free account</AccountAction>
+              <span aria-hidden="true">·</span>
+              <CustomerAccountLink placement="hero" />
+            </div>
             <p className="aiReviewNote">Created with the assistance of AI and professionally reviewed by Cookie Digital Creations for quality and accuracy.</p>
             <LandingWelcomeExperience />
           </div>
@@ -91,6 +96,41 @@ export default function Home(){
               <div className="mockCards"><span></span><span></span><span></span></div>
             </div>
           </div>
+        </section>
+
+        <section className="featuredTemplatesSection" id="featured-templates" aria-labelledby="featured-templates-heading">
+          <div className="featuredTemplatesIntro">
+            <span className="kicker">A peek inside the builder</span>
+            <h2 id="featured-templates-heading">Start with a look that fits your business.</h2>
+            <p>Explore a few of the template styles already available in the Mini Builder. Pick a direction, then make it your own with your business name, colors, photos, and customer action buttons.</p>
+          </div>
+          <div className="featuredTemplatesGrid">
+            <article className="featuredTemplateCard">
+              <img src="/templates/food/coastal-hero-v2.webp" alt="Coastal-inspired food and catering website template preview" loading="lazy" />
+              <div className="featuredTemplateCopy"><span className="templateCategory">Food &amp; catering</span><h3>Coastal Kitchen</h3><p>Show off your menu, specialties, and ordering options.</p><Link href="/builder" className="templateCardLink">Use this style <span aria-hidden="true">↗</span></Link></div>
+            </article>
+            <article className="featuredTemplateCard">
+              <img src="/templates/beauty/luxury-hero-v3.webp" alt="Elegant beauty and salon website template preview" loading="lazy" />
+              <div className="featuredTemplateCopy"><span className="templateCategory">Beauty &amp; salon</span><h3>Luxury Beauty</h3><p>Highlight services, appointments, and your signature look.</p><Link href="/builder" className="templateCardLink">Use this style <span aria-hidden="true">↗</span></Link></div>
+            </article>
+            <article className="featuredTemplateCard">
+              <img src="/templates/realestate/residential-hero-v1.webp" alt="Residential real estate website template preview" loading="lazy" />
+              <div className="featuredTemplateCopy"><span className="templateCategory">Real estate</span><h3>Residential Realty</h3><p>Present properties, services, and easy inquiry options.</p><Link href="/builder" className="templateCardLink">Use this style <span aria-hidden="true">↗</span></Link></div>
+            </article>
+            <article className="featuredTemplateCard">
+              <img src="/templates/wellness/botanical-hero-v1.webp" alt="Botanical wellness website template preview" loading="lazy" />
+              <div className="featuredTemplateCopy"><span className="templateCategory">Wellness</span><h3>Botanical Wellness</h3><p>Share your approach, offerings, and ways to connect.</p><Link href="/builder" className="templateCardLink">Use this style <span aria-hidden="true">↗</span></Link></div>
+            </article>
+            <article className="featuredTemplateCard">
+              <img src="/templates/cleaning/premium-hero-v1.webp" alt="Professional cleaning service website template preview" loading="lazy" />
+              <div className="featuredTemplateCopy"><span className="templateCategory">Home services</span><h3>Premium Cleaning</h3><p>Build trust with clear services and quote requests.</p><Link href="/builder" className="templateCardLink">Use this style <span aria-hidden="true">↗</span></Link></div>
+            </article>
+            <article className="featuredTemplateCard">
+              <img src="/templates/creator/cinematic-hero-v1.webp" alt="Cinematic creator portfolio website template preview" loading="lazy" />
+              <div className="featuredTemplateCopy"><span className="templateCategory">Creators &amp; portfolios</span><h3>Cinematic Creator</h3><p>Put your work, personality, and offers front and center.</p><Link href="/builder" className="templateCardLink">Use this style <span aria-hidden="true">↗</span></Link></div>
+            </article>
+          </div>
+          <div className="featuredTemplatesFooter"><p>These are previews of styles available in the builder—not separate paid products.</p><AccountAction className="btn" destination="/builder" guestAllowed mode="create">Browse Templates in the Builder</AccountAction></div>
         </section>
 
         <section className="brandSection">
@@ -175,10 +215,9 @@ export default function Home(){
           <h2 id="accounts-work-heading">Build first. Create an account when you are ready.</h2>
           <p>You can start building without an account. Your draft will be saved temporarily in your current browser. Create a free account when you want to save permanently, use another device, purchase a plan, or publish. Returning customers sign in with their email and password.</p>
           <p className="privacyAccountNote">We use your email to create and protect your account, return you to your saved websites, and connect verified purchases to the correct website. Please review our <Link href="/privacy">Privacy Policy</Link> for complete details.</p>
-          <div className="accountHowItWorksActions">
-            <AccountAction className="btn" destination="/builder" guestAllowed mode="create">Start Building Free</AccountAction>
-            <AccountAction className="btn light" destination="/customer" mode="create">Create Free Account</AccountAction>
-            <AccountAction className="btn dark" destination="/customer" mode="signin">Sign In</AccountAction>
+          <div className="accountHowItWorksActions accountHowItWorksActionsClean">
+            <AccountAction className="btn" destination="/customer" mode="create">Create Free Account</AccountAction>
+            <CustomerAccountLink placement="account-section" />
           </div>
         </section>
 
