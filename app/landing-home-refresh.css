@@ -173,3 +173,105 @@
   .cookieBuilderFooter .ownerProjectLogoImage{width:64px;height:64px}
   .cookieBuilderFooter .ownerProjectLinks{width:100%}
 }
+
+
+/* Make the whole public landing experience light, not just the hero card. */
+body:has(.brandLanding){
+  background:#fffaf6!important;
+  color:#281b36;
+}
+.accountModalBackground:has(.brandLanding){
+  background:#fffaf6!important;
+}
+.brandLanding{
+  background:#fffaf6!important;
+  color:#281b36!important;
+}
+.brandLanding .brandSection,
+.brandLanding .brandPlanSection,
+.brandLanding .accountHowItWorks,
+.brandLanding .homepageFaqSection,
+.brandLanding .creatorBusinessSection{
+  background:#fffaf6!important;
+  color:#281b36!important;
+}
+.brandLanding .brandSection:nth-of-type(even),
+.brandLanding .homepageFaqSection,
+.brandLanding .creatorBusinessSection{
+  background:#fff!important;
+}
+.brandLanding .brandPlanSection{
+  background:linear-gradient(135deg,#fff5e9 0%,#fff 52%,#f6edff 100%)!important;
+  border-block:1px solid #eaddec;
+}
+.brandLanding .brandSplitCta{
+  background:linear-gradient(125deg,#fff1df 0%,#ffeaf2 54%,#eee6ff 100%)!important;
+  border:1px solid #eaddec!important;
+  box-shadow:0 18px 44px rgba(32,23,47,.08)!important;
+}
+.brandLanding .brandSplitCta h2,
+.brandLanding .brandSplitCta p{
+  color:#281b36!important;
+  text-shadow:none!important;
+}
+.brandLanding .brandPlanTile{
+  background:linear-gradient(145deg,#fff 0%,#fff7f0 100%)!important;
+  color:#281b36!important;
+  border:1px solid #e8d9e8!important;
+  box-shadow:0 14px 34px rgba(40,27,54,.08)!important;
+}
+.brandLanding .brandPlanTile strong,
+.brandLanding .brandPlanTile small,
+.brandLanding .brandPlanTile em{
+  color:#453451!important;
+}
+.brandLanding .brandPlanTile span{color:#9b4b22!important}
+.brandLanding .brandSection li,
+.brandLanding .homepageFaqSection details,
+.brandLanding .creatorBusinessSection article{
+  color:#392747;
+}
+.nav:has(+ main.brandLanding){
+  background:rgba(255,255,255,.97)!important;
+  color:#281b36!important;
+  border-bottom:1px solid #eaddec;
+  box-shadow:0 6px 24px rgba(40,27,54,.06);
+}
+.nav:has(+ main.brandLanding) .logo,
+.nav:has(+ main.brandLanding) a{
+  color:#392747;
+}
+.nav:has(+ main.brandLanding) .navAccountLink,
+.nav:has(+ main.brandLanding) .navAccountSecondary,
+.nav:has(+ main.brandLanding) .navAccountButton,
+.nav:has(+ main.brandLanding) .navAccountChecking{
+  color:#392747!important;
+  border-color:#dfd0e5!important;
+  background:#fff!important;
+}
+.nav:has(+ main.brandLanding) .navAccountMenuPanel{
+  background:#fff!important;
+  border-color:#eaddec!important;
+}
+.nav:has(+ main.brandLanding) .navBuilderAction{color:#392747!important}
+.mainAdminAccessLink{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:42px;
+  padding:10px 15px;
+  border:1px solid #d9c5e1;
+  border-radius:999px;
+  background:linear-gradient(135deg,#fff3df,#f8eaff);
+  color:#6f347e!important;
+  font-weight:900!important;
+  white-space:nowrap;
+  text-decoration:none!important;
+}
+.mainAdminAccessLink:hover{
+  background:linear-gradient(135deg,#ffe7c4,#f0dcff);
+  box-shadow:0 5px 14px rgba(83,43,106,.12);
+}
+@media(max-width:760px){
+  .mainAdminAccessLink{width:100%;min-height:46px}
+}
