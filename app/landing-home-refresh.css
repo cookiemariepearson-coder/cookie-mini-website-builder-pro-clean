@@ -66,3 +66,110 @@
 .brandLanding .aiReadyCommerceSection h2{color:#281b36!important}
 .brandLanding .aiReadyCommerceSection p{color:#51445d!important}
 .brandLanding .aiReadyCommerceSection li{background:#fff!important;border:1px solid #e5d8eb!important;color:#392747!important}
+
+
+/* Bright, high-contrast landing hero and branded template showcase. */
+.brandLanding .brandHero{
+  background:linear-gradient(125deg,#fffaf0 0%,#fff1e8 43%,#f8eaff 100%)!important;
+  border:1px solid #f0dcec;
+  border-radius:30px;
+  box-shadow:0 24px 70px rgba(45,20,61,.10);
+}
+.brandLanding .brandHero h1,
+.brandLanding .brandHero p:not(.aiReviewNote){
+  color:#281b36!important;
+  text-shadow:none!important;
+}
+.brandLanding .brandHero .kicker{color:#8b3e79!important}
+.brandLanding .brandHero .aiReviewNote{
+  color:#4d3b59!important;
+  background:rgba(255,255,255,.88)!important;
+  border:1px solid #ead9eb!important;
+  box-shadow:0 8px 22px rgba(45,20,61,.06);
+}
+.brandLanding .brandHero .heroAccountPrompt,
+.brandLanding .brandHero .heroAccountPrompt>span:first-child,
+.brandLanding .brandHero .heroAccountPrompt>span:nth-of-type(2){
+  color:#453451!important;
+}
+.brandLanding .brandHero .heroAccountPrompt .heroTextAction{color:#8b317a!important}
+.brandLanding .brandHeroMockup{
+  align-self:center;
+  min-width:0;
+  padding:clamp(10px,2vw,18px);
+  border:1px solid rgba(255,255,255,.95);
+  border-radius:30px;
+  background:rgba(255,255,255,.72);
+  box-shadow:0 28px 70px rgba(58,30,76,.16);
+}
+.brandLanding .mockBrowser{
+  overflow:hidden;
+  padding:0;
+  border:1px solid #e7d8e9;
+  border-radius:22px;
+  background:#fff;
+  color:#281b36;
+  box-shadow:0 14px 38px rgba(38,18,53,.10);
+}
+.brandLanding .mockBrowserBar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:12px 14px;
+  background:#fff;
+  border-bottom:1px solid #f0e7f1;
+}
+.brandLanding .mockDots{display:flex;gap:5px;flex-shrink:0}
+.brandLanding .mockDots i{display:block;width:8px;height:8px;border-radius:50%;background:#f29a73}
+.brandLanding .mockDots i:nth-child(2){background:#f2cf70}
+.brandLanding .mockDots i:nth-child(3){background:#7cc9a7}
+.brandLanding .mockBrowserAddress{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  flex:1;
+  min-width:0;
+  padding:6px 10px;
+  border-radius:8px;
+  background:#f8f4f9;
+  color:#6b5b73;
+  font-size:11px;
+}
+.brandLanding .mockLiveLabel{color:#6b4c77;font-size:10px;font-weight:800;white-space:nowrap}
+.brandLanding .heroTemplatePhoto{display:block;width:100%;height:clamp(170px,24vw,270px);object-fit:cover;background:#fff1e8}
+.brandLanding .heroTemplateCaption{padding:clamp(16px,2.4vw,25px)}
+.brandLanding .heroTemplateCaption h2{margin:9px 0;color:#281b36;font-size:clamp(21px,2.4vw,30px);line-height:1.15;letter-spacing:-.025em}
+.brandLanding .heroTemplateCaption p{margin:0 0 14px;color:#5b4c65!important;font-size:14px;line-height:1.6}
+.brandLanding .heroTemplateLink{display:inline-flex;gap:8px;align-items:center;font-weight:900;color:#853a80;text-decoration:none}
+.brandLanding .heroTemplateLink:hover{text-decoration:underline;text-underline-offset:4px}
+.cookieBuilderFooter{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:24px;
+  flex-wrap:wrap;
+  margin-top:34px;
+  padding:26px clamp(18px,4vw,38px);
+  border:1px solid #eaddec;
+  border-radius:24px;
+  background:linear-gradient(115deg,#fffaf1 0%,#fff 50%,#f7efff 100%);
+  color:#34233f;
+}
+.cookieBuilderFooter .cookieBuilderFooterBrand{display:flex;align-items:center;gap:16px;min-width:0}
+.cookieBuilderFooter .ownerProjectLogoImage{width:82px;height:82px;object-fit:contain;border-radius:16px;background:#fff}
+.cookieBuilderFooter .ownerProjectCopy{display:flex;flex-direction:column;gap:5px}
+.cookieBuilderFooter .ownerProjectCopy strong{font-size:17px;color:#281b36}
+.cookieBuilderFooter .ownerProjectCopy span{font-size:13px;line-height:1.5;color:#5e5068}
+.cookieBuilderFooter .builderSupportEmail{font-size:14px;font-weight:900;color:#813778;text-decoration:underline;text-underline-offset:3px}
+.cookieBuilderFooter .ownerProjectLinks{display:flex;gap:10px 16px;flex-wrap:wrap}
+.cookieBuilderFooter .ownerProjectLinks a{color:#51415d;font-size:13px;font-weight:800;text-decoration:none}
+.cookieBuilderFooter .ownerProjectLinks a:hover{text-decoration:underline;text-underline-offset:3px}
+@media(max-width:650px){
+  .brandLanding .brandHero{border-radius:22px}
+  .brandLanding .brandHeroMockup{margin-top:22px}
+  .brandLanding .mockLiveLabel{display:none}
+  .cookieBuilderFooter{align-items:flex-start}
+  .cookieBuilderFooter .cookieBuilderFooterBrand{align-items:flex-start}
+  .cookieBuilderFooter .ownerProjectLogoImage{width:64px;height:64px}
+  .cookieBuilderFooter .ownerProjectLinks{width:100%}
+}
