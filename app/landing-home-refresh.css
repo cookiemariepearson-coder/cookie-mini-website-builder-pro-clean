@@ -60,3 +60,9 @@
 .brandLanding .brandHeroMockup,.brandLanding .mockActionRow span,.brandLanding .mockCards span,.brandLanding .brandHero h1,.brandLanding .brandHero p,.brandLanding .heroButtonRow{animation:none!important;transition:none!important}
 .brandLanding .brandPlanTile:hover{transform:none}
 @media(prefers-reduced-motion:reduce){.brandLanding *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+/* The AI-ready selling section previously used a dark panel; give its copy a light surface for reliable contrast. */
+.brandLanding .aiReadyCommerceSection{background:linear-gradient(135deg,#fffaf2 0%,#fff 55%,#f3eaff 100%)!important;color:#281b36!important;border:1px solid #eaddec!important;box-shadow:0 18px 44px rgba(32,23,47,.09)!important}
+.brandLanding .aiReadyCommerceSection h2{color:#281b36!important}
+.brandLanding .aiReadyCommerceSection p{color:#51445d!important}
+.brandLanding .aiReadyCommerceSection li{background:#fff!important;border:1px solid #e5d8eb!important;color:#392747!important}
