@@ -196,6 +196,20 @@ export default function Customer() {
   }, []);
 
   useEffect(() => {
+    if (!verifiedEmail) return;
+    try {
+      const parsed = parseBrowserDraftIndex(localStorage.getItem(DRAFTS_INDEX_KEY) || '');
+      setBrowserDrafts(browserDraftsForAccount(parsed.items, verifiedEmail));
+      setBrowserDraftReadError(parsed.error);
+      setSelectedBrowserDrafts([]);
+      setBrowserDraftSelectionMode(false);
+      setBrowserDraftDialog(null);
+    } catch {
+      setBrowserDraftReadError('Browser draft backups are unavailable in this browser. No backups were changed.');
+    }
+  }, [verifiedEmail]);
+
+  useEffect(() => {
     const slug = restoredSiteRef.current;
     if (!slug || !sites.length) return;
     restoredSiteRef.current = '';
