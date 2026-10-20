@@ -72,7 +72,7 @@ export async function POST(request) {
       if (existingAdminToken) {
         try { await supabase.auth.admin.signOut(existingAdminToken, 'local'); } catch {}
       }
-      const response = authResponse({ ok: true, signedIn: true, returnPath, email: data.user.email || '' });
+      const response = authResponse({ ok: true, signedIn: true, returnPath, email: data.user.email || '', displayName: customerDisplayName(data.user) });
       response.cookies.set(ADMIN_SESSION_COOKIE, '', { ...adminSessionCookieOptions(60), maxAge: 0 });
       response.cookies.set(SITE_OWNER_SESSION_COOKIE, data.session.access_token, siteOwnerSessionCookieOptions(data.session.expires_in));
       console.info('[builder-password-auth]', { event: 'PASSWORD_SIGN_IN_SUCCEEDED' });
