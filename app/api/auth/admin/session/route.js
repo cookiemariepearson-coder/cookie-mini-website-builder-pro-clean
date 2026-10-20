@@ -16,7 +16,7 @@ export async function GET(request) {
   });
   const admin = await getVerifiedAdmin(request);
   if (!admin.ok) return privateResponse({ ok: false, error: admin.error }, admin.status);
-  return privateResponse({ ok: true });
+  return privateResponse({ ok: true, email: admin.email });
 }
 
 export async function DELETE(request) {
