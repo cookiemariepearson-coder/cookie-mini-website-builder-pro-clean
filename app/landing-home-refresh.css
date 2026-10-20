@@ -984,3 +984,51 @@ main.brandLanding > .featuredTemplatesSection {
   outline: 3px solid #ffdc8a;
   outline-offset: 3px;
 }
+
+
+/* Final homepage contrast tune: readable video offer and brighter template photography. */
+.brandLanding .brandSplitCta {
+  background: linear-gradient(125deg, #55265b 0%, #71365d 54%, #493163 100%) !important;
+  border-color: #b68bc1 !important;
+}
+.brandLanding .brandSplitCta .kicker {
+  color: #fff0a8 !important;
+  font-weight: 950 !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .42) !important;
+}
+.brandLanding .brandSplitCta h2 {
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, .48) !important;
+}
+.brandLanding .brandSplitCta p {
+  color: #fffaff !important;
+  font-weight: 600 !important;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, .4) !important;
+}
+.brandLanding .brandSplitCta .btn {
+  color: #291137 !important;
+  border: 1px solid #fff0bc !important;
+  font-weight: 950 !important;
+}
+.brandLanding .heroResidentialTemplatePhoto {
+  filter: brightness(1.10) saturate(1.05) contrast(1.02);
+}
+.brandLanding .featuredTemplateCard:nth-child(2) img,
+.brandLanding .featuredTemplateCard:nth-child(6) img {
+  filter: brightness(1.24) saturate(1.10) contrast(1.03);
+}
+.landingSoundStatus {
+  flex: 1 1 100%;
+  display: block;
+  color: #fff0b8;
+  font: 700 12px/1.45 Arial, sans-serif;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, .45);
+}
+@media(prefers-reduced-motion:reduce) {
+  .brandLanding .heroResidentialTemplatePhoto,
+  .brandLanding .featuredTemplateCard:nth-child(2) img,
+  .brandLanding .featuredTemplateCard:nth-child(6) img {
+    filter: brightness(1.16) saturate(1.06);
+  }
+}
