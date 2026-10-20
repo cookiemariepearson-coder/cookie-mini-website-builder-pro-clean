@@ -1032,3 +1032,23 @@ main.brandLanding > .featuredTemplatesSection {
     filter: brightness(1.16) saturate(1.06);
   }
 }
+
+
+/* Targeted fix: the legacy hero decorator blocked clicks on the sound control. */
+.brandLanding .landingWelcomeExperience {
+  position: relative !important;
+  height: auto !important;
+  min-height: 38px !important;
+  pointer-events: auto !important;
+  z-index: 5 !important;
+}
+.brandLanding .landingSoundToggle {
+  position: relative !important;
+  z-index: 20 !important;
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  touch-action: manipulation;
+}
+.brandLanding .landingWelcomeDecor {
+  pointer-events: none !important;
+}
