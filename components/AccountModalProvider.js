@@ -80,6 +80,7 @@ export default function AccountModalProvider({ children }) {
   const router = useRouter();
   const [accountState, setAccountState] = useState('checking');
   const [accountEmail, setAccountEmail] = useState('');
+  const [accountDisplayName, setAccountDisplayName] = useState('');
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState('signin');
   const [destination, setDestination] = useState('/customer');
@@ -108,12 +109,14 @@ export default function AccountModalProvider({ children }) {
       if (response.ok && result.ok) {
         setAccountState('signed-in');
         setAccountEmail(result.email || '');
+        setAccountDisplayName(result.displayName || '');
         try { localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY); } catch {}
         return result;
       }
     } catch {}
     setAccountState('signed-out');
     setAccountEmail('');
+    setAccountDisplayName('');
     return null;
   }, []);
 
@@ -191,6 +194,7 @@ export default function AccountModalProvider({ children }) {
         await claimGuestDraft();
         setAccountState('signed-in');
         setAccountEmail(result.email || email.trim().toLowerCase());
+        setAccountDisplayName(result.displayName || '');
         setMessage('Signed in. Opening your saved destination…');
         window.location.assign(result.returnPath || destination);
         return;
@@ -216,10 +220,11 @@ export default function AccountModalProvider({ children }) {
     try { localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY); } catch {}
     setAccountState('signed-out');
     setAccountEmail('');
+    setAccountDisplayName('');
     router.push('/');
   }, [router]);
 
-  const contextValue = useMemo(() => ({ accountState, accountEmail, openAccountModal, closeAccountModal, refreshSession, signOut }), [accountState, accountEmail, openAccountModal, closeAccountModal, refreshSession, signOut]);
+  const contextValue = useMemo(() => ({ accountState, accountEmail, accountDisplayName, openAccountModal, closeAccountModal, refreshSession, signOut }), [accountState, accountEmail, accountDisplayName, openAccountModal, closeAccountModal, refreshSession, signOut]);
   const heading = mode === 'create' ? 'Create your free account' : mode === 'reset' ? 'Forgot your password or need to set one?' : 'Welcome back';
   const support = mode === 'create'
     ? 'Save your websites, open them on another device, purchase a plan, and publish when you’re ready.'
