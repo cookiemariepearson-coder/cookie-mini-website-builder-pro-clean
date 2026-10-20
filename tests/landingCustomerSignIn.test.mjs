@@ -8,7 +8,7 @@ test('landing navigation and hero expose one shared account control', async () =
   const [nav, homepage, account] = await Promise.all([source('lib/Nav.jsx'), source('app/page.js'), source('components/CustomerAccountLink.js')]);
   assert.match(nav, /<CustomerAccountLink \/>/);
   assert.match(nav, /aria-label="Main navigation"/);
-  assert.match(homepage, /<CustomerAccountLink placement="hero" \/>/);
+  assert.match(homepage, /<CustomerHeroAccountPrompt \/>/);
   assert.match(account, /Customer Sign In/);
   assert.doesNotMatch(account, /href="\/customer\?mode=create"/);
 });
