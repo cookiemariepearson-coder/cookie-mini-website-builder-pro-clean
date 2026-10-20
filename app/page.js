@@ -105,7 +105,7 @@ export default function Home(){
               <div className="featuredTemplateCopy"><span className="templateCategory">Food &amp; catering</span><h3>Coastal Kitchen</h3><p>Show off your menu, specialties, and ordering options.</p><Link href="/builder" className="templateCardLink">Use this style <span aria-hidden="true">↗</span></Link></div>
             </article>
             <article className="featuredTemplateCard">
-              <img src="/templates/beauty/luxury-hero-v3.webp" alt="Elegant beauty and salon website template preview" loading="lazy" />
+              <img src="/templates/beauty/luxury-hero-v3.webp" alt="Elegant beauty and salon website template preview" loading="lazy" style={{ filter: "brightness(1.48) saturate(1.08) contrast(1.03)" }} />
               <div className="featuredTemplateCopy"><span className="templateCategory">Beauty &amp; salon</span><h3>Luxury Beauty</h3><p>Highlight services, appointments, and your signature look.</p><Link href="/builder" className="templateCardLink">Use this style <span aria-hidden="true">↗</span></Link></div>
             </article>
             <article className="featuredTemplateCard">
@@ -121,7 +121,7 @@ export default function Home(){
               <div className="featuredTemplateCopy"><span className="templateCategory">Home services</span><h3>Premium Cleaning</h3><p>Build trust with clear services and quote requests.</p><Link href="/builder" className="templateCardLink">Use this style <span aria-hidden="true">↗</span></Link></div>
             </article>
             <article className="featuredTemplateCard">
-              <img src="/templates/creator/cinematic-hero-v1.webp" alt="Cinematic creator portfolio website template preview" loading="lazy" />
+              <img src="/templates/creator/cinematic-hero-v1.webp" alt="Cinematic creator portfolio website template preview" loading="lazy" style={{ filter: "brightness(1.48) saturate(1.08) contrast(1.03)" }} />
               <div className="featuredTemplateCopy"><span className="templateCategory">Creators &amp; portfolios</span><h3>Cinematic Creator</h3><p>Put your work, personality, and offers front and center.</p><Link href="/builder" className="templateCardLink">Use this style <span aria-hidden="true">↗</span></Link></div>
             </article>
           </div>
@@ -163,8 +163,8 @@ export default function Home(){
         <section className="brandSplitCta">
           <div>
             <span className="kicker">Need video only?</span>
-            <h2>Cookie’s AI Video Studio is available separately.</h2>
-            <p>Use the $5 one-time AI Video Studio option for planning tools plus one real AI-generated video, without buying a website plan. Provider processing, moderation, and availability apply.</p>
+            <h2 className="videoOfferHeading">Cookie’s AI Video Studio is available separately.</h2>
+            <p className="videoOfferDescription">Use the $5 one-time AI Video Studio option for planning tools plus one real AI-generated video, without buying a website plan. Provider processing, moderation, and availability apply.</p>
           </div>
           <Link className="btn" href="/video-studio?intent=purchase">Start AI Video Studio</Link>
         </section>

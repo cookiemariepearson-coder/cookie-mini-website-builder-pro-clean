@@ -874,3 +874,25 @@
     width:100%!important;
   }
 }
+
+
+/* Targeted image lift for the existing luxury salon and cinematic creator preview art. */
+/* Keep the existing designs, but let the photography show through the dark hero overlay. */
+.cookieCustomerSite.look-luxury-salon .siteHero:after {
+  background: linear-gradient(
+    90deg,
+    rgba(13, 5, 18, .44) 0%,
+    rgba(35, 17, 29, .25) 44%,
+    rgba(20, 10, 17, .06) 73%,
+    rgba(20, 10, 17, .02) 100%
+  ) !important;
+}
+.cookieCustomerSite.look-cinematic .siteHero:after {
+  background: linear-gradient(
+    90deg,
+    rgba(5, 5, 7, .46) 0%,
+    rgba(21, 16, 21, .27) 46%,
+    rgba(21, 16, 21, .06) 73%,
+    rgba(21, 16, 21, .02) 100%
+  ) !important;
+}
