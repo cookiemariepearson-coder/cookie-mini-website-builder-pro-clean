@@ -124,6 +124,7 @@ export default function Customer() {
         if (data.ok) {
           const claimResult = await claimGuestDraft();
           setVerifiedEmail(data.email);
+          setVerifiedDisplayName(data.displayName || '');
           if (checkoutIntentId) {
             const resumeResponse = await fetch('/api/checkout/intent/resume', {
               method: 'POST',
