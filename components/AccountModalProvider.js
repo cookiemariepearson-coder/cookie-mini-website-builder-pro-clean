@@ -109,6 +109,7 @@ export default function AccountModalProvider({ children }) {
       if (response.ok && result.ok) {
         setAccountState('signed-in');
         setAccountEmail(result.email || '');
+        setAccountDisplayName(result.displayName || '');
         try { localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY); } catch {}
         return result;
       }
