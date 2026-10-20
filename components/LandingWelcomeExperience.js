@@ -1,59 +1,103 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+
+function playNotes(notes = []) {
+  if (typeof window === 'undefined') return;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+
+  let context;
+  try {
+    context = new AudioContextClass();
+    const begin = async () => {
+      if (context.state === 'suspended') await context.resume();
+      if (context.state !== 'running') {
+        await context.close();
+        return;
+      }
+      const now = context.currentTime;
+      notes.forEach(({ frequency, delay = 0, duration = 0.22, volume = 0.025, type = 'sine' }) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        const start = now + delay;
+        oscillator.type = type;
+        oscillator.frequency.setValueAtTime(frequency, start);
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(volume, start + 0.025);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(start);
+        oscillator.stop(start + duration + 0.025);
+      });
+      window.setTimeout(() => context?.close().catch(() => {}), 950);
+    };
+    begin().catch(() => { try { context?.close(); } catch {} });
+  } catch {
+    try { context?.close(); } catch {}
+  }
+}
+
+const welcomeNotes = [
+  { frequency: 523.25, delay: 0, duration: 0.28, volume: 0.025, type: 'triangle' },
+  { frequency: 659.25, delay: 0.12, duration: 0.30, volume: 0.027, type: 'sine' },
+  { frequency: 783.99, delay: 0.24, duration: 0.38, volume: 0.03, type: 'triangle' }
+];
+const clickNotes = [
+  { frequency: 659.25, delay: 0, duration: 0.09, volume: 0.012, type: 'sine' },
+  { frequency: 880, delay: 0.035, duration: 0.10, volume: 0.012, type: 'sine' }
+];
 
 export default function LandingWelcomeExperience() {
-  useEffect(() => {
-    let played = false;
-    let timer;
+  const [soundEnabled, setSoundEnabled] = useState(false);
 
-    async function playWelcome() {
-      if (played) return;
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      const context = new AudioContext();
-      try {
-        if (context.state === 'suspended') await context.resume();
-        if (context.state !== 'running') throw new Error('Sound requires a visitor interaction.');
-        played = true;
-        const notes = [392, 523.25, 659.25, 783.99, 1046.5];
-        notes.forEach((frequency, index) => {
-          const oscillator = context.createOscillator();
-          const gain = context.createGain();
-          oscillator.type = index % 2 ? 'sine' : 'triangle';
-          oscillator.frequency.value = frequency;
-          const start = context.currentTime + index * .17;
-          gain.gain.setValueAtTime(.0001, start);
-          gain.gain.exponentialRampToValueAtTime(.045, start + .035);
-          gain.gain.exponentialRampToValueAtTime(.0001, start + .55);
-          oscillator.connect(gain).connect(context.destination);
-          oscillator.start(start);
-          oscillator.stop(start + .58);
-        });
-        setTimeout(() => context.close(), 1800);
-        window.removeEventListener('pointerdown', playWelcome);
-        window.removeEventListener('keydown', playWelcome);
-      } catch {
-        context.close();
-      }
+  useEffect(() => {
+    if (!soundEnabled) return undefined;
+
+    function playInterfaceSound(event) {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest('.landingSoundToggle')) return;
+      const interactive = target.closest('.brandLanding a, .brandLanding button');
+      if (interactive) playNotes(clickNotes);
     }
 
-    timer = window.setTimeout(playWelcome, 2800);
-    window.addEventListener('pointerdown', playWelcome, { once: true });
-    window.addEventListener('keydown', playWelcome, { once: true });
-    return () => {
-      window.clearTimeout(timer);
-      window.removeEventListener('pointerdown', playWelcome);
-      window.removeEventListener('keydown', playWelcome);
-    };
-  }, []);
+    document.addEventListener('click', playInterfaceSound, true);
+    return () => document.removeEventListener('click', playInterfaceSound, true);
+  }, [soundEnabled]);
 
-  return <div className="landingWelcomeExperience" aria-hidden="true">
-    <span className="welcomeSpark sparkOne" aria-hidden="true">✦</span>
-    <span className="welcomeSpark sparkTwo" aria-hidden="true">✦</span>
-    <span className="welcomeSpark sparkThree" aria-hidden="true">●</span>
-    <span className="welcomeSpark sparkFour" aria-hidden="true">✦</span>
-    <span className="welcomeSpark sparkFive" aria-hidden="true">●</span>
-    <span className="welcomeGlow" aria-hidden="true"></span>
-  </div>;
+  function toggleSound() {
+    if (soundEnabled) {
+      setSoundEnabled(false);
+      return;
+    }
+    // Browsers allow audio after a direct user gesture; never autoplay sound.
+    playNotes(welcomeNotes);
+    setSoundEnabled(true);
+  }
+
+  return (
+    <div className="landingWelcomeExperience">
+      <div className="landingWelcomeDecor" aria-hidden="true">
+        <span className="welcomeSpark sparkOne">✦</span>
+        <span className="welcomeSpark sparkTwo">✦</span>
+        <span className="welcomeSpark sparkThree">●</span>
+        <span className="welcomeSpark sparkFour">✦</span>
+        <span className="welcomeSpark sparkFive">●</span>
+        <span className="welcomeGlow" />
+      </div>
+      <button
+        type="button"
+        className="landingSoundToggle"
+        aria-pressed={soundEnabled}
+        onClick={toggleSound}
+        aria-label={soundEnabled ? 'Turn off landing-page sound effects' : 'Turn on landing-page sound effects'}
+      >
+        <span aria-hidden="true">{soundEnabled ? '♫' : '♪'}</span>
+        Sound effects: {soundEnabled ? 'On' : 'Off'}
+      </button>
+      <span className="landingMotionNote">Subtle sparkle mode</span>
+    </div>
+  );
 }

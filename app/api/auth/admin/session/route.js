@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { legacyOwnerEnvironmentSummary } from '../../../../../lib/adminAuth.mjs';
-import { ADMIN_SESSION_COOKIE, adminSessionCookieOptions, getVerifiedAdmin } from '../../../../../lib/siteOwnerAuth';
+import { ADMIN_SESSION_COOKIE, adminSessionCookieOptions, getVerifiedAdmin, SITE_OWNER_SESSION_COOKIE } from '../../../../../lib/siteOwnerAuth';
 import { getSupabaseAdmin } from '../../../../../lib/supabaseAdmin';
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +21,10 @@ export async function GET(request) {
 
 export async function DELETE(request) {
   const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value || '';
-  if (token) {
+  const customerToken = request.cookies.get(SITE_OWNER_SESSION_COOKIE)?.value || '';
+  // When both cookies intentionally reference the same canonical owner session, clearing
+  // Admin Access must not sign the owner out of the public/customer experience as well.
+  if (token && token !== customerToken) {
     try {
       const supabase = getSupabaseAdmin();
       await supabase.auth.admin.signOut(token, 'local');

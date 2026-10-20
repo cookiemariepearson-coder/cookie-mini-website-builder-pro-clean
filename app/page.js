@@ -5,6 +5,7 @@ import LandingWelcomeExperience from '../components/LandingWelcomeExperience';
 import CustomerAccountLink from '../components/CustomerAccountLink';
 import { AccountAction } from '../components/AccountModalProvider';
 import CustomerHeroAccountPrompt from '../components/CustomerHeroAccountPrompt';
+import AmazonAffiliateSpot from '../components/AmazonAffiliateSpot';
 import './landing-home-refresh.css';
 
 const planTiles = [
@@ -62,6 +63,7 @@ export default function Home(){
     <>
       <Nav />
       <main className="brandLanding">
+        <AmazonAffiliateSpot />
         <section className="brandHero">
           <span className="landingBuildMarker" aria-hidden="true" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>Landing experience V4</span>
           <div>

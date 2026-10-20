@@ -81,9 +81,17 @@ async function passwordSignIn(request, { email, password, returnPath, captchaTok
   }
 
   const existingCustomerToken = request.cookies.get(SITE_OWNER_SESSION_COOKIE)?.value || '';
-  await revokeToken(supabase, existingCustomerToken);
-  const response = privateResponse({ ok: true, signedIn: true, returnPath: safeAdminReturnPath(returnPath) });
-  response.cookies.set(SITE_OWNER_SESSION_COOKIE, '', { ...siteOwnerSessionCookieOptions(60), maxAge: 0 });
+  if (existingCustomerToken && existingCustomerToken !== accessToken) await revokeToken(supabase, existingCustomerToken);
+  const response = privateResponse({
+    ok: true,
+    signedIn: true,
+    returnPath: safeAdminReturnPath(returnPath),
+    email: verifiedEmail,
+    displayName: String(verified.data?.user?.user_metadata?.display_name || '').replace(/[<>]/g, '').trim().slice(0, 100)
+  });
+  // Share this verified owner session between the public account menu and the protected
+  // admin cookie so Return to Main Website does not look like a logged-out customer.
+  response.cookies.set(SITE_OWNER_SESSION_COOKIE, accessToken, siteOwnerSessionCookieOptions(data.session.expires_in));
   response.cookies.set(ADMIN_SESSION_COOKIE, accessToken, adminSessionCookieOptions(data.session.expires_in));
   console.info('[owner-password-auth]', { event: 'OWNER_PASSWORD_SIGN_IN_SUCCEEDED' });
   return response;
