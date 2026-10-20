@@ -115,7 +115,7 @@ test('My Websites is owner-scoped and grouped into simple publication states', a
     source('app/customer/page.js'),
     source('app/api/site/search/route.js')
   ]);
-  assert.match(customer, /<h1>My Websites<\/h1>/);
+  assert.match(customer, /verifiedEmail \? `Welcome back, \$\{customerWelcomeName\(verifiedDisplayName, verifiedEmail\)\}!` : 'My Websites'/);
   for (const heading of ['Published', 'Unpublished']) assert.match(customer, new RegExp(`>${heading}<`));
   assert.doesNotMatch(customer, /Purchases or Plans|Archived Websites/);
   assert.match(search, /\.eq\('owner_id', owner\.user\.id\)/);
