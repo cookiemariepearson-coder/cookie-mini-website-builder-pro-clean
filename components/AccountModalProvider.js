@@ -81,6 +81,7 @@ export default function AccountModalProvider({ children }) {
   const [accountState, setAccountState] = useState('checking');
   const [accountEmail, setAccountEmail] = useState('');
   const [accountDisplayName, setAccountDisplayName] = useState('');
+  const [accountDisplayName, setAccountDisplayName] = useState('');
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState('signin');
   const [destination, setDestination] = useState('/customer');
