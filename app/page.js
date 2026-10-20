@@ -5,6 +5,7 @@ import LandingWelcomeExperience from '../components/LandingWelcomeExperience';
 import CustomerAccountLink from '../components/CustomerAccountLink';
 import { AccountAction } from '../components/AccountModalProvider';
 import CustomerHeroAccountPrompt from '../components/CustomerHeroAccountPrompt';
+import LandingAffiliateSpot from '../components/LandingAffiliateSpot';
 import './landing-home-refresh.css';
 
 const planTiles = [
