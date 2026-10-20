@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { AccountAction, useAccountModal } from './AccountModalProvider';
 
 export default function CustomerHeroAccountPrompt() {
-  const { accountState } = useAccountModal();
+  const { accountState, accountDisplayName } = useAccountModal();
 
   if (accountState === 'checking') {
     return <div className="heroAccountPrompt" role="status">Checking your secure account…</div>;
@@ -12,7 +12,7 @@ export default function CustomerHeroAccountPrompt() {
 
   if (accountState === 'signed-in') {
     return <div className="heroAccountPrompt">
-      <span>Welcome back!</span>
+      <span>Welcome, {accountDisplayName || 'there'}!</span>
       <Link className="heroTextAction" href="/customer">Open My Websites</Link>
     </div>;
   }
