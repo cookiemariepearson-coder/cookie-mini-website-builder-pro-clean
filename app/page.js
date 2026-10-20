@@ -82,7 +82,7 @@ export default function Home(){
           <div className="brandHeroMockup" aria-label="Preview of a website template customers can customize">
             <div className="mockBrowser">
               <div className="mockBrowserBar"><span className="mockDots"><i></i><i></i><i></i></span><span className="mockBrowserAddress">yourbusiness.com</span><span className="mockLiveLabel">Template preview</span></div>
-              <img className="heroTemplatePhoto" src="/templates/beauty/luxury-hero-v3.webp" alt="Luxury beauty website template preview available in the Mini Website Builder" />
+              <img className="heroTemplatePhoto heroResidentialTemplatePhoto" src="/templates/realestate/residential-hero-v1.webp" alt="Residential Realty website template preview available in the Mini Website Builder" />
               <div className="heroTemplateCaption">
                 <span className="kicker">Choose it. Make it yours.</span>
                 <h2>A beautiful website, built around your business.</h2>
