@@ -34,9 +34,10 @@ test('owner recovery links use only the approved owner password route and keep t
   assert.equal(ownerPasswordRecoveryUrl({ origin: 'https://www.cookiesdigitalcreations.com', tokenHash, type: 'magiclink' }), '');
 });
 
-test('one canonical owner identity is enforced regardless of legacy environment entries', () => {
-  assert.equal(CANONICAL_ADMIN_EMAIL, 'hello@cookiesdigitalcreations.com');
-  assert.equal(normalizeOwnerEmail('  HELLO@CookiesDigitalCreations.com  '), CANONICAL_ADMIN_EMAIL);
+test('configured owner identities remain allowlisted while legacy environment entries are ignored', () => {
+  assert.equal(CANONICAL_ADMIN_EMAIL, 'cookiemariepearson@gmail.com');
+  assert.equal(normalizeOwnerEmail('  HELLO@CookiesDigitalCreations.com  '), 'hello@cookiesdigitalcreations.com');
+  assert.equal(isCanonicalOwnerEmail(' COOKIEMARIEPEARSON@GMAIL.COM '), true);
   assert.equal(isCanonicalOwnerEmail(' HELLO@COOKIESDIGITALCREATIONS.COM '), true);
   assert.equal(isCanonicalOwnerEmail('former-owner@example.invalid'), false);
 
@@ -50,7 +51,7 @@ test('one canonical owner identity is enforced regardless of legacy environment 
     legacyEntryCount: 3,
     legacyCanonicalEntryCount: 1,
     legacyNonCanonicalEntryCount: 2,
-    effectiveOwnerCount: 1
+    effectiveOwnerCount: 2
   });
 });
 
