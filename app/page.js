@@ -5,7 +5,6 @@ import LandingWelcomeExperience from '../components/LandingWelcomeExperience';
 import CustomerAccountLink from '../components/CustomerAccountLink';
 import { AccountAction } from '../components/AccountModalProvider';
 import CustomerHeroAccountPrompt from '../components/CustomerHeroAccountPrompt';
-import AmazonAffiliateSpot from '../components/AmazonAffiliateSpot';
 import './landing-home-refresh.css';
 
 const planTiles = [
@@ -61,9 +60,8 @@ export default function Home(){
   };
   return (
     <>
-      <Nav />
+      <Nav context="home" />
       <main className="brandLanding">
-        <AmazonAffiliateSpot />
         <section className="brandHero">
           <span className="landingBuildMarker" aria-hidden="true" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>Landing experience V4</span>
           <div>
@@ -171,20 +169,6 @@ export default function Home(){
           <Link className="btn" href="/video-studio?intent=purchase">Start AI Video Studio</Link>
         </section>
 
-        <section className="wrap cardGrid">
-          <div className="card">
-            <h2>Purpose-based templates</h2>
-            <p>Food, beauty, real estate, wellness, cleaning, coaching, portfolio, shops, nonprofit, and more.</p>
-          </div>
-          <div className="card">
-            <h2>Drafts and dashboard</h2>
-            <p>Customers can save drafts, sign in securely to My Websites, filter their own records, and edit published websites.</p>
-          </div>
-          <div className="card">
-            <h2>Built to convert</h2>
-            <p>Your site can show clear action buttons so visitors know exactly how to order, book, buy, or contact the business.</p>
-          </div>
-        </section>
 
         <section className="brandSection creatorBusinessSection">
           <span className="kicker">For creators &amp; businesses</span>

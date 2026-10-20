@@ -3,6 +3,7 @@ import CustomerAccountLink from '../components/CustomerAccountLink';
 import { AccountAction } from '../components/AccountModalProvider';
 import OwnerAccountControl from '../components/OwnerAccountControl';
 import OwnerAdminReturnLink from '../components/OwnerAdminReturnLink';
+import AmazonAffiliateSpot from '../components/AmazonAffiliateSpot';
 
 export default function Nav({ context = 'customer' }) {
   const ownerContext = context === 'owner';
@@ -16,6 +17,19 @@ export default function Nav({ context = 'customer' }) {
       <Link className="ownerReturnLink" href="/">Return to Main Website</Link>
     </div>
   </nav>;
+
+  if (context === 'home') return <header className="homepageTopStrip" aria-label="Cookie Digital Creations homepage header">
+    {homeLink}
+    <AmazonAffiliateSpot compact />
+    <div className="navLinks homepageTopLinks" aria-label="Main navigation links">
+      <AccountAction className="navBuilderAction" destination="/builder" guestAllowed mode="create">Build Free</AccountAction>
+      <Link href="/#featured-templates">Templates</Link>
+      <Link href="/pricing">Pricing</Link>
+      <Link href="/done-for-you">Done for You</Link>
+      <CustomerAccountLink />
+      <OwnerAdminReturnLink />
+    </div>
+  </header>;
 
   return <nav className="nav" aria-label="Main navigation">
     {homeLink}
