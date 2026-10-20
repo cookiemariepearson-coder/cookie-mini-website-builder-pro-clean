@@ -133,3 +133,13 @@
   .affiliateSettingsHeading { flex-direction: column; }
   .affiliateSettingsActions .btn { width: 100%; }
 }
+
+
+/* Keep the dedicated affiliate editor styling ahead of the broad admin panel defaults. */
+.adminWarmPage .affiliateSettingsCard {
+  background: linear-gradient(135deg, #fffaff 0%, #fff7ee 100%) !important;
+  border: 1px solid #e1d3ec !important;
+  border-radius: 24px !important;
+  padding: clamp(18px, 2.8vw, 28px) !important;
+  box-shadow: 0 16px 38px rgba(32, 23, 47, .055) !important;
+}
