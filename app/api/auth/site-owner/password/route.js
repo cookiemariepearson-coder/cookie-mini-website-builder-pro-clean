@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '../../../../../lib/supabaseAdmin';
+import { customerDisplayName } from '../../../../../lib/customerGreeting.mjs';
 import { rateLimit, rateLimitResponse } from '../../../../../lib/rateLimit.mjs';
 import { safeCustomerReturnPath } from '../../../../../lib/commerceConfig.mjs';
 import { builderCustomerConfirmationUrl, canonicalBuilderOrigin } from '../../../../../lib/builderCheckoutAuth.mjs';
