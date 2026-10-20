@@ -687,3 +687,287 @@ main.brandLanding > .featuredTemplatesSection {
   .brandLanding .featuredTemplateCard,
   .brandLanding .featuredTemplateCard:hover { transition: none !important; transform: none !important; }
 }
+
+
+/* Homepage top strip: weekly Amazon pick and the main links share one branded bar. */
+.homepageTopStrip {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.5vw, 22px);
+  width: 100%;
+  padding: 12px clamp(14px, 2.2vw, 30px);
+  background: linear-gradient(105deg, #24102f 0%, #32183e 52%, #271438 100%);
+  border-bottom: 1px solid #6d4a78;
+  box-shadow: 0 8px 24px rgba(8, 2, 14, .2);
+  color: #fff4ff;
+}
+.homepageTopStrip .homeLogoLink {
+  flex: 0 0 224px;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: #fff4ff !important;
+  text-decoration: none;
+  font-size: 13px;
+  line-height: 1.25;
+  font-weight: 900;
+}
+.homepageTopStrip .navBrandLogo {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  border-radius: 12px;
+  background: #fff;
+  object-fit: contain;
+}
+.homepageAmazonAffiliateSpot {
+  flex: 1 1 390px;
+  min-width: 320px;
+  max-width: none;
+  min-height: 76px;
+  margin: 0;
+  padding: 10px 12px;
+  gap: 12px;
+  border-color: #976b90;
+  border-radius: 17px;
+  box-shadow: 0 10px 28px rgba(7, 1, 11, .25);
+}
+.homepageAmazonAffiliateSpot .amazonAffiliateCopy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.homepageAmazonAffiliateSpot .amazonAffiliateEyebrow {
+  padding: 3px 7px;
+  font-size: 9px;
+  letter-spacing: .08em;
+}
+.homepageAmazonAffiliateSpot .amazonAffiliateCopy h2 {
+  margin: 4px 0 2px;
+  font-size: clamp(13px, 1.05vw, 16px);
+  line-height: 1.12;
+}
+.homepageAmazonAffiliateSpot .amazonAffiliateCopy > p:not(.amazonAffiliateDisclosure) {
+  display: none;
+}
+.homepageAmazonAffiliateSpot .amazonAffiliateCopy .amazonAffiliateDisclosure {
+  margin-top: 3px;
+  font-size: 9px;
+  line-height: 1.25;
+  white-space: normal;
+}
+.homepageAmazonAffiliateSpot .amazonAffiliateButton {
+  min-height: 40px;
+  padding: 10px 12px;
+  gap: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.homepageTopLinks {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.homepageTopLinks > a,
+.homepageTopLinks > button,
+.homepageTopLinks .navBuilderAction,
+.homepageTopLinks .navAccountLink,
+.homepageTopLinks .navAccountSecondary,
+.homepageTopLinks .navAccountButton,
+.homepageTopLinks .navAccountChecking,
+.homepageTopLinks .mainAdminAccessLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  margin: 0 !important;
+  padding: 8px 10px;
+  border: 1px solid #735781;
+  border-radius: 999px;
+  background: #392348;
+  color: #fff4ff !important;
+  font: 800 11px/1.15 Arial, sans-serif;
+  text-decoration: none !important;
+  white-space: nowrap;
+  box-shadow: none;
+}
+.homepageTopLinks > a:hover,
+.homepageTopLinks > button:hover,
+.homepageTopLinks .navBuilderAction:hover,
+.homepageTopLinks .navAccountLink:hover,
+.homepageTopLinks .navAccountButton:hover {
+  background: #583264 !important;
+  border-color: #d6a9e5 !important;
+}
+.homepageTopLinks .navBuilderAction {
+  background: linear-gradient(135deg, #f2b96c, #f18b72) !important;
+  color: #2a1535 !important;
+  border-color: #f6c18a !important;
+}
+.homepageTopLinks .mainAdminAccessLink {
+  background: linear-gradient(135deg, #fff0ce, #f6dcff) !important;
+  color: #542866 !important;
+  border-color: #f0d4fb !important;
+}
+.homepageTopStrip .navAccountControl,
+.homepageTopStrip .returningCustomerAccess,
+.homepageTopStrip .ownerAdminEntry {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+}
+.homepageTopStrip .navAccountMenuPanel {
+  z-index: 130;
+}
+.amazonBuildAnimation {
+  position: relative;
+  flex: 0 0 68px;
+  width: 68px;
+  height: 56px;
+  overflow: visible;
+  pointer-events: none;
+}
+.amazonBuildBox {
+  position: absolute;
+  display: block;
+  width: 22px;
+  height: 19px;
+  border: 1px solid rgba(255,255,255,.8);
+  border-radius: 4px;
+  background: linear-gradient(145deg, #ffe6a3 0%, #f4ad5b 70%, #d77b48 100%);
+  box-shadow: 0 5px 9px rgba(8, 1, 12, .22), inset 0 1px 0 rgba(255,255,255,.65);
+  transform-origin: bottom center;
+  animation: amazonBoxAssemble 3.2s cubic-bezier(.2,.75,.2,1) infinite;
+}
+.amazonBuildBox::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  background: rgba(255,255,255,.57);
+  border-radius: 2px;
+}
+.amazonBuildBox.boxOne { left: 4px; bottom: 4px; animation-delay: 0s; }
+.amazonBuildBox.boxTwo { left: 23px; bottom: 4px; animation-delay: .22s; }
+.amazonBuildBox.boxThree { left: 13px; bottom: 21px; animation-delay: .44s; }
+.amazonBuildBox.boxFour { left: 32px; bottom: 21px; animation-delay: .66s; }
+.amazonBuildSpark {
+  position: absolute;
+  right: 2px;
+  top: 0;
+  color: #ffe18b;
+  font-size: 18px;
+  text-shadow: 0 0 12px rgba(255,225,139,.75);
+  animation: amazonSparkPop 1.6s ease-in-out infinite;
+}
+.amazonAffiliateSpot::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: -65%;
+  bottom: -65%;
+  left: -40%;
+  width: 28%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.13), transparent);
+  transform: skewX(-18deg);
+  animation: amazonAdSheen 6.5s ease-in-out infinite;
+  pointer-events: none;
+}
+.amazonAffiliateSpot > * { position: relative; z-index: 1; }
+@keyframes amazonBoxAssemble {
+  0%, 8% { transform: translateY(20px) scale(.68) rotate(-7deg); opacity: 0; }
+  28% { opacity: 1; }
+  48%, 82% { transform: translateY(0) scale(1) rotate(0); opacity: 1; }
+  100% { transform: translateY(-3px) scale(.96) rotate(2deg); opacity: .8; }
+}
+@keyframes amazonSparkPop {
+  0%, 100% { opacity: .55; transform: translateY(2px) scale(.85) rotate(0); }
+  50% { opacity: 1; transform: translateY(-5px) scale(1.2) rotate(18deg); }
+}
+@keyframes amazonAdSheen {
+  0%, 15% { left: -40%; opacity: 0; }
+  25% { opacity: 1; }
+  53%, 100% { left: 120%; opacity: 0; }
+}
+/* Make the standalone video promotion easy to read at a glance. */
+.brandLanding .brandSplitCta {
+  border-color: #9b6d9f !important;
+  background: linear-gradient(120deg, #49234e 0%, #603052 56%, #39274f 100%) !important;
+  box-shadow: 0 22px 55px rgba(8, 2, 15, .27) !important;
+}
+.brandLanding .brandSplitCta .kicker {
+  color: #ffd98f !important;
+  text-shadow: 0 1px 10px rgba(0,0,0,.3);
+}
+.brandLanding .brandSplitCta h2 {
+  color: #fffaff !important;
+  text-shadow: 0 2px 12px rgba(0,0,0,.35) !important;
+}
+.brandLanding .brandSplitCta p {
+  color: #f7e9ff !important;
+  font-size: 16px;
+  line-height: 1.65;
+  text-shadow: 0 1px 8px rgba(0,0,0,.25);
+}
+.brandLanding .brandSplitCta .btn {
+  background: linear-gradient(135deg, #ffe092 0%, #ffb85f 100%) !important;
+  color: #2f183d !important;
+  box-shadow: 0 12px 28px rgba(5, 1, 11, .28);
+}
+.brandLanding .brandSplitCta .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px rgba(5, 1, 11, .36);
+}
+.brandLanding .brandSplitCta,
+.brandLanding .brandSplitCta > div {
+  min-width: 0;
+}
+.brandLanding .brandSplitCta .btn {
+  flex: 0 0 auto;
+}
+@media(max-width:1300px) {
+  .homepageTopStrip { flex-wrap: wrap; align-items: center; }
+  .homepageTopStrip .homeLogoLink { flex-basis: 175px; }
+  .homepageAmazonAffiliateSpot { flex: 1 1 360px; }
+  .homepageTopLinks { flex: 1 1 100%; justify-content: flex-start; }
+}
+@media(max-width:760px) {
+  .homepageTopStrip {
+    position: relative;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+  }
+  .homepageTopStrip .homeLogoLink { flex: 1 1 100%; }
+  .homepageAmazonAffiliateSpot {
+    flex: 1 1 100%;
+    min-width: 0;
+    min-height: 0;
+    padding: 12px;
+  }
+  .homepageTopLinks { width: 100%; justify-content: flex-start; gap: 6px; }
+  .homepageTopLinks > a,
+  .homepageTopLinks > button,
+  .homepageTopLinks .navBuilderAction,
+  .homepageTopLinks .navAccountLink,
+  .homepageTopLinks .navAccountSecondary,
+  .homepageTopLinks .navAccountButton,
+  .homepageTopLinks .navAccountChecking,
+  .homepageTopLinks .mainAdminAccessLink { min-height: 42px; }
+  .homepageAmazonAffiliateSpot .amazonBuildAnimation { display: none; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .amazonBuildBox,.amazonBuildSpark,.amazonAffiliateSpot::after {
+    animation: none !important;
+  }
+}
