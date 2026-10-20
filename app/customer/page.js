@@ -643,6 +643,14 @@ export default function Customer() {
           {verifiedEmail && <a className="btn" href="/builder">Create a New Website</a>}
         </section>
 
+        {verifiedEmail && (
+          <section className="dashboard customerWelcomeMessage" aria-labelledby="customer-welcome-heading">
+            <span className="kicker">Your workspace is ready</span>
+            <h2 id="customer-welcome-heading">Welcome, {verifiedDisplayName || 'there'}!</h2>
+            <p>Your account is active. Your saved websites and drafts are gathered here whenever you need them.</p>
+          </section>
+        )}
+
         {!verifiedEmail && (
           <section className="dashboard customerSignInCard">
             <h2>{authLoading ? 'Checking your account…' : 'Sign in to see your websites'}</h2>
