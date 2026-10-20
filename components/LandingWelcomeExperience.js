@@ -3,21 +3,21 @@
 import { useEffect, useState } from 'react';
 
 function playNotes(notes = []) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return false;
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-  if (!AudioContextClass) return;
+  if (!AudioContextClass) return false;
 
   let context;
   try {
+    // Create and resume the audio context directly from the user's click gesture.
     context = new AudioContextClass();
-    const begin = async () => {
-      if (context.state === 'suspended') await context.resume();
+    const scheduleNotes = () => {
       if (context.state !== 'running') {
-        await context.close();
+        context.close().catch(() => {});
         return;
       }
-      const now = context.currentTime;
-      notes.forEach(({ frequency, delay = 0, duration = 0.22, volume = 0.025, type = 'sine' }) => {
+      const now = context.currentTime + 0.015;
+      notes.forEach(({ frequency, delay = 0, duration = 0.22, volume = 0.07, type = 'sine' }) => {
         const oscillator = context.createOscillator();
         const gain = context.createGain();
         const start = now + delay;
@@ -29,23 +29,31 @@ function playNotes(notes = []) {
         oscillator.connect(gain);
         gain.connect(context.destination);
         oscillator.start(start);
-        oscillator.stop(start + duration + 0.025);
+        oscillator.stop(start + duration + 0.035);
       });
-      window.setTimeout(() => context?.close().catch(() => {}), 950);
+      const finalNoteMs = Math.max(0, ...notes.map(note => (note.delay || 0) + (note.duration || 0.22) + 0.1)) * 1000;
+      window.setTimeout(() => context?.close().catch(() => {}), finalNoteMs + 180);
     };
-    begin().catch(() => { try { context?.close(); } catch {} });
+
+    if (context.state === 'suspended') {
+      context.resume().then(scheduleNotes).catch(() => { try { context?.close(); } catch {} });
+    } else {
+      scheduleNotes();
+    }
+    return true;
   } catch {
     try { context?.close(); } catch {}
+    return false;
   }
 }
 
 const welcomeNotes = [
-  { frequency: 523.25, delay: 0, duration: 0.28, volume: 0.025, type: 'triangle' },
-  { frequency: 659.25, delay: 0.12, duration: 0.30, volume: 0.027, type: 'sine' },
-  { frequency: 783.99, delay: 0.24, duration: 0.38, volume: 0.03, type: 'triangle' }
+  { frequency: 523.25, delay: 0, duration: 0.28, volume: 0.085, type: 'triangle' },
+  { frequency: 659.25, delay: 0.12, duration: 0.30, volume: 0.08, type: 'sine' },
+  { frequency: 783.99, delay: 0.24, duration: 0.38, volume: 0.09, type: 'triangle' }
 ];
 const clickNotes = [
-  { frequency: 659.25, delay: 0, duration: 0.09, volume: 0.012, type: 'sine' },
+  { frequency: 659.25, delay: 0, duration: 0.09, volume: 0.045, type: 'sine' },
   { frequency: 880, delay: 0.035, duration: 0.10, volume: 0.012, type: 'sine' }
 ];
 
