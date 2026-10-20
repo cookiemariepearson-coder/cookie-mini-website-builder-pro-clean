@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import OwnerSignInPanel from '../../components/OwnerSignInPanel';
 import { lockOwnerDashboard } from '../../lib/ownerDashboardSession.mjs';
+import AmazonAffiliateSettingsCard from '../../components/AmazonAffiliateSettingsCard';
 
 const planPrices = { free: 0, starter: 19, business: 30, premium: 50 };
 const planNames = {
@@ -62,6 +63,10 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [savingSlug, setSavingSlug] = useState('');
   const [savedNoteSlug, setSavedNoteSlug] = useState('');
+  const [userCount, setUserCount] = useState(null);
+  const [userCountExact, setUserCountExact] = useState(true);
+  const [userCountLoading, setUserCountLoading] = useState(false);
+  const [userCountMessage, setUserCountMessage] = useState('');
 
   useEffect(() => {
     loadAdmin();
@@ -80,7 +85,8 @@ export default function Admin() {
       if (d.ok) {
         setSites(d.sites || []);
         setUnlocked(true);
-        setMsg('Admin Plan Management v2 loaded. Use the tabs below to manage websites, plans, notes, and archived sites.');
+        setMsg('Dashboard ready. Review your totals, choose a workspace section, or update the landing-page pick below.');
+        loadUserCount();
       } else {
         setUnlocked(false);
         setSites([]);
@@ -92,6 +98,23 @@ export default function Admin() {
       setMsg(e.message || 'Unable to load admin dashboard.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadUserCount() {
+    setUserCountLoading(true);
+    setUserCountMessage('');
+    try {
+      const response = await fetch('/api/admin/user-count', { cache: 'no-store' });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.ok) throw new Error(result.error || 'Registered-user count is unavailable.');
+      setUserCount(result.userCount);
+      setUserCountExact(result.exact !== false);
+    } catch (error) {
+      setUserCount(null);
+      setUserCountMessage(error?.message || 'Registered-user count is unavailable.');
+    } finally {
+      setUserCountLoading(false);
     }
   }
 
@@ -181,8 +204,8 @@ export default function Admin() {
         <section className="adminWarmHero">
           <div>
             <span className="kicker">Owner dashboard</span>
-            <h1>Admin Plan Management</h1>
-            <p>This private workspace keeps customer websites, plans, notes, revenue estimates, and access controls organized in one place.</p>
+            <h1>Admin Dashboard</h1>
+            <p>Your quick overview of registered users, websites, plans, and customer tools.</p>
           </div>
           <div className="adminHeroBadge" aria-hidden="true"><span>✦</span><strong>Cookie</strong><small>Owner Workspace</small></div>
         </section>
@@ -220,18 +243,24 @@ export default function Admin() {
             </section>
 
             <section className="adminPanel adminSectionsPanel" style={{ ...card, background: '#f7f1ff' }}>
-              <h2 style={{ marginTop: 0 }}>Admin Sections</h2>
+              <h2 style={{ marginTop: 0 }}>Workspace sections</h2>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <button style={tabBtn(tab === 'websites')} onClick={() => setTab('websites')}>1. Websites</button>
-                <button style={tabBtn(tab === 'plans')} onClick={() => setTab('plans')}>2. Plans & Status</button>
-                <button style={tabBtn(tab === 'notes')} onClick={() => setTab('notes')}>3. Admin Notes</button>
-                <button style={tabBtn(tab === 'archived')} onClick={() => setTab('archived')}>4. Archived</button>
-                <button style={tabBtn(tab === 'activity')} onClick={() => setTab('activity')}>5. Recent Activity</button>
-                <button style={tabBtn(tab === 'help')} onClick={() => setTab('help')}>6. How to Use</button>
+                <button style={tabBtn(tab === 'websites')} onClick={() => setTab('websites')}>Websites</button>
+                <button style={tabBtn(tab === 'plans')} onClick={() => setTab('plans')}>Plans &amp; Status</button>
+                <button style={tabBtn(tab === 'notes')} onClick={() => setTab('notes')}>Private notes</button>
+                <button style={tabBtn(tab === 'archived')} onClick={() => setTab('archived')}>Archived</button>
+                <button style={tabBtn(tab === 'activity')} onClick={() => setTab('activity')}>Recent activity</button>
+                <button style={tabBtn(tab === 'help')} onClick={() => setTab('help')}>Help &amp; guide</button>
               </div>
             </section>
 
             <div className="cardGrid adminStatsGrid">
+              <div className="card adminUserCountCard">
+                <strong>Registered Users</strong>
+                <div className="price">{userCountLoading ? '…' : userCount == null ? '—' : userCount.toLocaleString()}</div>
+                <small>{userCount == null ? (userCountMessage || 'Secure user directory count') : userCountExact ? 'Accounts registered in Supabase Auth' : 'At least this many accounts'}</small>
+                <button type="button" className="adminCountRefresh" onClick={loadUserCount} disabled={userCountLoading}>{userCountLoading ? 'Refreshing…' : 'Refresh count'}</button>
+              </div>
               <div className="card"><strong>Active Sites</strong><div className="price">{stats.total}</div></div>
               <div className="card"><strong>Published</strong><div className="price">{stats.published}</div></div>
               <div className="card"><strong>Paused</strong><div className="price">{stats.paused}</div></div>
@@ -239,6 +268,8 @@ export default function Admin() {
               <div className="card"><strong>Archived</strong><div className="price">{stats.archived}</div></div>
               <div className="card"><strong>Estimated Active MRR</strong><div className="price">${stats.mrr}/mo</div></div>
             </div>
+
+            <AmazonAffiliateSettingsCard />
 
             <section className="adminPanel adminSearchPanel" style={card}>
               <div className="row">
