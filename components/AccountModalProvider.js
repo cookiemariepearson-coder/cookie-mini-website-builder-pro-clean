@@ -221,6 +221,7 @@ export default function AccountModalProvider({ children }) {
     try { localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY); } catch {}
     setAccountState('signed-out');
     setAccountEmail('');
+    setAccountDisplayName('');
     router.push('/');
   }, [router]);
 
