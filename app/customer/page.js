@@ -76,6 +76,7 @@ export default function Customer() {
   const [browserDraftError, setBrowserDraftError] = useState('');
   const [browserDraftMessage, setBrowserDraftMessage] = useState('');
   const [verifiedEmail, setVerifiedEmail] = useState('');
+  const [verifiedDisplayName, setVerifiedDisplayName] = useState('');
   const [authLoading, setAuthLoading] = useState(true);
   const [pendingPurchase, setPendingPurchase] = useState(null);
   const [authMode, setAuthMode] = useState('signin');
