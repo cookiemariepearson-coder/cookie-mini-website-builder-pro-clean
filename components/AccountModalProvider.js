@@ -116,6 +116,7 @@ export default function AccountModalProvider({ children }) {
     } catch {}
     setAccountState('signed-out');
     setAccountEmail('');
+    setAccountDisplayName('');
     return null;
   }, []);
 
