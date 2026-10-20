@@ -194,6 +194,7 @@ export default function AccountModalProvider({ children }) {
         await claimGuestDraft();
         setAccountState('signed-in');
         setAccountEmail(result.email || email.trim().toLowerCase());
+        setAccountDisplayName(result.displayName || '');
         setMessage('Signed in. Opening your saved destination…');
         window.location.assign(result.returnPath || destination);
         return;
