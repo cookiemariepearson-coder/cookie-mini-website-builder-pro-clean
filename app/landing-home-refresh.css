@@ -971,3 +971,16 @@ main.brandLanding > .featuredTemplatesSection {
     animation: none !important;
   }
 }
+
+
+/* Ensure the moving highlight stays clipped to its own promo banner. */
+.amazonAffiliateSpot {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.homepageTopLinks a:focus-visible,
+.homepageTopLinks button:focus-visible {
+  outline: 3px solid #ffdc8a;
+  outline-offset: 3px;
+}
