@@ -11,7 +11,7 @@ export async function GET(req) {
     });
   }
 
-  const response = NextResponse.json({ ok: true, email: owner.email, userId: owner.user.id }, {
+  const response = NextResponse.json({ ok: true, email: owner.email, userId: owner.user.id, displayName: customerDisplayName(owner.user) }, {
     headers: { 'Cache-Control': 'private, no-store, max-age=0' }
   });
   if (owner.migratedBearer) response.cookies.set(SITE_OWNER_SESSION_COOKIE, owner.token, siteOwnerSessionCookieOptions());
