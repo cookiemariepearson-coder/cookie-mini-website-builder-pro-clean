@@ -54,7 +54,7 @@ const welcomeNotes = [
 ];
 const clickNotes = [
   { frequency: 659.25, delay: 0, duration: 0.09, volume: 0.045, type: 'sine' },
-  { frequency: 880, delay: 0.035, duration: 0.10, volume: 0.012, type: 'sine' }
+  { frequency: 880, delay: 0.035, duration: 0.10, volume: 0.04, type: 'sine' }
 ];
 
 export default function LandingWelcomeExperience() {
@@ -67,7 +67,7 @@ export default function LandingWelcomeExperience() {
       const target = event.target;
       if (!(target instanceof Element)) return;
       if (target.closest('.landingSoundToggle')) return;
-      const interactive = target.closest('.brandLanding a, .brandLanding button');
+      const interactive = target.closest('.homepageTopStrip a, .homepageTopStrip button, .brandLanding a, .brandLanding button');
       if (interactive) playNotes(clickNotes);
     }
 
