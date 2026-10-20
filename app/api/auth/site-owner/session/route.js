@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getVerifiedSiteOwner, SITE_OWNER_SESSION_COOKIE, siteOwnerSessionCookieOptions } from '../../../../../lib/siteOwnerAuth';
+import { customerDisplayName } from '../../../../../lib/customerGreeting.mjs';
 
 export async function GET(req) {
   const owner = await getVerifiedSiteOwner(req);
