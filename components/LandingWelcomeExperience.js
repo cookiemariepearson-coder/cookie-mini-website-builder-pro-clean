@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 
 // Keep one audio context alive for the page. Recreating and closing an AudioContext
