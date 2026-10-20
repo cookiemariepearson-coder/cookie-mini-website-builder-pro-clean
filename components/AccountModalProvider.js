@@ -225,7 +225,7 @@ export default function AccountModalProvider({ children }) {
     router.push('/');
   }, [router]);
 
-  const contextValue = useMemo(() => ({ accountState, accountEmail, openAccountModal, closeAccountModal, refreshSession, signOut }), [accountState, accountEmail, openAccountModal, closeAccountModal, refreshSession, signOut]);
+  const contextValue = useMemo(() => ({ accountState, accountEmail, accountDisplayName, openAccountModal, closeAccountModal, refreshSession, signOut }), [accountState, accountEmail, accountDisplayName, openAccountModal, closeAccountModal, refreshSession, signOut]);
   const heading = mode === 'create' ? 'Create your free account' : mode === 'reset' ? 'Forgot your password or need to set one?' : 'Welcome back';
   const support = mode === 'create'
     ? 'Save your websites, open them on another device, purchase a plan, and publish when you’re ready.'
