@@ -10,6 +10,7 @@ import BrowserDraftDialog from '../../components/BrowserDraftDialog';
 import { customerWebsiteStatus, websiteDisplayName } from '../../lib/customerWebsiteManagement.mjs';
 import { templateLibrary } from '../../lib/siteDefaults';
 import { isCanonicalOwnerEmail, normalizeOwnerEmail } from '../../lib/adminAuth.mjs';
+import { customerWelcomeName } from '../../lib/customerWelcome.mjs';
 import {
   BROWSER_DRAFT_DISPLAY_NAME_FIELD,
   BROWSER_DRAFT_PAGE_SIZE,
@@ -76,6 +77,7 @@ export default function Customer() {
   const [browserDraftError, setBrowserDraftError] = useState('');
   const [browserDraftMessage, setBrowserDraftMessage] = useState('');
   const [verifiedEmail, setVerifiedEmail] = useState('');
+  const [verifiedDisplayName, setVerifiedDisplayName] = useState('');
   const [authLoading, setAuthLoading] = useState(true);
   const [pendingPurchase, setPendingPurchase] = useState(null);
   const [authMode, setAuthMode] = useState('signin');
@@ -123,6 +125,7 @@ export default function Customer() {
         if (data.ok) {
           const claimResult = await claimGuestDraft();
           setVerifiedEmail(data.email);
+          setVerifiedDisplayName(data.displayName || '');
           if (checkoutIntentId) {
             const resumeResponse = await fetch('/api/checkout/intent/resume', {
               method: 'POST',
@@ -635,8 +638,9 @@ export default function Customer() {
         <section className="dashboard customerDashboardHero">
           <div>
             <span className="kicker">Cookie Mini Website Builder Pro</span>
-            <h1>My Websites</h1>
-            <p>View, edit, publish, and manage your websites.</p>
+            <h1>{verifiedEmail ? `Welcome back, ${customerWelcomeName(verifiedDisplayName, verifiedEmail)}!` : 'My Websites'}</h1>
+            <p>{verifiedEmail ? 'Great to see you again. Your saved websites are ready below.' : 'View, edit, publish, and manage your websites.'}</p>
+            {verifiedEmail && <p className="customerAccountGreetingEmail">Signed in as {verifiedEmail}</p>}
           </div>
           {verifiedEmail && <a className="btn" href="/builder">Create a New Website</a>}
         </section>
