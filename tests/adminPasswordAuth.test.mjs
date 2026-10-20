@@ -159,17 +159,21 @@ test('retired routine owner-link endpoint and callback are removed while custome
   assert.match(customerRecovery, /builder-password-signup/);
 });
 
-test('owner lock revokes the owner Supabase session, clears only its cookie, and stays private', async () => {
-  const [session, customerSignout] = await Promise.all([
+test('locking Admin preserves a shared owner customer session, while explicit sign-out clears both cookies', async () => {
+  const [session, customerSignout, ownerLogin] = await Promise.all([
     source('app/api/auth/admin/session/route.js'),
-    source('app/api/auth/site-owner/signout/route.js')
+    source('app/api/auth/site-owner/signout/route.js'),
+    source('app/api/auth/admin/password/route.js')
   ]);
   assert.match(session, /request\.cookies\.get\(ADMIN_SESSION_COOKIE\)/);
-  assert.match(session, /auth\.admin\.signOut\(token, 'local'\)/);
+  assert.match(session, /request\.cookies\.get\(SITE_OWNER_SESSION_COOKIE\)/);
+  assert.match(session, /if \(token && token !== customerToken\)/);
   assert.match(session, /response\.cookies\.set\(ADMIN_SESSION_COOKIE/);
   assert.match(session, /maxAge: 0/);
   assert.match(session, /private, no-store, max-age=0/);
-  assert.doesNotMatch(session, /SITE_OWNER_SESSION_COOKIE/);
+  assert.match(ownerLogin, /response\.cookies\.set\(SITE_OWNER_SESSION_COOKIE, accessToken/);
+  assert.match(ownerLogin, /response\.cookies\.set\(ADMIN_SESSION_COOKIE, accessToken/);
   assert.match(customerSignout, /SITE_OWNER_SESSION_COOKIE/);
-  assert.doesNotMatch(customerSignout, /ADMIN_SESSION_COOKIE/);
+  assert.match(customerSignout, /ADMIN_SESSION_COOKIE/);
+  assert.match(customerSignout, /tokensToRevoke/);
 });
