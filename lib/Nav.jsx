@@ -26,6 +26,7 @@ export default function Nav({ context = 'customer' }) {
       <Link href="/#featured-templates">Templates</Link>
       <Link href="/pricing">Pricing</Link>
       <Link href="/done-for-you">Done for You</Link>
+      <a href="https://shop.cookiesdigitalcreations.com/" target="_blank" rel="noopener noreferrer">Shop Our Products</a>
       <CustomerAccountLink />
       <OwnerAdminReturnLink />
     </div>
@@ -34,7 +35,7 @@ export default function Nav({ context = 'customer' }) {
   return <nav className="nav" aria-label="Main navigation">
     {homeLink}
     <div className="navLinks">
-      <AccountAction className="navBuilderAction" destination="/builder" guestAllowed mode="create">Start Building Free</AccountAction><Link href="/#featured-templates">Templates</Link><Link href="/pricing">Pricing</Link><Link href="/done-for-you">Done for You</Link><CustomerAccountLink /><OwnerAdminReturnLink />
+      <AccountAction className="navBuilderAction" destination="/builder" guestAllowed mode="create">Start Building Free</AccountAction><Link href="/#featured-templates">Templates</Link><Link href="/pricing">Pricing</Link><Link href="/done-for-you">Done for You</Link><a href="https://shop.cookiesdigitalcreations.com/" target="_blank" rel="noopener noreferrer">Shop Our Products</a><CustomerAccountLink /><OwnerAdminReturnLink />
     </div>
   </nav>;
 }
